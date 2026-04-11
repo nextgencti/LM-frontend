@@ -1,0 +1,20 @@
+test_name,test_code,category,group_name,parameter_code,parameter_name,unit,type,decimals,gender,age_min,age_max,age_unit,normal_min,normal_max,critical_min,critical_max
+Complete Blood Count,CBC01,Hematology,General,HGB,Hemoglobin,g/dL,Quantitative,2,Male,18,120,Years,13.8,17.2,7.0,20.0
+Complete Blood Count,CBC01,Hematology,General,HGB,Hemoglobin,g/dL,Quantitative,2,Female,18,120,Years,12.1,15.1,7.0,20.0
+Complete Blood Count,CBC01,Hematology,General,TLC,Total Leucocyte Count,10^3/µL,Quantitative,2,Any,18,120,Years,4.0,11.0,2.0,30.0
+Complete Blood Count,CBC01,Hematology,WBC Series,NEU,Neutrophils,%,Quantitative,1,Any,18,120,Years,40.0,70.0,,
+Complete Blood Count,CBC01,Hematology,WBC Series,LYM,Lymphocytes,%,Quantitative,1,Any,18,120,Years,20.0,40.0,,
+Complete Blood Count,CBC01,Hematology,WBC Series,MON,Monocytes,%,Quantitative,1,Any,18,120,Years,2.0,10.0,,
+Complete Blood Count,CBC01,Hematology,WBC Series,EOS,Eosinophils,%,Quantitative,1,Any,18,120,Years,1.0,4.0,,
+Complete Blood Count,CBC01,Hematology,RBC Series,RBC,RBC Count,10^6/µL,Quantitative,2,Male,18,120,Years,4.5,5.9,2.0,8.0
+Complete Blood Count,CBC01,Hematology,RBC Series,RBC,RBC Count,10^6/µL,Quantitative,2,Female,18,120,Years,3.8,5.2,2.0,8.0
+Complete Blood Count,CBC01,Hematology,RBC Series,MCV,MCV,fL,Quantitative,1,Any,18,120,Years,80.0,100.0,,
+Complete Blood Count,CBC01,Hematology,RBC Series,MCH,MCH,pg,Quantitative,1,Any,18,120,Years,27.0,32.0,,
+Complete Blood Count,CBC01,Hematology,RBC Series,MCHC,MCHC,g/dL,Quantitative,1,Any,18,120,Years,32.0,36.0,,
+Complete Blood Count,CBC01,Hematology,RBC Series,HCT,Hematocrit,%,Quantitative,1,Male,18,120,Years,40.0,52.0,,
+Complete Blood Count,CBC01,Hematology,RBC Series,HCT,Hematocrit,%,Quantitative,1,Female,18,120,Years,36.0,48.0,,
+Complete Blood Count,CBC01,Hematology,Platelet Series,PLT,Platelet Count,10^3/µL,Quantitative,0,Any,18,120,Years,150.0,400.0,50.0,1000.0
+Widal Test,WID01,Serology,Widal Antigens,S_TYP_O,S. Typhi Antigen O,Titre,Qualitative,0,Any,0,120,Years,Negative / <1:80,,,
+Widal Test,WID01,Serology,Widal Antigens,S_TYP_H,S. Typhi Antigen H,Titre,Qualitative,0,Any,0,120,Years,Negative / <1:80,,,
+Widal Test,WID01,Serology,Widal Antigens,S_PTY_AH,S. ParaTyphi Antigen AH,Titre,Qualitative,0,Any,0,120,Years,Negative / <1:10,,,
+Widal Test,WID01,Serology,Widal Antigens,S_PTY_BH,S. ParaTyphi Antigen BH,Titre,Qualitative,0,Any,0,120,Years,Negative / <1:10,,,
