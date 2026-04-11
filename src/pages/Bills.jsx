@@ -280,15 +280,15 @@ const Bills = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow animate-in fade-in duration-500">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-black text-brand-dark tracking-tighter flex items-center">
-            <div className="p-2 bg-brand-light rounded-xl mr-4 shadow-sm border border-brand-primary/10">
-              <IndianRupee className="w-8 h-8 text-brand-primary" />
+          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center">
+            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10">
+              <IndianRupee className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
             </div>
-            Bills
+            Billing
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Track your bills and payments here.</p>
+          <p className="text-slate-500 mt-2 font-medium text-sm sm:text-base">Track and manage financial records.</p>
         </div>
       </div>
 
@@ -439,19 +439,19 @@ const Bills = () => {
       {selectedInvoice && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:block">
           <div className="bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto hide-scrollbar rounded-[32px] shadow-2xl relative print:max-h-none print:shadow-none print:rounded-none overflow-visible print:w-full print:max-w-full">
-            <div className="sticky top-0 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-5 flex items-center justify-between z-10 rounded-t-[32px] no-print">
-              <h2 className="text-xl font-black text-brand-dark uppercase tracking-tighter">Invoice Preview</h2>
-              <div className="flex gap-3">
+            <div className="sticky top-0 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between z-10 rounded-t-[32px] no-print">
+              <h2 className="text-lg sm:text-xl font-black text-brand-dark uppercase tracking-tighter">Invoice Preview</h2>
+              <div className="flex gap-2 sm:gap-3">
                 <button 
                   onClick={handlePrint}
-                  className="px-6 py-2.5 bg-brand-primary text-white font-black text-sm uppercase tracking-widest rounded-xl hover:bg-brand-primary/90 transition-all shadow-lg flex items-center gap-2"
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-brand-primary text-white font-black text-[11px] sm:text-sm uppercase tracking-widest rounded-xl hover:bg-brand-primary/90 transition-all shadow-lg flex items-center gap-2"
                 >
                   <Printer className="w-4 h-4" />
-                  Print
+                  <span className="hidden sm:inline">Print</span>
                 </button>
                 <button 
                   onClick={() => setSelectedInvoice(null)}
-                  className="p-2.5 bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all"
+                  className="p-2 sm:p-2.5 bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -494,15 +494,15 @@ const Bills = () => {
                 </div>
 
                 {/* Patient Details Cards */}
-                <div className="grid grid-cols-2 gap-8 mb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-12">
                   <div className="p-6 bg-slate-50/50 rounded-[24px] border-l-4 border-brand-primary shadow-sm">
                     <div className="flex items-center mb-3">
                       <Users className="w-4 h-4 text-brand-primary mr-2" />
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Billed To Patient</p>
                     </div>
-                    <p className="text-xl font-black text-brand-dark uppercase tracking-tight">{selectedInvoice.patientName || 'Walk-in Patient'}</p>
+                    <p className="text-lg sm:text-xl font-black text-brand-dark uppercase tracking-tight">{selectedInvoice.patientName || 'Walk-in Patient'}</p>
                     {selectedInvoice.patientDetails && (
-                      <div className="mt-3 flex gap-4 text-[11px] font-black text-slate-500 uppercase">
+                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-black text-slate-500 uppercase">
                         {selectedInvoice.patientDetails.age && <span className="bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">Age: {selectedInvoice.patientDetails.age} Yrs</span>}
                         {selectedInvoice.patientDetails.gender && <span className="bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">Gender: {selectedInvoice.patientDetails.gender}</span>}
                       </div>
@@ -513,7 +513,7 @@ const Bills = () => {
                       <Stethoscope className="w-4 h-4 text-brand-secondary mr-2" />
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Referred By</p>
                     </div>
-                    <p className="text-xl font-black text-brand-dark uppercase tracking-tight">{selectedInvoice.doctorName || 'Self / Direct'}</p>
+                    <p className="text-lg sm:text-xl font-black text-brand-dark uppercase tracking-tight">{selectedInvoice.doctorName || 'Self / Direct'}</p>
                     <div className="mt-3 text-[11px] font-black text-slate-500 uppercase">
                        <span className="bg-white px-2 py-1 rounded border border-slate-100 shadow-sm flex items-center w-fit">
                          Priority: <span className="text-brand-secondary ml-1">{selectedInvoice.urgency || 'Routine'}</span>
@@ -557,11 +557,11 @@ const Bills = () => {
                 </div>
 
                 {/* Totals & Watermark Section */}
-                <div className="grid grid-cols-2 gap-12 items-end">
-                  <div className="relative">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-end">
+                  <div className="relative flex justify-center md:justify-start">
                     {selectedInvoice.paymentStatus === 'Paid' && (
-                      <div className="opacity-20 rotate-[-12deg] pointer-events-none">
-                        <div className="border-[6px] border-brand-primary text-brand-primary text-6xl font-black p-6 rounded-2xl uppercase tracking-widest inline-block shadow-lg">PAID</div>
+                      <div className="opacity-20 rotate-[-12deg] pointer-events-none scale-75 sm:scale-100 transform origin-center md:origin-left">
+                        <div className="border-[6px] border-brand-primary text-brand-primary text-5xl sm:text-6xl font-black p-4 sm:p-6 rounded-2xl uppercase tracking-widest inline-block shadow-lg">PAID</div>
                       </div>
                     )}
                   </div>

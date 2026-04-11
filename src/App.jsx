@@ -16,9 +16,11 @@ import ResultEntry from './pages/ResultEntry';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import Settings from './pages/Settings';
 import BusinessAnalytics from './pages/BusinessAnalytics';
+import Home from './pages/Home';
+import Signup from './pages/Signup';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import { Activity, Users, FileText, Calendar, LogOut, Stethoscope, IndianRupee, Shield, BookOpen, Settings as SettingsIcon, Globe, CreditCard, BarChart3 } from 'lucide-react';
+import { Activity, Users, FileText, Calendar, LogOut, Stethoscope, IndianRupee, Shield, BookOpen, Settings as SettingsIcon, Globe, CreditCard, BarChart3, Menu, X } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
 
@@ -30,6 +32,13 @@ const Layout = ({ children }) => {
   });
   const [labs, setLabs] = React.useState([]);
   const [labsLoading, setLabsLoading] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  // Close mobile menu on route change
+  React.useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
 
   React.useEffect(() => {
     if (userData?.role === 'SuperAdmin') {
@@ -61,19 +70,55 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-      {/* Sidebar navigation */}
-      <aside className="w-full md:w-64 bg-white shadow-xl md:h-screen md:sticky md:top-0 z-10 flex flex-col border-r border-slate-100">
-        <div className="p-6 border-b border-slate-50 flex items-center space-x-3">
+    <div className={`min-h-screen flex flex-col md:flex-row ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'} overflow-x-hidden`}>
+      
+      {/* Mobile Header (Top Bar) */}
+      <header className="md:hidden bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+        <div className="flex items-center space-x-3">
           <div className="p-2 bg-brand-light rounded-xl">
-             <Activity className="h-6 w-6 text-brand-primary" />
+            <Activity className="h-6 w-6 text-brand-primary" />
           </div>
-          <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-brand-dark to-brand-secondary tracking-tighter uppercase">
+          <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-brand-dark to-brand-secondary tracking-tighter uppercase">
             Lab Mitra
           </h1>
         </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 bg-slate-50 rounded-xl text-brand-dark hover:bg-slate-100 transition-colors"
+        >
+          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </header>
+
+      {/* Mobile Menu Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-brand-dark/40 backdrop-blur-sm z-40 transition-opacity"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar navigation */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl flex flex-col border-r border-slate-100 transition-transform duration-300 transform 
+        md:relative md:translate-x-0 md:w-64 md:shadow-xl md:h-screen md:sticky md:top-0
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-brand-light rounded-xl">
+               <Activity className="h-6 w-6 text-brand-primary" />
+            </div>
+            <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-brand-dark to-brand-secondary tracking-tighter uppercase">
+              Lab Mitra
+            </h1>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-brand-dark">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
         
-        <div className="p-4 flex flex-col gap-2 flex-grow overflow-y-auto custom-scrollbar">
+        <div className="p-4 flex flex-col gap-1.5 flex-grow overflow-y-auto custom-scrollbar">
           {userData?.role === 'SuperAdmin' && (
             <div className="mb-6 px-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block flex items-center gap-2">
@@ -209,7 +254,7 @@ const Layout = ({ children }) => {
           )}
         </div>
 
-        <div className="p-5 border-t border-gray-100 bg-gray-50/80 z-20">
+        <div className="p-5 border-t border-gray-100 bg-gray-50/80 mt-auto">
           <div className="flex items-center mb-5 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
             <div className="h-10 w-10 min-w-[40px] rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary font-black tracking-tight text-lg shadow-inner mr-3">
               {userData?.name?.charAt(0)?.toUpperCase() || 'U'}
@@ -251,18 +296,12 @@ const Layout = ({ children }) => {
 };
 
 function App() {
-  const RootRedirect = () => {
-    const { userData, loading } = useAuth();
-    if (loading) return null;
-    if (userData?.role === 'SuperAdmin') return <Navigate to="/superadmin" replace />;
-    return <Navigate to="/dashboard" replace />;
-  };
-
   return (
     <>
       <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} closeOnClick pauseOnHover theme="colored" />
       <Routes>
-      <Route path="/" element={<RootRedirect />} />
+      <Route path="/" element={<Home />} />
+      <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       
       {/* Protected Routes wrapped in Layout */}

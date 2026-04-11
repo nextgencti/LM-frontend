@@ -475,30 +475,30 @@ const Tests = () => {
     <div className="space-y-10 text-left animate-in fade-in duration-500 min-h-screen bg-white p-8 w-full max-w-7xl mx-auto">
 
       {/* ── PAGE HEADER ── */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 bg-white p-8 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 bg-white p-6 sm:p-8 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10">
         <div className="flex items-center gap-5">
-          <div className="p-4 bg-brand-light rounded-[22px] shadow-sm border border-brand-primary/10 transition-transform hover:rotate-6">
-            <FlaskConical className="w-8 h-8 text-brand-primary" />
+          <div className="p-3 sm:p-4 bg-brand-light rounded-2xl sm:rounded-[22px] shadow-sm border border-brand-primary/10 transition-transform hover:rotate-6">
+            <FlaskConical className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-brand-dark tracking-tighter uppercase">Lab Test Management</h1>
-            <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Configure diagnostic architecture and payload schemas</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-brand-dark tracking-tighter uppercase leading-none">Catalog</h1>
+            <p className="text-[9px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 leading-relaxed">Diagnostic Architecture & Protocol Schema</p>
           </div>
         </div>
         {isSuperAdmin && (
-          <div className="flex flex-wrap lg:flex-nowrap justify-end items-center gap-3 sm:shrink-0">
+          <div className="flex flex-wrap justify-start md:justify-end items-center gap-3 sm:shrink-0 w-full md:w-auto">
             <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
             <button onClick={handleDownloadSampleCSV}
-              className="flex items-center gap-2.5 px-5 py-3.5 bg-white border border-slate-100 text-slate-500 rounded-[20px] text-[11px] font-black uppercase tracking-widest hover:border-brand-primary/30 hover:bg-brand-light/20 transition-all active:scale-95">
-              <Download className="w-4 h-4" /> Sample CSV
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-100 text-slate-500 rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest hover:border-brand-primary/30 hover:bg-brand-light/20 transition-all active:scale-95 shadow-sm">
+              <Download className="w-4 h-4" /> <span className="hidden sm:inline">Sample CSV</span><span className="sm:hidden">Sample</span>
             </button>
             <button onClick={() => csvInputRef.current?.click()} disabled={csvImporting}
-              className="flex items-center gap-2.5 px-5 py-3.5 bg-brand-secondary/10 border border-brand-secondary/20 text-brand-secondary rounded-[20px] text-[11px] font-black uppercase tracking-widest hover:bg-brand-secondary/20 transition-all disabled:opacity-50 active:scale-95">
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-brand-secondary/10 border border-brand-secondary/20 text-brand-secondary rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest hover:bg-brand-secondary/20 transition-all disabled:opacity-50 active:scale-95 shadow-sm">
               {csvImporting ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
-              {csvImporting ? 'Syncing…' : 'Import CSV'}
+              <span>{csvImporting ? 'Syncing...' : 'Import'}</span>
             </button>
             <button onClick={() => { resetForm(); setShowModal(true); }}
-              className="flex items-center gap-2.5 px-8 py-4 bg-brand-dark text-white rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-brand-secondary transition-all shadow-xl shadow-brand-dark/10 active:scale-95 border border-white/10 group">
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-brand-dark text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-brand-secondary transition-all shadow-xl shadow-brand-dark/10 active:scale-95 border border-white/10 group">
               <Plus className="w-4 h-4 text-brand-primary group-hover:rotate-90 transition-transform" /> Create New Test
             </button>
           </div>
@@ -611,28 +611,28 @@ const Tests = () => {
           <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-6xl my-6 flex flex-col overflow-hidden text-left animate-in zoom-in-95 duration-200">
 
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="p-2.5 bg-brand-primary/10 rounded-2xl border border-brand-primary/20">
-                  <FlaskConical className="w-5 h-5 text-brand-primary" />
+            <div className="flex justify-between items-center px-6 sm:px-10 py-5 sm:py-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="p-2 sm:p-3 bg-brand-primary rounded-2xl border border-brand-primary/20 shadow-sm rotate-3">
+                  <FlaskConical className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-brand-dark">{testForm.id ? 'Edit Test Definition' : 'Define New Test'}</h2>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">{testForm.testName || 'New Configuration'}</p>
+                  <h2 className="text-lg sm:text-xl font-black text-brand-dark uppercase tracking-tight leading-none">{testForm.id ? 'Edit Protocol' : 'New Configuration'}</h2>
+                  <p className="text-[9px] sm:text-[10px] text-brand-primary font-black uppercase tracking-[0.3em] mt-1.5 leading-none">{testForm.testName || 'Protocol setup'}</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400 hover:text-slate-700">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-white border border-slate-100 shadow-sm hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all text-slate-400">
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-8 space-y-10 overflow-y-auto flex-grow max-h-[80vh] custom-scrollbar bg-white">
+            <div className="p-6 sm:p-10 space-y-10 sm:space-y-12 overflow-y-auto flex-grow max-h-[85vh] custom-scrollbar bg-white">
 
               {/* ── 1. Details ── */}
               <section>
-                <SectionTag color="blue">1. Test Details</SectionTag>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                <SectionTag color="blue">1. Basic schema</SectionTag>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
                     <Label>Test Code *</Label>
                     <Input placeholder="CBC001" value={testForm.testCode} disabled={!isSuperAdmin} onChange={e => setTestForm({...testForm, testCode: e.target.value.toUpperCase()})} className="font-mono text-brand-primary font-bold"/>

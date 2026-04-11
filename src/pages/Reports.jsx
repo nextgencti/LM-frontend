@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Loader, FileText, Eye, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, Clock, Mail, Zap } from 'lucide-react';
+import { Search, Loader, FileText, Eye, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, Clock, Mail, Zap, Bell } from 'lucide-react';
 import ReportPreview from '../components/ReportPreview';
 import { toast } from 'react-toastify';
 
@@ -479,7 +479,7 @@ const Reports = () => {
       
       let gridData = {}; try { gridData = JSON.parse(res.value || '{}'); } catch { gridData = {}; }
       return (
-        <div className="grid grid-cols-5 gap-2 py-2 px-4 bg-slate-50/80 rounded-[20px] border border-slate-100 shadow-inner min-w-[480px]">
+        <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar sm:grid sm:grid-cols-5 sm:gap-2 py-2 px-4 bg-slate-50/80 rounded-[20px] border border-slate-100 shadow-inner w-full">
           {titrations.map(t => {
             const currentVal = gridData[t] || '-';
             const isReactive = currentVal !== '-' && !['NEGATIVE','NIL','NORMAL','NEGATIVE (-)'].includes(currentVal.toUpperCase());
@@ -536,37 +536,58 @@ const Reports = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
         <div>
-          <h1 className="text-4xl font-black text-brand-dark flex items-center tracking-tighter">
-            <div className="bg-brand-light p-3 rounded-[22px] mr-5 shadow-sm border border-brand-primary/10 transition-transform hover:rotate-6">
-              <Activity className="w-8 h-8 text-brand-primary" />
+          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark flex items-center tracking-tighter">
+            <div className="bg-brand-light p-2.5 sm:p-3 rounded-2xl sm:rounded-[22px] mr-4 sm:mr-5 shadow-sm border border-brand-primary/10 transition-transform hover:rotate-6">
+              <Activity className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
             </div>
             Reports
           </h1>
-          <p className="text-slate-500 font-bold mt-2 ml-20 text-[15px]">Grouped by patient booking. Enter results per test.</p>
+          <p className="text-slate-500 font-bold mt-2 sm:ml-20 text-[13px] sm:text-[15px] leading-relaxed">Grouped by patient booking. Enter results per test.</p>
         </div>
-        <div className="flex items-center gap-3 bg-brand-light/20 px-6 py-3 rounded-[24px] border border-brand-primary/10 select-none">
-          <div className="w-2.5 h-2.5 bg-brand-primary rounded-full animate-pulse"></div>
-          <span className="text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Live Sync</span>
+        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-end">
+          {/* Automation Status Badge */}
+          {labProfile?.reportSettings?.autoEmailNotify ? (
+            <div className={`flex items-center gap-3 px-5 py-2.5 rounded-full border shadow-sm transition-all ${subscription?.plan?.toLowerCase() === 'pro' ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+              <Zap className={`w-4 h-4 ${subscription?.plan?.toLowerCase() === 'pro' ? 'text-teal-500 fill-teal-500' : 'text-amber-500'}`} />
+              <div className="flex flex-col leading-none">
+                <span className="text-[10px] font-black uppercase tracking-widest">Auto Notify: ON</span>
+                {subscription?.plan?.toLowerCase() !== 'pro' && (
+                  <span className="text-[8px] font-black uppercase text-amber-500/80 mt-1">Requires PRO Plan</span>
+                )}
+              </div>
+            </div>
+          ) : (
+             <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-slate-50 border border-slate-100 text-slate-400 select-none shadow-sm opacity-60">
+               <Bell className="w-4 h-4" />
+               <span className="text-[10px] font-black uppercase tracking-widest leading-none">Auto Notify: OFF</span>
+             </div>
+          )}
+
+          {/* Live Sync Badge */}
+          <div className="flex items-center gap-3 bg-brand-light/20 px-6 py-3 rounded-full border border-brand-primary/10 select-none shadow-sm">
+            <div className="w-2.5 h-2.5 bg-brand-primary rounded-full animate-pulse shadow-md shadow-brand-primary/50"></div>
+            <span className="text-[11px] font-black text-brand-dark uppercase tracking-[0.2em] leading-none">Live Sync Active</span>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-6 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10 flex flex-col md:flex-row gap-8 items-center">
+      <div className="bg-white p-5 sm:p-6 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10 flex flex-col md:flex-row gap-5 sm:gap-8 items-center">
         <div className="relative flex-grow w-full max-w-2xl group">
           <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
           </div>
           <input type="text"
-            className="block w-full pl-14 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-[28px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-[12px] font-black text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-inner"
+            className="block w-full pl-14 pr-6 py-4.5 bg-slate-50/50 border border-slate-100 rounded-[28px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-inner"
             placeholder="Search by patient, bill ID, or test name..." value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-[24px] border border-slate-100 shadow-sm">
-          <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Filter</span>
+        <div className="flex items-center gap-4 bg-white px-6 py-3 sm:py-4 rounded-[28px] border border-slate-100 shadow-sm w-full sm:w-auto justify-between sm:justify-start">
+          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Filter</span>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-transparent border-none py-1 text-[12px] font-black text-brand-dark focus:ring-0 outline-none cursor-pointer min-w-[140px]">
+            className="bg-transparent border-none py-1 text-[12px] font-black text-brand-dark focus:ring-0 outline-none cursor-pointer flex-grow text-right sm:text-left">
             <option value="All Status">All Status</option>
             <option value="Pending">Pending</option>
             <option value="In Progress">In Progress</option>
@@ -599,116 +620,101 @@ const Reports = () => {
               className={`bg-white rounded-[28px] border transition-all duration-300 overflow-hidden shadow-sm hover:shadow-md ${isExpanded ? 'border-brand-primary/20 shadow-brand-primary/5' : 'border-slate-100'}`}>
 
               {/* Group Header Row */}
-              <div className="flex items-center gap-4 px-8 py-5 cursor-pointer" onClick={() => toggleGroup(group.groupKey)}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 px-6 sm:px-8 py-5 sm:py-6 cursor-pointer" onClick={() => toggleGroup(group.groupKey)}>
                 
-                {/* Bill ID */}
-                <div className="text-[11px] font-black text-brand-dark bg-brand-light/50 px-3 py-1.5 rounded-xl border border-brand-primary/10 uppercase tabular-nums whitespace-nowrap min-w-[80px] text-center">
-                  {group.billId}
+                {/* ID + Mobile Status Row */}
+                <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                  <div className="text-[10px] sm:text-[11px] font-black text-brand-dark bg-brand-light/50 px-3 py-1.5 rounded-xl border border-brand-primary/10 uppercase tabular-nums whitespace-nowrap text-center shadow-sm">
+                    {group.billId}
+                  </div>
+                  <div className={`sm:hidden px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border whitespace-nowrap ${getStatusBadge(groupStatus)}`}>
+                    {groupStatus}
+                  </div>
                 </div>
 
                 {/* Patient Info */}
-                <div className="flex-grow min-w-0">
-                  <div className="text-[16px] font-black text-brand-dark uppercase tracking-tight leading-none">{group.patientName}</div>
+                <div className="flex-grow min-w-0 w-full sm:w-auto">
+                  <div className="text-[15px] sm:text-[16px] font-black text-brand-dark uppercase tracking-tight leading-none mb-1">{group.patientName}</div>
                   {group.patientAge && (
-                    <div className="text-[12px] text-slate-400 font-bold mt-0.5">{group.patientAge} Yrs / {group.patientGender || '--'}</div>
+                    <div className="text-[11px] sm:text-[12px] text-slate-400 font-bold tracking-widest">{group.patientAge} Yrs / {group.patientGender || '--'}</div>
                   )}
                 </div>
 
                 {/* Test Pills */}
-                <div className="flex flex-wrap gap-2 max-w-[380px]">
+                <div className="flex flex-wrap gap-2 max-w-full sm:max-w-[300px] lg:max-w-[420px]">
                   {group.tests.map(t => (
-                    <span key={t.id} className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide ${getTestBadge(t.status)}`}>
+                    <span key={t.id} className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide shadow-sm ${getTestBadge(t.status)}`}>
                       {t.testName}
                     </span>
                   ))}
                 </div>
 
-                {/* Progress */}
-                <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                  <div className="text-[11px] font-black text-slate-400">{finalCount}/{totalTests} Done</div>
-                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${allFinal ? 'bg-emerald-500' : 'bg-brand-primary'}`}
-                      style={{ width: `${(finalCount / totalTests) * 100}%` }} />
-                  </div>
-                </div>
-
-                {/* Group Status Badge */}
-                <div className={`px-4 py-1.5 rounded-2xl text-[11px] font-black uppercase border whitespace-nowrap ${getStatusBadge(groupStatus)}`}>
-                  <span className="flex items-center gap-1.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${allFinal ? 'bg-emerald-500' : 'bg-current'}`}></span>
-                    {groupStatus}
-                  </span>
-                </div>
-
-                  {/* Collective Clinical Actions (High Visibility) */}
-                  <div className="flex gap-2 mr-2">
-                    {!group.tests.some(t => t.collected_at) && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'collected_at'); }}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white text-[10px] font-black uppercase rounded-xl shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-95 whitespace-nowrap border-b-4 border-amber-700"
-                      >
-                        <FlaskConical className="w-4 h-4" /> Collect Sample
-                      </button>
-                    )}
-                    {group.tests.some(t => t.collected_at) && !group.tests.every(t => t.received_at) && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'received_at'); }}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-brand-secondary text-white text-[10px] font-black uppercase rounded-xl shadow-lg shadow-brand-secondary/20 hover:bg-brand-secondary/80 transition-all active:scale-95 whitespace-nowrap border-b-4 border-brand-secondary"
-                      >
-                        <Activity className="w-4 h-4" /> Receive in Lab
-                      </button>
-                    )}
+                {/* Vertical Stack for Tracking on Small screens, horizontal on desk */}
+                <div className="flex sm:flex-row flex-wrap items-center gap-3 sm:gap-6 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50 mt-2 sm:mt-0">
+                  {/* Progress Indicator */}
+                  <div className="flex flex-col items-start sm:items-center gap-1">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{finalCount}/{totalTests} Done</div>
+                    <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden mt-1">
+                      <div className={`h-full rounded-full transition-all ${allFinal ? 'bg-emerald-500' : 'bg-brand-primary'}`}
+                        style={{ width: `${(finalCount / totalTests) * 100}%` }} />
+                    </div>
                   </div>
 
-                  {/* Print & Email buttons — only when all Final */}
-                  {allFinal ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setPreviewGroupId(group.groupKey); }}
-                        className="flex items-center gap-2 px-4 py-2 bg-brand-primary text-white text-[11px] font-black uppercase rounded-xl shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all active:scale-95 whitespace-nowrap"
-                      >
-                        <Eye className="w-4 h-4" /> Preview
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleSendGroupEmail(group); }}
-                        disabled={emailSending === group.groupKey}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase transition-all active:scale-95 whitespace-nowrap shadow-lg ${
-                          emailSending === group.groupKey 
-                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                            : labProfile?.reportSettings?.autoEmailNotify
-                              ? 'bg-emerald-600 text-white shadow-emerald-500/20 hover:bg-emerald-700'
-                              : 'bg-brand-dark text-white shadow-brand-dark/20 hover:scale-105'
-                        }`}
-                        title={labProfile?.reportSettings?.autoEmailNotify ? "Auto-Email is ON" : "Send Manual Email"}
-                      >
-                        {emailSending === group.groupKey ? (
-                          <Loader className="w-4 h-4 animate-spin" />
-                        ) : labProfile?.reportSettings?.autoEmailNotify ? (
-                          <Zap className={`w-4 h-4 ${labProfile?.reportSettings?.autoEmailNotify ? 'animate-pulse text-emerald-300' : ''}`} />
-                        ) : (
-                          <Mail className="w-4 h-4" />
-                        )}
-                        {labProfile?.reportSettings?.autoEmailNotify ? 'Auto-Email' : 'Email'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="px-4 py-2 bg-slate-50 text-slate-300 text-[11px] font-black uppercase rounded-xl border border-slate-100 whitespace-nowrap cursor-not-allowed">
-                      <Clock className="w-4 h-4 inline mr-1" /> Pending
-                    </div>
-                  )}
+                  {/* Desktop Status Badge */}
+                  <div className={`hidden sm:flex px-4 py-1.5 rounded-2xl text-[11px] font-black uppercase border whitespace-nowrap ${getStatusBadge(groupStatus)}`}>
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${allFinal ? 'bg-emerald-500' : 'bg-current'}`}></span>
+                      {groupStatus}
+                    </span>
+                  </div>
 
-                {/* Expand Toggle */}
-                <button onClick={(e) => { e.stopPropagation(); toggleGroup(group.groupKey); }}
-                  className="p-2 rounded-xl bg-slate-50 hover:bg-brand-light border border-slate-100 transition-all text-slate-400">
-                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
+                  {/* Collective Actions */}
+                  <div className="flex flex-grow sm:flex-grow-0 justify-end gap-2">
+                      {!group.tests.some(t => t.collected_at) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'collected_at'); }}
+                          className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-amber-500 text-white text-[9px] sm:text-[10px] font-black uppercase rounded-xl shadow-lg shadow-amber-500/10 hover:bg-amber-600 transition-all active:scale-95 whitespace-nowrap border-b-2 sm:border-b-4 border-amber-700"
+                        >
+                          <FlaskConical className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="sm:hidden">Collect</span> <span className="hidden sm:inline">Collect Sample</span>
+                        </button>
+                      )}
+                      {group.tests.some(t => t.collected_at) && !group.tests.every(t => t.received_at) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'received_at'); }}
+                          className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-brand-secondary text-white text-[9px] sm:text-[10px] font-black uppercase rounded-xl shadow-lg shadow-brand-secondary/10 hover:bg-brand-secondary/80 transition-all active:scale-95 whitespace-nowrap border-b-2 sm:border-b-4 border-brand-secondary"
+                        >
+                          <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="sm:hidden">Receive</span> <span className="hidden sm:inline">Receive in Lab</span>
+                        </button>
+                      )}
+
+                    {/* Preview/Email */}
+                    {allFinal && (
+                      <div className="flex gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); setPreviewGroupId(group.groupKey); }}
+                          className="p-2 sm:px-4 sm:py-2 bg-brand-primary text-white font-black text-[10px] uppercase rounded-xl shadow-lg shadow-brand-primary/10 hover:scale-105 active:scale-95">
+                          <Eye className="w-4 h-4 sm:mr-1 inline" /> <span className="hidden sm:inline">Preview</span>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleSendGroupEmail(group); }} disabled={emailSending === group.groupKey}
+                          className="p-2 sm:px-4 sm:py-2 bg-brand-dark text-white font-black text-[10px] uppercase rounded-xl shadow-lg hover:scale-105 active:scale-95">
+                          {emailSending === group.groupKey ? <Loader className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4 sm:mr-1 inline" />} <span className="hidden sm:inline">Email</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Toggle */}
+                  <button onClick={(e) => { e.stopPropagation(); toggleGroup(group.groupKey); }}
+                    className="p-2 rounded-xl bg-slate-50 hover:bg-brand-light border border-slate-100 transition-all text-slate-400">
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {/* Expanded: Individual Tests Table */}
               {isExpanded && (
                 <div className="border-t border-slate-100 divide-y divide-slate-50 animate-in slide-in-from-top-2 duration-200">
                   {group.tests.map((test) => (
-                    <div key={test.id} className="flex items-center gap-4 px-8 py-4 hover:bg-slate-50/50 transition-all">
+                    <div key={test.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-6 sm:px-8 py-5 sm:py-4 hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0 relative">
                       
                       {/* Test Flask icon */}
                       <div className={`p-2 rounded-xl ${test.status === 'Final' ? 'bg-emerald-100 text-emerald-600' : test.status === 'In Progress' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
@@ -723,39 +729,39 @@ const Reports = () => {
                         </div>
                       </div>
 
-                      {/* Tracking Steps */}
-                      <div className="flex gap-1.5 text-[9px] uppercase font-black tracking-wider">
-                        {['Registered','Collected','Received','Finalized'].map((st, i) => {
+                      {/* Tracking Steps - Scrollable on mobile */}
+                      <div className="flex overflow-x-auto pb-2 sm:pb-0 gap-1.5 text-[8px] sm:text-[9px] uppercase font-black tracking-wider w-full sm:w-auto no-scrollbar">
+                        {['Reg','Coll','Rec','Fin'].map((st, i) => {
                           const isActive = [test.registered_at, test.collected_at, test.received_at, test.reported_at][i];
+                          const labels = ['Registered','Collected','Received','Finalized'];
                           return (
-                            <div key={st} className={`px-2 py-1 rounded-lg border text-center ${isActive ? 'bg-brand-light border-brand-primary/20 text-brand-dark' : 'bg-slate-50 border-slate-100 text-slate-300'}`}>
+                            <div key={st} title={labels[i]} className={`px-2 py-1.5 rounded-lg border text-center transition-all min-w-[50px] sm:min-w-[60px] ${isActive ? 'bg-brand-light border-brand-primary/20 text-brand-dark' : 'bg-slate-50 border-slate-100 text-slate-300'}`}>
                               {st}
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex gap-2 items-center">
+                      {/* Actions - Full width on mobile */}
+                      <div className="flex gap-2 items-center w-full sm:w-auto mt-2 sm:mt-0 justify-end">
                         {test.received_at && (
-                          <>
+                          <div className="flex gap-2 flex-grow sm:flex-grow-0">
                             <button onClick={() => { setSelectedReport(test); setEditedResults([]); }}
-                              className="bg-brand-dark text-[11px] font-black text-white px-4 py-1.5 rounded-xl shadow hover:bg-brand-secondary transition-all uppercase tracking-widest active:scale-95">
+                              className="flex-1 sm:flex-none bg-brand-dark text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-dark/10 hover:bg-brand-secondary transition-all uppercase tracking-widest active:scale-95 leading-none">
                               Results
                             </button>
 
                             {test.status === 'In Progress' && !test.reported_at && (
                               <button onClick={() => handleFinalizeReport(test.id, group)}
-                                className="bg-brand-primary text-[11px] font-black text-white px-4 py-1.5 rounded-xl shadow hover:scale-105 transition-all uppercase tracking-widest active:scale-95">
+                                className="flex-1 sm:flex-none bg-brand-primary text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all uppercase tracking-widest active:scale-95 leading-none">
                                 Finalize
                               </button>
                             )}
-                          </>
+                          </div>
                         )}
 
-
                         <button onClick={() => setReportToDelete(test)}
-                          className="p-2 bg-rose-50 text-rose-400 rounded-xl border border-rose-100 hover:bg-rose-500 hover:text-white transition-all">
+                          className="p-2.5 sm:p-2 bg-rose-50 text-rose-400 rounded-xl border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -774,19 +780,19 @@ const Reports = () => {
           <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-3xl" onClick={() => setSelectedReport(null)}></div>
           <div className="relative bg-white w-full max-w-7xl rounded-[48px] shadow-2xl overflow-hidden border border-white/20 flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-300">
             
-            <div className="bg-brand-dark px-12 py-8 flex justify-between items-center select-none shadow-xl z-20">
-              <div className="flex items-center gap-5">
-                <div className="bg-brand-primary p-3 rounded-[24px] shadow-lg shadow-brand-primary/20 rotate-6">
-                  <FlaskConical className="w-6 h-6 text-white" />
+            <div className="bg-brand-dark px-6 sm:px-12 py-6 sm:py-8 flex justify-between items-center select-none shadow-xl z-20">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="bg-brand-primary p-2 sm:p-3 rounded-2xl sm:rounded-[24px] shadow-lg shadow-brand-primary/20 rotate-6">
+                  <FlaskConical className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Enter Results</h2>
-                  <p className="text-[12px] font-black text-brand-primary uppercase tracking-[0.4em]">{selectedReport.testName}</p>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tighter uppercase leading-none">Record Data</h2>
+                  <p className="text-[10px] sm:text-[12px] font-black text-brand-primary uppercase tracking-[0.4em] mt-1 sm:mt-2">{selectedReport.testName}</p>
                 </div>
               </div>
               <button onClick={() => setSelectedReport(null)}
-                className="p-3 bg-white/5 hover:bg-brand-light hover:text-brand-dark rounded-[24px] transition-all text-white/50 border border-white/10">
-                <X className="w-6 h-6" />
+                className="p-2 sm:p-3 bg-white/5 hover:bg-brand-light hover:text-brand-dark rounded-2xl transition-all text-white/50 border border-white/10">
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 

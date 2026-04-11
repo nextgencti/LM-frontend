@@ -169,20 +169,20 @@ const Patients = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow animate-in fade-in duration-500">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-black text-brand-dark tracking-tighter flex items-center">
-            <div className="p-2 bg-brand-light rounded-xl mr-4 shadow-sm border border-brand-primary/10">
-              <Users className="w-8 h-8 text-brand-primary" />
+          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center">
+            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10">
+              <Users className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
             </div>
             Patients
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Manage your patient records here.</p>
+          <p className="text-slate-500 mt-2 font-medium text-sm sm:text-base">Comprehensive medical record directory.</p>
         </div>
         
         <button
           onClick={() => { setEditingId(null); setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '' }); setShowAddModal(true); }}
-          className="flex items-center px-6 py-3 bg-brand-dark text-white rounded-2xl font-black hover:shadow-2xl hover:shadow-brand-dark/20 hover:-translate-y-1 transition-all duration-300 group active:scale-95 shadow-lg tracking-widest text-[11px] uppercase"
+          className="w-full md:w-auto flex items-center justify-center px-8 py-4 bg-brand-dark text-white rounded-2xl font-black hover:shadow-2xl hover:shadow-brand-dark/20 hover:-translate-y-1 transition-all duration-300 group active:scale-95 shadow-lg tracking-widest text-[11px] uppercase whitespace-nowrap"
         >
           <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300 text-brand-primary" />
           Add Patient
@@ -192,20 +192,20 @@ const Patients = () => {
       {/* Search & Statistics */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="relative flex-grow group">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
           </div>
           <input
             type="text"
-            className="block w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 transition-all text-sm font-bold placeholder:text-slate-400 placeholder:font-medium shadow-sm hover:border-slate-300"
-            placeholder="Search by name or phone..."
+            className="block w-full pl-14 pr-4 py-4.5 bg-white border border-slate-200 rounded-[24px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 transition-all text-sm font-bold placeholder:text-slate-400 placeholder:font-medium shadow-sm hover:border-slate-300 overflow-hidden text-ellipsis"
+            placeholder="Search by name, phone or ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center px-6 bg-white rounded-[22px] border border-slate-100 shadow-sm whitespace-nowrap">
-          <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest mr-3">Total Patients:</span>
-          <span className="text-lg font-black text-brand-dark tabular-nums">{patients.length}</span>
+        <div className="flex items-center justify-between px-6 py-4 bg-white rounded-[24px] border border-slate-100 shadow-sm sm:w-auto">
+          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mr-4">Total Registry:</span>
+          <span className="text-xl font-black text-brand-dark tabular-nums">{patients.length}</span>
         </div>
       </div>
 
@@ -306,24 +306,24 @@ const Patients = () => {
         <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-3xl flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] shadow-[0_32px_128px_rgba(0,0,0,0.3)] max-w-2xl w-full border border-white/20 animate-in zoom-in-95 duration-500 overflow-hidden flex flex-col max-h-[90vh]">
             
-            <div className="px-10 py-8 bg-brand-dark text-white flex justify-between items-center shrink-0 border-b border-white/5 relative overflow-hidden">
+            <div className="px-6 sm:px-10 py-6 sm:py-8 bg-brand-dark text-white flex justify-between items-center shrink-0 border-b border-white/5 relative overflow-hidden">
                <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 rounded-full blur-[80px] -mr-20 -mt-20"></div>
-               <div className="relative z-10 flex items-center gap-5">
-                  <div className="p-3 bg-brand-primary rounded-[18px] transition-transform rotate-3 hover:rotate-6">
-                     <Users className="w-6 h-6 text-white" />
+               <div className="relative z-10 flex items-center gap-4 sm:gap-5">
+                  <div className="p-2 sm:p-3 bg-brand-primary rounded-[14px] sm:rounded-[18px] transition-transform rotate-3 hover:rotate-6">
+                     <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div>
-                     <h2 className="text-2xl font-black tracking-tighter uppercase leading-none">{editingId ? 'Edit Patient' : 'Add New Patient'}</h2>
-                     <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.4em] mt-1.5">Patient Record Setup</p>
+                     <h2 className="text-lg sm:text-2xl font-black tracking-tighter uppercase leading-none">{editingId ? 'Edit Patient' : 'Add New Patient'}</h2>
+                     <p className="text-[8px] sm:text-[9px] font-black text-brand-primary uppercase tracking-[0.4em] mt-1.5 leading-none">Record Configuration</p>
                   </div>
                </div>
-               <button onClick={closeModal} className="relative z-10 w-12 h-12 flex justify-center items-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all text-white/50 border border-white/5">
-                  <span className="text-xl">&times;</span>
+               <button onClick={closeModal} className="relative z-10 w-10 h-10 sm:w-12 sm:h-12 flex justify-center items-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all text-white/50 border border-white/5">
+                  <X className="w-5 h-5" />
                </button>
             </div>
             
             <form onSubmit={handleAddPatient} className="flex-grow flex flex-col overflow-hidden">
-              <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
+              <div className="p-6 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar">
                 
                 {isSuperAdmin && !activeLabId && !editingId && (
                   <div className="space-y-2">

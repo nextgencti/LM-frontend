@@ -369,7 +369,7 @@ const ReportPreview = ({ report, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[300] bg-gray-900/95 backdrop-blur-xl flex flex-col pt-0 pb-4 print:static print:bg-white print:overflow-visible print:block print:inset-auto">
-      <div className="bg-white/10 border-b border-white/10 px-6 py-4 flex justify-between items-center shrink-0 print:hidden top-0 sticky z-50">
+      <div className="bg-white/10 border-b border-white/10 px-3 sm:px-6 py-4 flex justify-between items-center shrink-0 print:hidden top-0 sticky z-[310] gap-2 sm:gap-4 overflow-visible">
         <div className="text-white font-black tracking-widest text-sm uppercase whitespace-nowrap overflow-hidden max-w-[40%]">Previewing: {report.patientName}</div>
         <div className="flex gap-3">
           <button 
@@ -387,14 +387,14 @@ const ReportPreview = ({ report, onClose }) => {
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto w-full flex flex-col items-center p-8 print:p-0 custom-scrollbar print:overflow-visible print:block print:h-auto pb-20">
+      <div className="flex-grow overflow-y-auto w-full flex flex-col items-center p-2 sm:p-8 print:p-0 custom-scrollbar print:overflow-visible print:block print:h-auto pb-20">
         {loading ? (
-           <div className="flex flex-col items-center justify-center text-white h-full pb-20 print:hidden">
+           <div className="flex flex-col items-center justify-center text-white h-full pb-20 print:hidden mt-20">
               <Loader className="w-12 h-12 animate-spin mb-2 text-emerald-500" />
               <p className="font-bold tracking-widest uppercase text-xs">Fetching All Test Data...</p>
            </div>
         ) : (
-        <div className="!bg-white !text-[#111827] w-full max-w-[210mm] min-h-[297mm] shadow-2xl relative print:shadow-none printable-page flex flex-col mx-auto">
+        <div className="!bg-white !text-[#111827] w-full sm:max-w-[210mm] min-h-screen sm:min-h-[297mm] shadow-2xl relative print:shadow-none printable-page flex flex-col mx-auto transition-all">
           <div className="absolute inset-0 !bg-white pointer-events-none z-[-1]"></div>
             
             {/* Watermark Overlay (Text or Image) */}
@@ -438,30 +438,32 @@ const ReportPreview = ({ report, onClose }) => {
                   />
                 </div>
               ) : (
-                <div className="flex justify-between items-start !bg-white">
-                  <div className="max-w-md">
-                    <h1 className="text-4xl font-black !text-emerald-900 uppercase tracking-tighter leading-none mb-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start !bg-white gap-6">
+                  <div className="max-w-md w-full">
+                    <h1 className="text-2xl sm:text-4xl font-black !text-emerald-900 uppercase tracking-tighter leading-none mb-3">
                       {labProfile?.labFullName || labProfile?.labName || 'Diagnostic Laboratory'}
                     </h1>
-                    {labProfile?.reportSettings?.showAddress !== false && labProfile?.address && (
-                      <p className="text-sm font-bold !text-gray-700 flex items-center mb-1">
-                        <MapPin className="w-3.5 h-3.5 mr-1.5" /> {labProfile.address}
-                      </p>
-                    )}
-                    {labProfile?.reportSettings?.showPhone !== false && (labProfile?.phone || labProfile?.mobile) && (
-                      <p className="text-sm font-bold !text-gray-700 flex items-center mb-1">
-                        <Phone className="w-3.5 h-3.5 mr-1.5" /> {labProfile.phone || labProfile.mobile}
-                      </p>
-                    )}
-                    {labProfile?.reportSettings?.showEmail !== false && labProfile?.email && (
-                      <p className="text-sm font-bold !text-gray-700 flex items-center mb-1">
-                        <Mail className="w-3.5 h-3.5 mr-1.5" /> {labProfile.email}
-                      </p>
-                    )}
+                    <div className="space-y-1">
+                      {labProfile?.reportSettings?.showAddress !== false && labProfile?.address && (
+                        <p className="text-[11px] sm:text-sm font-bold !text-gray-700 flex items-center">
+                          <MapPin className="w-3 sm:w-3.5 h-3 sm:h-3.5 mr-1.5 shrink-0" /> <span className="leading-tight">{labProfile.address}</span>
+                        </p>
+                      )}
+                      {labProfile?.reportSettings?.showPhone !== false && (labProfile?.phone || labProfile?.mobile) && (
+                        <p className="text-[11px] sm:text-sm font-bold !text-gray-700 flex items-center">
+                          <Phone className="w-3 sm:w-3.5 h-3 sm:h-3.5 mr-1.5 shrink-0" /> {labProfile.phone || labProfile.mobile}
+                        </p>
+                      )}
+                      {labProfile?.reportSettings?.showEmail !== false && labProfile?.email && (
+                        <p className="text-[11px] sm:text-sm font-bold !text-gray-700 flex items-center">
+                          <Mail className="w-3 sm:w-3.5 h-3 sm:h-3.5 mr-1.5 shrink-0" /> {labProfile.email}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right !bg-white">
-                    <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl mb-2 inline-block">
-                      <h2 className="text-lg font-black !text-emerald-900 uppercase tracking-widest m-0">Diagnostic Report</h2>
+                  <div className="text-right !bg-white self-end sm:self-start">
+                    <div className="bg-emerald-50 border border-emerald-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl mb-2 inline-block">
+                      <h2 className="text-base sm:text-lg font-black !text-emerald-900 uppercase tracking-widest m-0 leading-none">Diagnostic Report</h2>
                     </div>
                   </div>
                 </div>
@@ -469,32 +471,32 @@ const ReportPreview = ({ report, onClose }) => {
             </header>
 
             <section className="px-6 mb-8 !bg-white">
-              <div className="!bg-white border-[1.5px] border-gray-300 rounded-lg p-4 flex justify-between gap-4">
-                <div className="grid grid-cols-[auto_1fr_auto_1.4fr] gap-x-10 gap-y-0.5 text-[13px] font-bold !text-gray-900 flex-1">
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Name</div> <div className="uppercase whitespace-nowrap">: {reportData.patientName}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Reg. Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.createdAt, true)}</div>
+              <div className="!bg-white border-[1.5px] border-gray-300 rounded-lg p-3 sm:p-4 flex flex-col md:flex-row justify-between gap-4 relative">
+                <div className="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto_1.4fr] gap-x-4 sm:gap-x-10 gap-y-1 sm:gap-y-0.5 text-[11px] sm:text-[13px] font-bold !text-gray-900 flex-1">
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Name</div> <div className="uppercase">: {reportData.patientName}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Reg. Date</div> <div>: {formatDate(reportData.createdAt, true)}</div>
                   
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Age/Gender</div> <div className="whitespace-nowrap">: {patientData?.age || reportData.patientAge || '??'} Y / {patientData?.gender || reportData.patientGender || '--'}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Received Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.createdAt, true)}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Age/Gender</div> <div>: {patientData?.age || reportData.patientAge || '??'} Y / {patientData?.gender || reportData.patientGender || '--'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Received Date</div> <div>: {formatDate(reportData.createdAt, true)}</div>
                   
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Referred By</div> <div className="whitespace-nowrap">: {doctorData?.name || reportData.doctorName || 'Self'}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Collection Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.createdAt, true)}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Referred By</div> <div>: {doctorData?.name || reportData.doctorName || 'Self'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Collection Date</div> <div>: {formatDate(reportData.createdAt, true)}</div>
                   
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Patient ID</div> 
-                  <div className="whitespace-nowrap">: {(() => {
+                  <div>: {(() => {
                         const rawId = patientData?.patientId || reportData.patientId;
                         if (!rawId) return '--';
                         return String(rawId).split('_').pop();
                       })()}
                   </div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.updatedAt || reportData.createdAt, true)}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report Date</div> <div>: {formatDate(reportData.updatedAt || reportData.createdAt, true)}</div>
                   
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report ID</div> <div className="uppercase whitespace-nowrap">: {reportData.reportId || reportData.bookingId || '--'}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase whitespace-nowrap">: {reportData.status || 'Final'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report ID</div> <div className="uppercase">: {reportData.reportId || reportData.bookingId || '--'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase">: {reportData.status || 'Final'}</div>
                 </div>
-                <div className="flex-shrink-0 pl-4 border-l border-gray-200 self-center !bg-white">
-                  <QRCodeComponent value={qrData} size={75} />
-                  <p className="text-[8px] text-gray-400 text-center mt-1 font-medium tracking-widest uppercase whitespace-nowrap">Scan to Verify</p>
+                <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex flex-col items-center !bg-white md:pl-4 md:border-l border-gray-200">
+                  <QRCodeComponent value={qrData} size={50} className="sm:w-[70px] sm:h-[70px]" />
+                  <p className="text-[7px] sm:text-[8px] text-gray-400 text-center mt-1 font-medium tracking-widest uppercase whitespace-nowrap">Scan to Verify</p>
                 </div>
               </div>
             </section>
@@ -549,18 +551,18 @@ const ReportPreview = ({ report, onClose }) => {
                                          let titrs = Array.from(allT).sort((a,b) => (parseInt(a.split(':')[1])||0) - (parseInt(b.split(':')[1])||0));
                                          if (isWid) titrs = titrs.length ? titrs.filter(t => (parseInt(t.split(':')[1])||0)<=320) : ["1:20","1:40","1:80","1:160","1:320"];
                                          return (
-                                           <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm !bg-white">
-                                             <table className="w-full text-left !bg-white">
+                                           <div className="border border-gray-200 rounded-lg overflow-x-auto shadow-sm !bg-white no-scrollbar">
+                                             <table className="min-w-[600px] sm:w-full text-left !bg-white">
                                                <thead><tr className="bg-gray-50 border-b border-gray-200 text-gray-700">
-                                                 <th className="py-2.5 px-4 text-[10px] font-black uppercase tracking-widest leading-none">Parameter</th>
-                                                 {titrs.map(t => <th key={t} className="py-2.5 px-2 text-[10px] font-black uppercase text-center leading-none tracking-tighter">{t}</th>)}
+                                                 <th className="py-2 sm:py-2.5 px-3 sm:px-4 text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-none">Parameter</th>
+                                                 {titrs.map(t => <th key={t} className="py-2 sm:py-2.5 px-1 sm:px-2 text-[9px] sm:text-[10px] font-black uppercase text-center leading-none tracking-tighter">{t}</th>)}
                                                </tr></thead>
                                                <tbody className="divide-y divide-gray-100 !bg-white">{params.map((res, i) => {
                                                  let vm_grid = {}; try { vm_grid = JSON.parse(res.value || '{}'); } catch(e){}
-                                                 return (<tr key={i} className="bg-white"><td className="py-3 px-4 text-xs font-bold text-gray-800">{res.parameter}</td>
+                                                 return (<tr key={i} className="bg-white"><td className="py-2.5 sm:py-3 px-3 sm:px-4 text-[11px] sm:text-xs font-bold text-gray-800">{res.parameter}</td>
                                                    {titrs.map(t => {
                                                      const v_g = vm_grid[t] || '-'; const isRea_g = v_g.toUpperCase().includes('POS') || v_g.toUpperCase().includes('REA');
-                                                     return <td key={t} className={`py-3 px-2 text-[13px] font-black text-center ${isRea_g ? 'text-red-600' : 'text-gray-400'}`}>{v_g === 'REACTIVE' ? '+' : v_g}</td>
+                                                     return <td key={t} className={`py-2.5 sm:py-3 px-1 sm:px-2 text-[12px] sm:text-[13px] font-black text-center ${isRea_g ? 'text-red-600' : 'text-gray-400'}`}>{v_g === 'REACTIVE' ? '+' : v_g}</td>
                                                    })}
                                                  </tr>)
                                                })}</tbody>
@@ -569,25 +571,27 @@ const ReportPreview = ({ report, onClose }) => {
                                          )
                                       })()
                                    ) : (
-                                      <table className="w-full text-left !bg-white" style={{ tableLayout: 'fixed' }}>
-                                        <thead><tr className="border-b-[1.5px] border-gray-800 text-gray-900 bg-slate-50">
-                                          <th className="py-1.5 px-2 text-[11px] font-black uppercase text-slate-500 w-[35%] tracking-tight">Parameter</th>
-                                          <th className="py-1.5 px-2 text-[11px] font-black uppercase text-slate-500 w-[15%] tracking-tight">Result</th>
-                                          <th className="py-1.5 px-2 text-[11px] font-black uppercase text-slate-500 w-[10%] text-center tracking-tight">Flag</th>
-                                          <th className="py-1.5 px-2 text-[11px] font-black uppercase text-slate-500 w-[15%] tracking-tight">Unit</th>
-                                          <th className="py-1.5 px-2 text-[11px] font-black uppercase text-slate-500 w-[25%] text-right tracking-tight">Ref. Range</th>
-                                        </tr></thead>
-                                        <tbody className="divide-y divide-gray-100 !bg-white">{params.map((res, i) => {
-                                          const f = getFlag(res.value, res.range); const isAbn = f === 'H' || f === 'L';
-                                          return (<tr key={i} className={`bg-white ${isAbn ? 'font-bold' : ''}`}>
-                                            <td className="py-1 px-2 text-[13px] text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis">{res.parameter}</td>
-                                            <td className="py-1 px-2"><span className={`text-[11px] ${isAbn ? (f==='H'?'text-rose-600 font-black':'text-blue-600 font-black') : 'text-gray-800 font-bold'}`}>{res.value || '-'}</span></td>
-                                            <td className="py-1 px-2 text-center leading-none"><span className={`text-[11px] font-bold ${isAbn ? (f==='H'?'text-rose-600':'text-blue-600') : 'text-emerald-600'}`}>{f}</span></td>
-                                            <td className="py-1 px-2 text-[11px] font-semibold text-slate-500">{res.unit || '-'}</td>
-                                            <td className={`py-1 px-2 text-[11px] text-right tabular-nums ${isAbn ? 'font-bold text-gray-900 border-gray-100 pl-2' : 'text-gray-500 font-medium'}`}>{res.range || '-'}</td>
-                                          </tr>)
-                                        })}</tbody>
-                                      </table>
+                                      <div className="overflow-x-auto w-full no-scrollbar">
+                                        <table className="min-w-[650px] sm:w-full text-left !bg-white">
+                                          <thead><tr className="border-b-[1.5px] border-gray-800 text-gray-900 bg-slate-50">
+                                            <th className="py-1.5 px-2 text-[10px] sm:text-[11px] font-black uppercase text-slate-500 w-[35%] tracking-tight">Parameter</th>
+                                            <th className="py-1.5 px-2 text-[10px] sm:text-[11px] font-black uppercase text-slate-500 w-[15%] tracking-tight">Result</th>
+                                            <th className="py-1.5 px-2 text-[10px] sm:text-[11px] font-black uppercase text-slate-500 w-[10%] text-center tracking-tight">Flag</th>
+                                            <th className="py-1.5 px-2 text-[10px] sm:text-[11px] font-black uppercase text-slate-500 w-[15%] tracking-tight">Unit</th>
+                                            <th className="py-1.5 px-2 text-[10px] sm:text-[11px] font-black uppercase text-slate-500 w-[25%] text-right tracking-tight">Ref. Range</th>
+                                          </tr></thead>
+                                          <tbody className="divide-y divide-gray-100 !bg-white">{params.map((res, i) => {
+                                            const f = getFlag(res.value, res.range); const isAbn = f === 'H' || f === 'L';
+                                            return (<tr key={i} className={`bg-white ${isAbn ? 'font-bold' : ''}`}>
+                                              <td className="py-1 px-2 text-[12px] sm:text-[13px] text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis">{res.parameter}</td>
+                                              <td className="py-1 px-2"><span className={`text-[10px] sm:text-[11px] ${isAbn ? (f==='H'?'text-rose-600 font-black':'text-blue-600 font-black') : 'text-gray-800 font-bold'}`}>{res.value || '-'}</span></td>
+                                              <td className="py-1 px-2 text-center leading-none"><span className={`text-[10px] sm:text-[11px] font-bold ${isAbn ? (f==='H'?'text-rose-600':'text-blue-600') : 'text-emerald-600'}`}>{f}</span></td>
+                                              <td className="py-1 px-2 text-[10px] sm:text-[11px] font-semibold text-slate-500">{res.unit || '-'}</td>
+                                              <td className={`py-1 px-2 text-[10px] sm:text-[11px] text-right tabular-nums ${isAbn ? 'font-bold text-gray-900 border-gray-100 pl-2' : 'text-gray-500 font-medium'}`}>{res.range || '-'}</td>
+                                            </tr>)
+                                          })}</tbody>
+                                        </table>
+                                      </div>
                                    )}
                                 </div>
                               );

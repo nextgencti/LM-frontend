@@ -102,9 +102,9 @@ const Dashboard = () => {
         <div className={`p-4 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg shadow-blue-900/10 group-hover:scale-110 transition-transform duration-500`}>
           <Icon className="w-6 h-6 text-white" />
         </div>
-        <div className="flex flex-col items-end">
-          <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
-          <h3 className="text-2xl font-black text-slate-800 mt-0.5 tabular-nums">{value}</h3>
+        <div className="flex flex-col items-end shrink-0">
+          <p className="text-[10px] sm:text-[12px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
+          <h3 className="text-xl sm:text-2xl font-black text-slate-800 mt-0.5 tabular-nums">{value}</h3>
         </div>
       </div>
       
@@ -115,19 +115,19 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-brand-light/20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-brand-light/20 px-4 sm:px-6 lg:px-10 py-10 animate-in fade-in duration-700">
       <div className="max-w-7xl mx-auto w-full">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
-          <div>
-            <h1 className="text-4xl font-black text-brand-dark tracking-tighter">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
+          <div className="md:max-w-xl">
+            <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter">
               {isSuperAdmin ? 'Admin Overview' : 'Lab Overview'}
             </h1>
-            <p className="text-slate-500 mt-2 text-base font-medium flex items-center">
+            <p className="text-slate-500 mt-3 text-sm sm:text-base font-medium leading-relaxed">
               {isSuperAdmin 
-                ? 'Overview of entire diagnostic network performance.' 
-                : <>Manage your lab <span className="mx-2 px-2.5 py-0.5 bg-brand-light text-brand-dark rounded-lg border border-brand-primary/20 font-black tracking-tight uppercase text-xs shadow-sm">{userData?.labId}</span> from here.</>}
+                ? 'Comprehensive overview of your diagnostic network performance and synchronized lab activities.' 
+                : <span className="flex flex-wrap items-center gap-y-2">Manage your lab <span className="mx-2 px-3 py-1 bg-brand-light text-brand-dark rounded-xl border border-brand-primary/20 font-black tracking-tight uppercase text-[10px] shadow-sm">{userData?.labId}</span> from here.</span>}
             </p>
           </div>
           

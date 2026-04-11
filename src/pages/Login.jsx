@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, AlertCircle, Loader } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader, ChevronRight } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -38,13 +37,13 @@ const Login = () => {
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-primary/5 rounded-full blur-[120px] -mr-48 -mt-48"></div>
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-brand-secondary/5 rounded-full blur-[120px] -ml-48 -mb-48"></div>
       
-      <div className="max-w-md w-full p-10 bg-white rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.4)] relative z-10 border border-white/10 animate-in fade-in zoom-in duration-700">
+      <div className="max-w-md w-full p-6 sm:p-10 bg-white rounded-[32px] sm:rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.4)] relative z-10 border border-white/10 animate-in fade-in zoom-in duration-700">
         <div className="text-center mb-10">
           <div className="w-20 h-20 bg-brand-light rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-sm border border-brand-primary/10 rotate-3 transition-transform hover:rotate-6">
              <Lock className="w-10 h-10 text-brand-primary" />
           </div>
           <h2 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-2">
-            Patho<span className="text-brand-primary/80">SaaS</span>
+            Lab <span className="text-brand-primary/80">Mitra</span>
           </h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Clinical Command Terminal</p>
         </div>
@@ -104,6 +103,12 @@ const Login = () => {
           </button>
         </form>
 
+        <div className="mt-8 text-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Don't have a lab account? <Link to="/signup" className="text-brand-primary hover:underline underline-offset-4 ml-2">Register Your Lab</Link>
+            </p>
+        </div>
+
         <div className="mt-12 pt-8 border-t border-slate-50 text-center">
            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-loose">
              &copy; 2026 Lab Mitra v4.0.0 <br/>
@@ -119,7 +124,6 @@ const Login = () => {
 const Label = ({ children }) => (
   <label className="block text-[9px] font-black text-slate-400 mb-2.5 uppercase tracking-[0.2em] ml-2">{children}</label>
 );
-// Import ChevronRight for the button link style if not already present
-import { ChevronRight } from 'lucide-react';
+// Primitives used above
 
 export default Login;

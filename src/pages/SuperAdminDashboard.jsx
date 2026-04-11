@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, getDocs, doc, setDoc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen } from 'lucide-react';
+import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2 } from 'lucide-react';
 import GlobalTestCatalog from '../components/GlobalTestCatalog';
 import GlobalSettings from '../components/GlobalSettings';
 import MasterParameters from './MasterParameters';
@@ -11,6 +11,7 @@ import PlansTab from '../components/PlansTab';
 const SuperAdminDashboard = () => {
   const { userData, setActiveLabId, activeLabId } = useAuth();
   const [labs, setLabs] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('All');
@@ -82,9 +83,28 @@ const SuperAdminDashboard = () => {
   useEffect(() => {
     if (isPinVerified) {
       fetchLabs();
+      fetchRequests();
     }
   }, [isPinVerified]);
 
+  const fetchRequests = async () => {
+    try {
+      const q = query(collection(db, 'signupRequests'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      setRequests(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+    }
+  };
+  const handleDeleteRequest = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this signup request?")) return;
+    try {
+      await deleteDoc(doc(db, 'signupRequests', id));
+      fetchRequests();
+    } catch (error) {
+      console.error("Error deleting request:", error);
+    }
+  };
   // Redundant PIN logic removed (submitPin handles it now)
 
   const fetchLabs = async () => {
@@ -152,6 +172,15 @@ const SuperAdminDashboard = () => {
       const data = await res.json();
       setRegistrationSuccess(data);
       
+      // If this was from a request, update the request status
+      if (newLabData.requestId) {
+        await updateDoc(doc(db, 'signupRequests', newLabData.requestId), {
+          status: 'approved',
+          updatedAt: serverTimestamp()
+        });
+        fetchRequests();
+      }
+
       setShowRegisterModal(false);
       setNewLabData({ 
         labName: '', email: '', plan: 'basic', months: 12,
@@ -475,6 +504,18 @@ const SuperAdminDashboard = () => {
         >
           <CreditCard className="w-4 h-4" /> Pricing Plans
         </button>
+        <button 
+          onClick={() => setActiveView('requests')}
+          className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] transition-all relative ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+        >
+          <User className="w-4 h-4" /> 
+          Signup Requests
+          {requests.filter(r => r.status === 'pending').length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[8px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
+              {requests.filter(r => r.status === 'pending').length}
+            </span>
+          )}
+        </button>
       </div>
 
       {activeView === 'labs' ? (
@@ -643,10 +684,102 @@ const SuperAdminDashboard = () => {
             )}
           </div>
         </>
-      ) : activeView === 'tests' ? (
-        <GlobalTestCatalog />
-      ) : activeView === 'parameters' ? (
-        <MasterParameters />
+      ) : activeView === 'requests' ? (
+        <div className="animate-in fade-in duration-700">
+          <div className="flex justify-between items-center mb-12 bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
+            <div>
+              <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase">Registration <span className="text-brand-primary">Requests</span></h1>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1.5">Verify and approve new laboratory signups.</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[42px] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-brand-dark text-white/70">
+                  <tr>
+                    <th className="px-10 py-6 text-[11px] font-black uppercase tracking-widest">Lab Details</th>
+                    <th className="px-10 py-6 text-[11px] font-black uppercase tracking-widest">Admin Details</th>
+                    <th className="px-10 py-6 text-[11px] font-black uppercase tracking-widest">Status</th>
+                    <th className="px-10 py-6 text-right text-[11px] font-black uppercase tracking-widest">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {requests.length === 0 ? (
+                    <tr><td colSpan="4" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No requests yet.</td></tr>
+                  ) : requests.map((req) => (
+                    <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-10 py-6">
+                        <div className="font-black text-brand-dark text-base tracking-tight uppercase">{req.labFullName || req.labName}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{req.labType} // {req.city}, {req.state}</div>
+                      </td>
+                      <td className="px-10 py-6">
+                        <div className="font-bold text-slate-700">{req.ownerName}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">{req.email}</div>
+                        <div className="text-[11px] text-slate-400">{req.phone}</div>
+                      </td>
+                      <td className="px-10 py-6">
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          req.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                          req.status === 'approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                          'bg-slate-100 text-slate-500 border border-slate-200'
+                        }`}>
+                          {req.status}
+                        </span>
+                      </td>
+                      <td className="px-10 py-6 text-right">
+                        <div className="flex justify-end gap-3">
+                          {req.status === 'pending' && (
+                            <>
+                              <button 
+                                onClick={async () => {
+                                  await updateDoc(doc(db, 'signupRequests', req.id), { status: 'rejected', updatedAt: serverTimestamp() });
+                                  fetchRequests();
+                                }}
+                                className="px-6 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all"
+                              >
+                                Reject
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setNewLabData({
+                                    ...newLabData,
+                                    labName: req.labName,
+                                    labFullName: req.labFullName,
+                                    email: req.email,
+                                    ownerName: req.ownerName,
+                                    phone: req.phone,
+                                    address: req.address,
+                                    city: req.city,
+                                    state: req.state,
+                                    pincode: req.pincode,
+                                    labType: req.labType || 'Standalone',
+                                    requestId: req.id // Store the request ID to update on success
+                                  });
+                                  setShowRegisterModal(true);
+                                }}
+                                className="px-6 py-2.5 bg-brand-primary text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-dark hover:text-white transition-all shadow-lg shadow-brand-primary/10"
+                              >
+                                Verify & Approve
+                              </button>
+                            </>
+                          )}
+                          <button 
+                            onClick={() => handleDeleteRequest(req.id)}
+                            className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all"
+                            title="Delete Request"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : activeView === 'plans' ? (
         <PlansTab />
       ) : (

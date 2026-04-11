@@ -352,15 +352,15 @@ const Bookings = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow animate-in fade-in duration-500">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-black text-brand-dark tracking-tighter flex items-center text-left">
-            <div className="p-2 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
-              <Calendar className="w-8 h-8 text-brand-primary" />
+          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center text-left leading-none">
+            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+              <Calendar className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
             </div>
             Bookings
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Create and manage bookings here.</p>
+          <p className="text-slate-500 mt-2 sm:mt-3 font-medium text-sm sm:text-base">Catalog and manage diagnostic orders.</p>
         </div>
         
         <button 
@@ -372,7 +372,7 @@ const Bookings = () => {
             setShowAddModal(true);
           }}
           disabled={!activeLabId && userData?.role === 'SuperAdmin'}
-          className={`flex items-center px-6 py-4 rounded-[22px] font-black tracking-widest text-[11px] uppercase shadow-xl transition-all duration-300 group active:scale-95 ${
+          className={`w-full md:w-auto flex items-center justify-center px-8 py-4.5 rounded-2xl font-black tracking-widest text-[11px] uppercase shadow-xl transition-all duration-300 group active:scale-95 ${
             (!activeLabId && userData?.role === 'SuperAdmin') 
             ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60' 
             : 'bg-brand-dark text-white hover:shadow-brand-dark/20 hover:-translate-y-1'
@@ -384,10 +384,10 @@ const Bookings = () => {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-7 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10">
-        <div className="flex flex-col xl:flex-row gap-8 items-center">
+      <div className="bg-white p-6 sm:p-7 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10">
+        <div className="flex flex-col xl:flex-row gap-6 sm:gap-8 items-center">
           {/* Search Area */}
-          <div className="relative flex-grow w-full max-w-2xl group">
+          <div className="relative flex-grow w-full max-w-3xl group">
             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
             </div>
@@ -401,11 +401,11 @@ const Bookings = () => {
           </div>
 
           {/* Filters Area */}
-          <div className="flex flex-wrap items-center gap-5 w-full xl:w-auto">
-            <div className="flex items-center gap-3">
-              <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em] hidden sm:block">Status</span>
+          <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 sm:gap-5 w-full xl:w-auto">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest hidden lg:block">Status</span>
               <select 
-                className="bg-white border border-slate-200 rounded-2xl px-5 py-3 text-[12px] font-black text-brand-dark outline-none focus:border-brand-primary/40 focus:ring-4 focus:ring-brand-primary/5 shadow-sm appearance-none cursor-pointer"
+                className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 text-[12px] font-black text-brand-dark outline-none focus:border-brand-primary/40 focus:ring-4 focus:ring-brand-primary/5 shadow-sm appearance-none cursor-pointer w-full sm:min-w-[140px]"
                 value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="All">All Status</option>
@@ -413,10 +413,10 @@ const Bookings = () => {
               </select>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em] hidden sm:block">Urgency</span>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest hidden lg:block">Urgency</span>
               <select 
-                className="bg-white border border-slate-200 rounded-2xl px-5 py-3 text-[12px] font-black text-brand-dark outline-none focus:border-brand-primary/40 focus:ring-4 focus:ring-brand-primary/5 shadow-sm appearance-none cursor-pointer"
+                className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 text-[12px] font-black text-brand-dark outline-none focus:border-brand-primary/40 focus:ring-4 focus:ring-brand-primary/5 shadow-sm appearance-none cursor-pointer w-full sm:min-w-[140px]"
                 value={urgencyFilter} onChange={(e) => setUrgencyFilter(e.target.value)}
               >
                 <option value="All">All Priority</option>
@@ -425,9 +425,9 @@ const Bookings = () => {
             </div>
 
             {/* Date Filters Area */}
-            <div className="flex items-center gap-4 bg-brand-light/30 p-3 rounded-[24px] border border-brand-primary/10 px-6">
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-black text-brand-dark/40 uppercase tracking-widest">From</span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 bg-brand-light/20 p-4 sm:p-2 sm:px-6 rounded-[28px] border border-brand-primary/10 w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-start gap-3">
+                <span className="text-[10px] font-black text-brand-dark/40 uppercase tracking-widest">From</span>
                 <input 
                   type="date" 
                   className="bg-white border border-brand-primary/10 rounded-xl px-4 py-2 text-[12px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/20 cursor-pointer shadow-sm tabular-nums"
@@ -435,9 +435,9 @@ const Bookings = () => {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-              <div className="mx-2 h-4 w-px bg-brand-primary/20"></div>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-black text-brand-dark/40 uppercase tracking-widest">To</span>
+              <div className="hidden sm:block h-4 w-px bg-brand-primary/20"></div>
+              <div className="flex items-center justify-between sm:justify-start gap-3">
+                <span className="text-[10px] font-black text-brand-dark/40 uppercase tracking-widest">To</span>
                 <input 
                   type="date" 
                   className="bg-white border border-brand-primary/10 rounded-xl px-4 py-2 text-[12px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/20 cursor-pointer shadow-sm tabular-nums"
@@ -597,19 +597,19 @@ const Bookings = () => {
 
       {/* Modern Booking Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-4 z-50 backdrop-blur-3xl animate-in fade-in duration-300">
-          <div className="bg-white rounded-[48px] shadow-3xl max-w-6xl w-full p-10 overflow-hidden relative border border-white/20">
-            <button onClick={() => setShowAddModal(false)} className="absolute top-8 right-8 p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-[24px] rotate-90 hover:rotate-180 transition-all duration-500 z-10">
-              <X className="w-7 h-7" />
+        <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-3xl animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] sm:rounded-[48px] shadow-3xl max-w-6xl w-full p-6 sm:p-10 overflow-hidden relative border border-white/20 flex flex-col max-h-[95vh]">
+            <button onClick={() => setShowAddModal(false)} className="absolute top-4 sm:top-8 right-4 sm:right-8 p-2 sm:p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
+              <X className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             
-            <div className="mb-10 flex items-center gap-6">
-              <div className="w-16 h-16 bg-brand-primary rounded-[28px] flex items-center justify-center shadow-xl shadow-brand-primary/20 rotate-6 shrink-0">
-                <Calendar className="w-8 h-8 text-white" />
+            <div className="mb-6 sm:mb-10 flex items-center gap-4 sm:gap-6 shrink-0">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-brand-primary rounded-2xl sm:rounded-[28px] flex items-center justify-center shadow-xl shadow-brand-primary/20 rotate-6 shrink-0">
+                <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-4xl font-black text-brand-dark tracking-tighter">New Booking</h2>
-                <p className="text-slate-400 font-bold text-[13px] uppercase tracking-[0.2em] mt-1">{userData?.labId} Standard Order</p>
+                <h2 className="text-2xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">New Entry</h2>
+                <p className="text-slate-400 font-bold text-[10px] sm:text-[13px] uppercase tracking-[0.2em] mt-2 leading-none">{userData?.labId} Standard Order</p>
               </div>
             </div>
             
