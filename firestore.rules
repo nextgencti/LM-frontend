@@ -91,7 +91,7 @@ service cloud.firestore {
 
     // 6. Service Plans
     match /plans/{planId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isSuperAdmin();
     }
 
@@ -121,20 +121,20 @@ service cloud.firestore {
                     request.resource.data.labId != null &&
                     canAccessLab(request.resource.data.labId) && 
                     isLabAdminOrStaff();
-      allow update, delete: if isAuthenticated() && canAccessLab(resource.data.labId) && getUserRole() == 'LabAdmin';
+      allow update, delete: if isSuperAdmin() || (isAuthenticated() && canAccessLab(resource.data.labId) && getUserRole() == 'LabAdmin');
     }
 
     match /testParameters/{docId} {
       allow read: if isAuthenticated() && (resource.data.labId == 'GLOBAL' || canAccessLab(resource.data.labId));
       allow create: if isAuthenticated() && canAccessLab(request.resource.data.labId) && isLabAdminOrStaff();
-      allow update, delete: if isAuthenticated() && canAccessLab(resource.data.labId) && getUserRole() == 'LabAdmin';
+      allow update, delete: if isSuperAdmin() || (isAuthenticated() && canAccessLab(resource.data.labId) && getUserRole() == 'LabAdmin');
     }
 
     match /parameterRules/{docId} {
       // Assuming rules have testId, we'd need to verify through test, or easiest is to also have labId on rules.
       allow read: if isAuthenticated() && (resource.data.labId == 'GLOBAL' || canAccessLab(resource.data.labId));
       allow create: if isAuthenticated() && canAccessLab(request.resource.data.labId) && isLabAdminOrStaff();
-      allow update, delete: if isAuthenticated() && canAccessLab(resource.data.labId) && getUserRole() == 'LabAdmin';
+      allow update, delete: if isSuperAdmin() || (isAuthenticated() && canAccessLab(resource.data.labId) && getUserRole() == 'LabAdmin');
     }
 
     match /bookings/{docId} {
@@ -161,6 +161,11 @@ service cloud.firestore {
     match /system_counters/{docId} {
       // Must be authenticated and either part of the respective lab or a SuperAdmin
       allow read, write: if isAuthenticated() && isLabAdminOrStaff();
+    }
+
+    match /doctorPayments/{docId} {
+      allow read, write: if isAuthenticated() && isSuperAdmin() || (isLabData(resource.data.labId) && getUserRole() == 'LabAdmin');
+      allow create: if isAuthenticated() && (isSuperAdmin() || (isLabData(request.resource.data.labId) && getUserRole() == 'LabAdmin'));
     }
 
     // 8. Signup Requests (Public registration, SuperAdmin verification)

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Loader, Users, FileText, Edit, Trash2 } from 'lucide-react';
+import { Search, Plus, Loader, Users, FileText, Edit, Trash2, X } from 'lucide-react';
 import { generateLabId } from '../utils/idGenerator';
 
 const Patients = () => {

@@ -746,10 +746,12 @@ const Reports = () => {
                       <div className="flex gap-2 items-center w-full sm:w-auto mt-2 sm:mt-0 justify-end">
                         {test.received_at && (
                           <div className="flex gap-2 flex-grow sm:flex-grow-0">
-                            <button onClick={() => { setSelectedReport(test); setEditedResults([]); }}
-                              className="flex-1 sm:flex-none bg-brand-dark text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-dark/10 hover:bg-brand-secondary transition-all uppercase tracking-widest active:scale-95 leading-none">
-                              Results
-                            </button>
+                            {test.status !== 'Final' && (
+                              <button onClick={() => { setSelectedReport(test); setEditedResults([]); }}
+                                className="flex-1 sm:flex-none bg-brand-dark text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-dark/10 hover:bg-brand-secondary transition-all uppercase tracking-widest active:scale-95 leading-none">
+                                Results
+                              </button>
+                            )}
 
                             {test.status === 'In Progress' && !test.reported_at && (
                               <button onClick={() => handleFinalizeReport(test.id, group)}

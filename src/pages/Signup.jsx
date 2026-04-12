@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import PreLoader from '../components/PreLoader';
 import { 
     Activity, Plus, Globe, FileText, CheckCircle, ArrowRight, 
     Loader, Mail, Phone, MapPin, Building2, User, 
-    ShieldCheck, Sparkles, BarChart3, Zap, AlertCircle
+    ShieldCheck, Sparkles, BarChart3, Zap, AlertCircle, CreditCard
 } from 'lucide-react';
 
 const Signup = () => {
@@ -13,6 +15,13 @@ const Signup = () => {
     const [activeTab, setActiveTab] = useState('basic');
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
+    const { currentUser, loading: authLoading } = useAuth();
+
+    useEffect(() => {
+        if (!authLoading && currentUser) {
+            navigate('/dashboard');
+        }
+    }, [currentUser, authLoading, navigate]);
     
     // Form State
     const [formData, setFormData] = useState({
@@ -26,12 +35,40 @@ const Signup = () => {
         address: '',
         city: '',
         state: '',
-        pincode: ''
+        pincode: '',
+        plan: 'basic'
     });
 
     // Validation State
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
+    const [plans, setPlans] = useState({});
+    const [loadingPlans, setLoadingPlans] = useState(true);
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = onSnapshot(collection(db, 'plans'), (snapshot) => {
+            const plansData = {};
+            snapshot.docs.forEach(doc => {
+                plansData[doc.id] = doc.data();
+            });
+            setPlans(plansData);
+            setLoadingPlans(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const formatPrice = (priceStr) => {
+        if (!priceStr) return { monthly: '0', yearly: '0' };
+        const numeric = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
+        return {
+            monthly: Math.floor(numeric / 12).toLocaleString(),
+            yearly: numeric.toLocaleString()
+        };
+    };
 
     // Real-time validation
     useEffect(() => {
@@ -74,6 +111,9 @@ const Signup = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Safety: Only allow submission on the final plan tab
+        if (activeTab !== 'plan') return;
         
         // Final validation check
         if (Object.keys(errors).length > 0) {
@@ -132,7 +172,9 @@ const Signup = () => {
                 (touched[step] || canMoveForward()) ? 'bg-brand-primary text-brand-dark' : 'bg-slate-200 text-slate-400'
             }`}>
                 {step === 'basic' ? <Building2 className="w-5 h-5" /> : 
-                 step === 'admin' ? <User className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
+                 step === 'admin' ? <User className="w-5 h-5" /> : 
+                 step === 'location' ? <MapPin className="w-5 h-5" /> : 
+                 <CreditCard className="w-5 h-5" />}
             </div>
             <span className={`text-[10px] font-black uppercase tracking-widest ${activeTab === step ? 'text-brand-dark' : 'text-slate-300'}`}>
                 {label}
@@ -151,8 +193,10 @@ const Signup = () => {
                 <div className="hidden lg:flex w-[40%] bg-brand-dark p-20 flex-col justify-between relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-brand-dark via-brand-dark to-brand-secondary/20"></div>
                     <div className="relative z-10">
-                        <Link to="/" className="inline-flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-4 rounded-3xl backdrop-blur-md mb-20 hover:bg-white/10 transition-all">
-                            <Activity className="w-8 h-8 text-brand-primary" />
+                        <Link to="/" className="inline-flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-4 rounded-3xl backdrop-blur-md mb-20 hover:bg-white/10 transition-all transition-transform hover:scale-105 active:scale-95">
+                            <div className="w-10 h-10 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1.5 transition-transform group-hover:scale-110">
+                                <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
+                            </div>
                             <span className="text-xl font-black text-white tracking-tighter uppercase">Lab <span className="text-brand-primary">Mitra</span></span>
                         </Link>
                         
@@ -194,8 +238,10 @@ const Signup = () => {
                         {/* Header Mobile */}
                         <div className="lg:hidden flex justify-between items-center mb-12">
                             <div className="flex items-center gap-3">
-                                <Activity className="w-8 h-8 text-brand-primary" />
-                                <span className="text-xl font-black text-brand-dark tracking-tighter uppercase">Lab Mitra</span>
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1">
+                                    <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
+                                </div>
+                                <span className="text-xl font-black text-brand-dark tracking-tighter uppercase">Lab <span className="text-brand-primary">Mitra</span></span>
                             </div>
                             <Link to="/login" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-dark">Login</Link>
                         </div>
@@ -203,19 +249,20 @@ const Signup = () => {
                         {/* Registration Flow Header */}
                         <div className="mb-16">
                             <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-4">Laboratory <span className="text-brand-primary">Onboarding</span></h1>
-                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">Step {activeTab === 'basic' ? '1' : activeTab === 'admin' ? '2' : '3'} of 3</p>
+                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">Step {activeTab === 'basic' ? '1' : activeTab === 'admin' ? '2' : activeTab === 'location' ? '3' : '4'} of 4</p>
                         </div>
 
                         {/* Progress Tracker */}
                         <div className="flex justify-between items-center mb-16 relative">
                             <div className="absolute top-6 left-0 right-0 h-[2px] bg-slate-100 -z-10">
                                 <div className={`h-full bg-brand-primary transition-all duration-700 shadow-[0_0_15px_rgba(155,207,131,0.5)]`} style={{
-                                    width: activeTab === 'basic' ? '0%' : activeTab === 'admin' ? '50%' : '100%'
+                                    width: activeTab === 'basic' ? '0%' : activeTab === 'admin' ? '33.33%' : activeTab === 'location' ? '66.66%' : '100%'
                                 }}></div>
                             </div>
                             <ProgressDot step="basic" label="Facility" />
                             <ProgressDot step="admin" label="Identity" />
                             <ProgressDot step="location" label="Location" />
+                            <ProgressDot step="plan" label="Plan" />
                         </div>
 
                         {/* Registration Form */}
@@ -346,13 +393,98 @@ const Signup = () => {
                                 </div>
                             )}
 
+                            {activeTab === 'plan' && (
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
+                                    {loadingPlans ? (
+                                        <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[40px] shadow-sm border border-slate-100">
+                                            <Loader className="w-10 h-10 animate-spin text-brand-primary mb-4" />
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fetching Latest Plans...</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {/* Basic Plan Card */}
+                                            {plans.basic && (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setFormData({...formData, plan: 'basic'})}
+                                                    className={`relative p-8 rounded-[40px] text-left transition-all border-2 flex flex-col h-full ${
+                                                        formData.plan === 'basic' 
+                                                        ? 'bg-white border-brand-primary shadow-2xl shadow-brand-primary/10 ring-4 ring-brand-primary/5' 
+                                                        : 'bg-slate-50 border-transparent hover:bg-white hover:border-slate-200 grayscale opacity-60'
+                                                    }`}
+                                                >
+                                                    <div className="mb-6 flex justify-between items-start">
+                                                        <div className={`p-3 rounded-2xl ${formData.plan === 'basic' ? 'bg-brand-primary/10 text-brand-primary' : 'bg-slate-200 text-slate-400'}`}>
+                                                            <ShieldCheck className="w-6 h-6" />
+                                                        </div>
+                                                        {formData.plan === 'basic' && <CheckCircle className="w-5 h-5 text-brand-primary" />}
+                                                    </div>
+                                                    <h3 className="text-xl font-black text-brand-dark uppercase tracking-tight mb-2">{plans.basic.name}</h3>
+                                                    <div className="mb-6">
+                                                        <span className="text-3xl font-black text-brand-dark">₹{formatPrice(plans.basic.price).monthly}</span>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">/mo</span>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Billed {plans.basic.price} Year</p>
+                                                    </div>
+                                                    <ul className="space-y-3 mb-8 flex-grow">
+                                                        {plans.basic.features.filter(f => f.available).slice(0, 3).map((f, i) => (
+                                                            <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary"></div> {f.text}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </button>
+                                            )}
+
+                                            {/* Pro Plan Card */}
+                                            {plans.pro && (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setFormData({...formData, plan: 'pro'})}
+                                                    className={`relative p-8 rounded-[40px] text-left transition-all border-2 flex flex-col h-full ${
+                                                        formData.plan === 'pro' 
+                                                        ? 'bg-brand-dark border-brand-primary shadow-2xl shadow-brand-dark/30 ring-4 ring-brand-primary/5 text-white' 
+                                                        : 'bg-slate-50 border-transparent hover:bg-white hover:border-slate-200 grayscale opacity-60'
+                                                    }`}
+                                                >
+                                                    <div className="absolute top-4 right-8 bg-brand-primary text-brand-dark text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Popular</div>
+                                                    <div className="mb-6 flex justify-between items-start">
+                                                        <div className={`p-3 rounded-2xl ${formData.plan === 'pro' ? 'bg-brand-primary/20 text-brand-primary' : 'bg-slate-200 text-slate-400'}`}>
+                                                            <Sparkles className="w-6 h-6" />
+                                                        </div>
+                                                        {formData.plan === 'pro' && <CheckCircle className="w-5 h-5 text-brand-primary" />}
+                                                    </div>
+                                                    <h3 className={`text-xl font-black uppercase tracking-tight mb-2 ${formData.plan === 'pro' ? 'text-white' : 'text-brand-dark'}`}>{plans.pro.name}</h3>
+                                                    <div className="mb-6">
+                                                        <span className={`text-3xl font-black ${formData.plan === 'pro' ? 'text-brand-primary' : 'text-brand-dark'}`}>₹{formatPrice(plans.pro.price).monthly}</span>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">/mo</span>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Billed {plans.pro.price} Year</p>
+                                                    </div>
+                                                    <ul className="space-y-3 mb-8 flex-grow">
+                                                        {plans.pro.features.filter(f => f.available).slice(0, 3).map((f, i) => (
+                                                            <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-300">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary"></div> {f.text}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest px-10">
+                                        You are selecting a <span className="text-brand-dark underline decoration-brand-primary decoration-2">{formData.plan.toUpperCase()}</span> plan request. 
+                                        Payment is required only after approval.
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Actions */}
                             <div className="pt-12 flex flex-col md:flex-row gap-6">
                                 {activeTab !== 'basic' && (
                                     <button 
                                         type="button"
                                         onClick={() => {
-                                            if (activeTab === 'location') setActiveTab('admin');
+                                            if (activeTab === 'plan') setActiveTab('location');
+                                            else if (activeTab === 'location') setActiveTab('admin');
                                             else if (activeTab === 'admin') setActiveTab('basic');
                                         }}
                                         className="flex-1 py-5 bg-white border-2 border-slate-100 text-slate-400 rounded-3xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all hover:border-slate-200"
@@ -361,13 +493,14 @@ const Signup = () => {
                                     </button>
                                 )}
                                 
-                                {activeTab !== 'location' ? (
+                                {activeTab !== 'plan' ? (
                                     <button 
                                         type="button"
                                         onClick={() => {
                                             if (canMoveForward()) {
                                                 if (activeTab === 'basic') setActiveTab('admin');
                                                 else if (activeTab === 'admin') setActiveTab('location');
+                                                else if (activeTab === 'location') setActiveTab('plan');
                                             } else {
                                                 // Mark all current tab fields as touched
                                                 const currentFields = activeTab === 'basic' ? ['labName', 'labFullName'] : ['ownerName', 'email', 'phone'];
@@ -379,15 +512,17 @@ const Signup = () => {
                                         className={`flex-[2] py-5 rounded-3xl font-black uppercase text-[10px] tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-xl ${
                                             canMoveForward() ? 'bg-brand-dark text-white hover:bg-black shadow-brand-dark/20' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                         }`}
+                                        key="continue-button"
                                     >
                                         Continue <ArrowRight className="w-4 h-4 text-brand-primary" />
                                     </button>
                                 ) : (
                                     <button 
                                         type="submit"
-                                        disabled={submitting || Object.keys(errors).length > 0}
+                                        key="submit-button"
+                                        disabled={submitting || Object.keys(errors).length > 0 || loadingPlans}
                                         className={`flex-[2] py-5 bg-brand-primary text-brand-dark rounded-3xl font-black uppercase text-[10px] tracking-[0.3em] shadow-xl shadow-brand-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 ${
-                                            (submitting || Object.keys(errors).length > 0) ? 'opacity-50 cursor-not-allowed' : ''
+                                            (submitting || Object.keys(errors).length > 0 || loadingPlans) ? 'opacity-50 cursor-not-allowed' : ''
                                         }`}
                                     >
                                         {submitting ? <Loader className="w-5 h-5 animate-spin" /> : (

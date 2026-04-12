@@ -5,14 +5,13 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { initFirebase } from './firebase'
+import PreLoader from './components/PreLoader'
 
 const root = createRoot(document.getElementById('root'));
 
 // Show loading while fetching Firebase config from backend
 root.render(
-  <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', color: '#4B5563' }}>
-    <p>Connecting to server...</p>
-  </div>
+  <PreLoader message="Connecting to Private Server..." />
 );
 
 initFirebase()

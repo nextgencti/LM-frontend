@@ -4,6 +4,7 @@ import { collection, query, where, getDocs, addDoc, setDoc, serverTimestamp, del
 import { useAuth } from '../context/AuthContext';
 import { Plus, Loader, FileText, Trash2, Edit3, ChevronRight, FlaskConical, Beaker, CheckCircle, ChevronDown, Upload, Download, Layers, FolderPlus, X, Zap, Folder, Search, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 /* ─── Tiny reusable primitives ───────────────────────────────────────────── */
 const Label = ({ children }) => (
@@ -87,8 +88,12 @@ const Tests = () => {
     setLoading(true);
     try {
       let q;
-      if (isSuperAdmin) {
-        // SuperAdmins see all tests
+      if (isSuperAdmin && activeLabId) {
+        // SuperAdmin managing a specific lab: show only that lab's tests + GLOBAL
+        const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
+        q = query(collection(db, 'tests'), where('labId', 'in', [labIdVal, 'GLOBAL']));
+      } else if (isSuperAdmin) {
+        // SuperAdmin with no lab selected: show all tests
         q = query(collection(db, 'tests'));
       } else {
         // Lab users see their lab's tests AND Global tests
@@ -99,8 +104,8 @@ const Tests = () => {
       const snap = await getDocs(q);
       let results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       
-      // DEDUPLICATION: If not SuperAdmin, hide GLOBAL versions if a Lab version exists
-      if (!isSuperAdmin) {
+      // DEDUPLICATION: Hide GLOBAL versions if a Lab-specific version exists
+      if (activeLabId) {
         const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
         const labSpecific = results.filter(t => t.labId === labIdVal);
         const globalTests = results.filter(t => t.labId === 'GLOBAL');
@@ -140,18 +145,48 @@ const Tests = () => {
       : test.parameters?.length || 0;
 
   const handleDeleteTest = async (id) => {
-    if (!window.confirm('Delete this test?')) return;
-    try { await deleteDoc(doc(db, 'tests', id)); setTests(p => p.filter(t => t.id !== id)); }
-    catch (e) { alert(e.message); }
+    const testData = tests.find(t => t.id === id);
+    toast(
+      ({ closeToast }) => (
+        <div>
+          <p style={{ fontWeight: 800, marginBottom: 4, fontSize: 13 }}>Delete "{testData?.testName || 'Test'}"?</p>
+          <p style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>This action cannot be undone.</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={async () => {
+                closeToast();
+                const toastId = toast.loading('Deleting test...');
+                try {
+                  await deleteDoc(doc(db, 'tests', id));
+                  setTests(p => p.filter(t => t.id !== id));
+                  toast.update(toastId, { render: 'Test deleted successfully', type: 'success', isLoading: false, autoClose: 2000 });
+                } catch (e) {
+                  toast.update(toastId, { render: 'Delete failed: ' + e.message, type: 'error', isLoading: false, autoClose: 4000 });
+                }
+              }}
+              style={{ padding: '6px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            >
+              Confirm Delete
+            </button>
+            <button
+              onClick={closeToast}
+              style={{ padding: '6px 16px', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      { autoClose: false, closeOnClick: false, draggable: false, position: 'top-center' }
+    );
   };
 
   // ── Clone Test ───────────────────────────────────────────────────────────
   const handleCloneTest = async (test) => {
-    if (!activeLabId) return alert('Please select a lab first.');
+    if (!activeLabId) return toast.error('Please select a lab first.');
     const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
-    // Prevent cloning if lab already has this test
     const alreadyExists = tests.some(t => t.labId === labIdVal && t.testCode === test.testCode);
-    if (alreadyExists) return alert(`A local copy of "${test.testName}" already exists for this lab.`);
+    if (alreadyExists) return toast.warning(`A local copy of "${test.testName}" already exists for this lab.`);
     if (!window.confirm(`Clone "${test.testName}" as a local copy for this lab?`)) return;
     try {
       const { id, labId, isGlobal, createdAt, updatedAt, ...rest } = test;
@@ -589,8 +624,8 @@ const Tests = () => {
                         <button onClick={() => { setTestForm({...test, groups: test.groups || []}); setShowModal(true); }} className="p-3 bg-brand-light text-brand-dark rounded-xl hover:bg-brand-primary hover:text-white transition-all">
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        {/* Delete — SuperAdmin only */}
-                        {isSuperAdmin && (
+                        {/* Delete — SuperAdmin & LabAdmin */}
+                        {(isSuperAdmin || userData?.role === 'LabAdmin') && (
                           <button onClick={() => handleDeleteTest(test.id)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>

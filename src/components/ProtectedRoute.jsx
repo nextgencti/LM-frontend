@@ -1,17 +1,13 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Loader, AlertTriangle } from 'lucide-react';
+import PreLoader from './PreLoader';
 
 export const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, userData, subscription, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
+    return <PreLoader message="Securing Session Context" />;
   }
 
   // Check Auth

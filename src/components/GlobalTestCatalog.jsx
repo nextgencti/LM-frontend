@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, where, setDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { Search, Plus, Loader, Database, FileText, Settings, Trash2, Edit3, ChevronRight, FlaskConical, Beaker, Activity, Save, X, Globe, User, Clock, IndianRupee, CheckCircle, ChevronDown, Download, Upload, Layers, FolderPlus, Folder, Zap } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 /* ─── Tiny reusable primitives ───────────────────────────────────────────── */
 const Label = ({ children }) => (
@@ -259,14 +260,14 @@ const GlobalTestCatalog = () => {
 
   const handleDeleteTest = async (testId) => {
     if (!testId) return;
-    if (!window.confirm("Are you sure you want to delete this global test?")) return;
     
     setDeletingId(testId);
     try {
       await deleteDoc(doc(db, 'tests', testId));
+      setConfirmDeleteId(null);
       fetchTests();
     } catch (err) { 
-      alert("Delete failed: " + err.message); 
+      toast.error("Delete failed: " + err.message); 
     } finally {
       setDeletingId(null);
     }
@@ -296,7 +297,7 @@ const GlobalTestCatalog = () => {
       resetForm();
     } catch (err) { 
       console.error("Save failed:", err);
-      alert("Save failed: " + err.message); 
+      toast.error("Save failed: " + err.message); 
     } finally { 
       setSaving(false); 
     }

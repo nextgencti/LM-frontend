@@ -18,11 +18,13 @@ import Settings from './pages/Settings';
 import BusinessAnalytics from './pages/BusinessAnalytics';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
+import AboutUs from './pages/AboutUs';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { Activity, Users, FileText, Calendar, LogOut, Stethoscope, IndianRupee, Shield, BookOpen, Settings as SettingsIcon, Globe, CreditCard, BarChart3, Menu, X } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
+import PreLoader from './components/PreLoader';
 
 const Layout = ({ children }) => {
   const { userData, subscription, activeLabId, setActiveLabId } = useAuth();
@@ -70,18 +72,16 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'} overflow-x-hidden`}>
+    <div className={`h-screen flex flex-col md:flex-row ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'} overflow-hidden`}>
       
       {/* Mobile Header (Top Bar) */}
       <header className="md:hidden bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-brand-light rounded-xl">
-            <Activity className="h-6 w-6 text-brand-primary" />
+          <div className="w-10 h-10 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1">
+            <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-brand-dark to-brand-secondary tracking-tighter uppercase">
-            Lab Mitra
+          <h1 className="text-xl font-black bg-clip-text text-brand-dark tracking-tighter uppercase">
+            Lab <span className="text-brand-primary">Mitra</span>
           </h1>
-        </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 bg-slate-50 rounded-xl text-brand-dark hover:bg-slate-100 transition-colors"
@@ -101,16 +101,16 @@ const Layout = ({ children }) => {
       {/* Sidebar navigation */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl flex flex-col border-r border-slate-100 transition-transform duration-300 transform 
-        md:relative md:translate-x-0 md:w-64 md:shadow-xl md:h-screen md:sticky md:top-0
+        md:relative md:translate-x-0 md:w-64 md:shadow-xl md:h-full md:shrink-0
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-6 border-b border-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-brand-light rounded-xl">
-               <Activity className="h-6 w-6 text-brand-primary" />
+            <div className="w-10 h-10 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1 transition-transform group-hover:scale-110">
+              <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-brand-dark to-brand-secondary tracking-tighter uppercase">
-              Lab Mitra
+            <h1 className="text-2xl font-black text-brand-dark tracking-tighter uppercase">
+              Lab <span className="text-brand-primary">Mitra</span>
             </h1>
           </div>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-brand-dark">
@@ -288,7 +288,7 @@ const Layout = ({ children }) => {
       </aside>
 
       {/* Main content area */}
-      <main className="flex-1 overflow-x-hidden min-h-screen pb-10">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-10">
         {children}
       </main>
     </div>
@@ -296,6 +296,12 @@ const Layout = ({ children }) => {
 };
 
 function App() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return <PreLoader message="Verifying Cloud Identity" />;
+  }
+
   return (
     <>
       <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} closeOnClick pauseOnHover theme="colored" />
@@ -303,6 +309,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/about" element={<AboutUs />} />
       
       {/* Protected Routes wrapped in Layout */}
       <Route 

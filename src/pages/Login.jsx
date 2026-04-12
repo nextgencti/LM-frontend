@@ -1,16 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { Lock, Mail, AlertCircle, Loader, ChevronRight } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader, ChevronRight, ArrowLeft } from 'lucide-react';
+import PreLoader from '../components/PreLoader';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { currentUser, loading: authLoading } = useAuth();
   
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, authLoading, navigate]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -19,16 +32,18 @@ const Login = () => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Wait for auth context to fetch role and subscription...
-      // but essentially AuthContext handles token caching.
+      setIsLoading(false); // Stop login loading
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
       setError('Invalid email or password. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return <PreLoader message="Verifying Cloud Identity..." />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-dark p-6 overflow-hidden relative">
@@ -39,11 +54,11 @@ const Login = () => {
       
       <div className="max-w-md w-full p-6 sm:p-10 bg-white rounded-[32px] sm:rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.4)] relative z-10 border border-white/10 animate-in fade-in zoom-in duration-700">
         <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-brand-light rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-sm border border-brand-primary/10 rotate-3 transition-transform hover:rotate-6">
-             <Lock className="w-10 h-10 text-brand-primary" />
+          <div className="w-20 h-20 bg-white rounded-[28px] shadow-xl border border-slate-100 overflow-hidden flex items-center justify-center p-3 mx-auto mb-6 rotate-3 transition-transform hover:rotate-6">
+            <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-2">
-            Lab <span className="text-brand-primary/80">Mitra</span>
+            Lab <span className="text-brand-primary">Mitra</span>
           </h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Clinical Command Terminal</p>
         </div>
@@ -103,10 +118,17 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="mt-8 text-center">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+        <div className="mt-8 text-center space-y-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
                 Don't have a lab account? <Link to="/signup" className="text-brand-primary hover:underline underline-offset-4 ml-2">Register Your Lab</Link>
             </p>
+            <Link 
+              to="/" 
+              className="inline-flex items-center gap-2 text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] hover:text-brand-primary transition-colors group"
+            >
+              <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
+              Back to Home
+            </Link>
         </div>
 
         <div className="mt-12 pt-8 border-t border-slate-50 text-center">

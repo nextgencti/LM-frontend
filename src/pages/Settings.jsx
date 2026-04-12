@@ -28,7 +28,8 @@ import {
   Zap,
   ArrowRight,
   Crown,
-  Check
+  Check,
+  Send
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -53,6 +54,7 @@ const Settings = () => {
   const [subData, setSubData] = useState(null);
   const [allPlans, setAllPlans] = useState([]);
   const [subLoading, setSubLoading] = useState(true);
+  const [sendingReport, setSendingReport] = useState(false);
 
   useEffect(() => {
     if (targetLabId) {
@@ -236,6 +238,33 @@ const Settings = () => {
       toast.error("Image upload failed.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendDailyReport = async () => {
+    if (!targetLabId) return toast.error('No lab selected.');
+    setSendingReport(true);
+    const toastId = toast.loading('Sending Daily Report...');
+    try {
+      const { auth } = await import('../firebase');
+      const token = await auth.currentUser.getIdToken();
+      const apiUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const response = await fetch(`${apiUrl}/api/send-daily-report/${targetLabId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send report');
+      toast.update(toastId, { render: `✅ ${data.message}`, type: 'success', isLoading: false, autoClose: 4000 });
+      // Refresh lab data to get updated lastSent
+      fetchLabData();
+    } catch (err) {
+      toast.update(toastId, { render: `❌ ${err.message}`, type: 'error', isLoading: false, autoClose: 5000 });
+    } finally {
+      setSendingReport(false);
     }
   };
 
@@ -802,6 +831,24 @@ const Settings = () => {
                                 </span>
                              </div>
                            )}
+
+                           {/* Manual Send Now Button */}
+                           <button
+                             type="button"
+                             onClick={handleSendDailyReport}
+                             disabled={sendingReport}
+                             className={`w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border ${
+                               sendingReport
+                                 ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                 : 'bg-brand-dark text-white border-brand-dark hover:bg-brand-secondary hover:border-brand-secondary shadow-lg shadow-brand-dark/10'
+                             }`}
+                           >
+                             {sendingReport ? (
+                               <><Loader className="w-3.5 h-3.5 animate-spin" /> Sending...</>
+                             ) : (
+                               <><Send className="w-3.5 h-3.5" /> Send Now</>
+                             )}
+                           </button>
                         </div>
                       )}
                    </div>

@@ -47,22 +47,34 @@ const Dashboard = () => {
     setLoading(true);
     try {
       const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
-      const qParams = isSuperAdmin ? [] : [where('labId', '==', labIdVal)];
+      const hasLab = !!activeLabId;
+      const qParams = hasLab ? [where('labId', '==', labIdVal)] : [];
       
-      console.log("Dashboard: Fetching stats for labId:", isSuperAdmin ? 'ALL' : labIdVal);
+      console.log("Dashboard: Fetching stats for labId:", hasLab ? labIdVal : 'ALL (Global Overview)');
 
-      const pSnap = await getDocs(isSuperAdmin ? collection(db, 'patients') : query(collection(db, 'patients'), ...qParams));
-      const bSnap = await getDocs(isSuperAdmin ? collection(db, 'bookings') : query(collection(db, 'bookings'), ...qParams));
-      const dSnap = await getDocs(isSuperAdmin ? collection(db, 'doctors') : query(collection(db, 'doctors'), ...qParams));
+      const pSnap = await getDocs(hasLab ? query(collection(db, 'patients'), ...qParams) : collection(db, 'patients'));
+      const bSnap = await getDocs(hasLab ? query(collection(db, 'bookings'), ...qParams) : collection(db, 'bookings'));
+      const dSnap = await getDocs(hasLab ? query(collection(db, 'doctors'), ...qParams) : collection(db, 'doctors'));
       
-      // Special logic for tests: Include lab-specific AND global/system tests
+      // Special logic for tests: Include lab-specific AND global/system tests with deduplication
       let allTestsCount = 0;
-      if (!isSuperAdmin) {
-         // Query Lab-specific tests
-         const tSnap = await getDocs(query(collection(db, 'tests'), where('labId', '==', labIdVal)));
-         // Query Global tests (Using 'GLOBAL' identifier as in Tests catalog)
-         const gSnap = await getDocs(query(collection(db, 'tests'), where('labId', '==', 'GLOBAL')));
-         allTestsCount = tSnap.size + gSnap.size;
+      if (activeLabId) {
+         const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
+         
+         // Fetch both lab-specific and global tests in parallel for performance
+         const [tSnap, gSnap] = await Promise.all([
+           getDocs(query(collection(db, 'tests'), where('labId', '==', labIdVal))),
+           getDocs(query(collection(db, 'tests'), where('labId', '==', 'GLOBAL')))
+         ]);
+
+         const labSpecific = tSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+         const globalTests = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+         // Use testCode as the unique identifier for deduplication
+         const labTestCodes = new Set(labSpecific.map(t => t.testCode));
+         const uniqueGlobal = globalTests.filter(gt => !labTestCodes.has(gt.testCode));
+
+         allTestsCount = labSpecific.length + uniqueGlobal.length;
       } else {
          const tSnap = await getDocs(collection(db, 'tests'));
          allTestsCount = tSnap.size;
@@ -70,10 +82,15 @@ const Dashboard = () => {
       
       let totalRev = 0;
       let pending = 0;
+      const finishedStatuses = ['Final', 'Completed', 'Delivered'];
+
       bSnap.forEach(doc => {
         const data = doc.data();
         totalRev += (parseFloat(data.paidAmount) || 0);
-        if (data.status !== 'Completed') pending++;
+        // A booking is pending if its status is not one of the finished statuses
+        if (!finishedStatuses.includes(data.status)) {
+          pending++;
+        }
       });
 
       setStats({

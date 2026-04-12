@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2, ChevronRight } from 'lucide-react';
 import GlobalTestCatalog from '../components/GlobalTestCatalog';
 import GlobalSettings from '../components/GlobalSettings';
 import MasterParameters from './MasterParameters';
@@ -50,6 +51,7 @@ const SuperAdminDashboard = () => {
   const [editingLab, setEditingLab] = useState(null);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [extendingMonths, setExtendingMonths] = useState(12);
+  const [processingRequestId, setProcessingRequestId] = useState(null);
 
   const isExpired = (dateStr) => {
     if (!dateStr || dateStr === 'N/A') return true;
@@ -97,12 +99,78 @@ const SuperAdminDashboard = () => {
     }
   };
   const handleDeleteRequest = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this signup request?")) return;
+    console.log("Starting deletion process for ID:", id);
+    setProcessingRequestId(id);
     try {
-      await deleteDoc(doc(db, 'signupRequests', id));
-      fetchRequests();
+      const docRef = doc(db, 'signupRequests', id);
+      await deleteDoc(docRef);
+      console.log("Delete successful for:", id);
+      await fetchRequests();
+      toast.success("Request deleted successfully");
     } catch (error) {
       console.error("Error deleting request:", error);
+      toast.error(`Delete failed: ${error.message || 'Permission denied'}`);
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const confirmDelete = (req) => {
+    toast(
+      ({ closeToast }) => (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 py-2">
+          <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto">
+             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-rose-500 border border-brand-primary/20 shadow-sm shrink-0">
+                <Trash2 className="w-6 h-6" />
+             </div>
+             <div className="min-w-0 flex-grow">
+                <p className="text-[13px] font-black text-brand-dark uppercase tracking-tight truncate">Delete Request: {req.labFullName || req.labName}</p>
+                <p className="text-[10px] text-brand-primary font-black uppercase tracking-widest mt-0.5 truncate">Admin: {req.ownerName}</p>
+             </div>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto sm:ml-auto">
+            <button 
+              onClick={() => { handleDeleteRequest(req.id); closeToast(); }}
+              className="flex-1 sm:flex-none px-8 py-3.5 bg-brand-dark text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-xl shadow-brand-dark/20 transition-all border border-white/5 active:scale-95 whitespace-nowrap"
+            >
+              Confirm
+            </button>
+            <button 
+              onClick={closeToast}
+              className="flex-1 sm:flex-none px-8 py-3.5 bg-white text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 border border-slate-100 transition-all active:scale-95 whitespace-nowrap"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      { 
+        position: "top-center",
+        autoClose: false, 
+        closeOnClick: false,
+        draggable: false,
+        className: 'rounded-[32px] shadow-[0_32px_128px_rgba(0,0,0,0.1)] border-2 border-brand-primary/10 p-6 bg-brand-light ring-4 ring-brand-primary/5 w-[calc(100vw-32px)] sm:w-auto sm:max-w-3xl sm:min-w-[550px]'
+      }
+    );
+  };
+
+  const handleRejectRequest = async (id) => {
+    console.log("Attempting to reject request ID:", id);
+    setProcessingRequestId(id);
+    try {
+      const docRef = doc(db, 'signupRequests', id);
+      await updateDoc(docRef, { 
+        status: 'rejected', 
+        updatedAt: serverTimestamp() 
+      });
+      console.log("Reject successful for:", id);
+      await fetchRequests();
+      toast.warn("Registration request rejected");
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      toast.error(`Reject failed: ${error.message}`);
+    } finally {
+      setProcessingRequestId(null);
     }
   };
   // Redundant PIN logic removed (submitPin handles it now)
@@ -178,7 +246,10 @@ const SuperAdminDashboard = () => {
           status: 'approved',
           updatedAt: serverTimestamp()
         });
+        toast.success("Registration request approved!");
         fetchRequests();
+      } else {
+        toast.success("New laboratory registered successfully!");
       }
 
       setShowRegisterModal(false);
@@ -372,17 +443,17 @@ const SuperAdminDashboard = () => {
         <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }}></div>
 
         <div className="max-w-2xl w-full relative z-10 p-6">
-          <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[4rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.6)] p-12 md:p-16 text-center ring-1 ring-inset ring-white/10 overflow-hidden group animate-in fade-in zoom-in duration-700">
+          <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[3rem] md:rounded-[4rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.6)] p-8 md:p-16 text-center ring-1 ring-inset ring-white/10 overflow-hidden group animate-in fade-in zoom-in duration-700">
             
             {/* Glossy Header */}
-            <div className="relative mb-12">
-              <div className="w-24 h-24 bg-brand-primary rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(163,230,53,0.3)] transition-transform duration-500 rotate-6 group-hover:rotate-0">
-                <Shield className="w-12 h-12 text-white drop-shadow-lg" />
+            <div className="relative mb-8 md:mb-12">
+              <div className="w-16 h-16 md:w-24 md:h-24 bg-white rounded-[24px] md:rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl border border-slate-100 transition-transform duration-500 rotate-6 group-hover:rotate-0 p-2 md:p-3">
+                <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
               </div>
-              <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight uppercase">
+              <h2 className="text-2xl md:text-5xl font-black text-white tracking-tighter leading-tight uppercase">
                 Admin <span className="text-brand-primary">Login</span>
               </h2>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em] mt-3 animate-pulse">Security Verification</p>
+              <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em] mt-3 animate-pulse">Security Verification</p>
             </div>
 
             {/* PIN Input Grid */}
@@ -397,7 +468,7 @@ const SuperAdminDashboard = () => {
                     onKeyDown={(e) => handleKeyDown(i, e)}
                     maxLength={1}
                     autoComplete="off"
-                    className={`w-full h-16 md:h-20 text-center text-3xl font-black rounded-[22px] border-2 transition-all duration-300 outline-none
+                    className={`w-full h-12 md:h-20 text-center text-xl md:text-3xl font-black rounded-xl md:rounded-[22px] border-2 transition-all duration-300 outline-none
                       ${digit 
                         ? 'border-brand-primary bg-brand-primary/10 text-white shadow-[0_0_30px_rgba(163,230,53,0.3)] ring-2 ring-brand-primary/10' 
                         : 'border-white/5 bg-white/5 text-transparent focus:border-brand-primary focus:bg-white/10 focus:shadow-[0_0_20px_rgba(163,230,53,0.2)]'}`}
@@ -473,71 +544,73 @@ const SuperAdminDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 w-full animate-in fade-in duration-500">
       {/* Navigation Tabs */}
-      <div className="flex bg-slate-50 p-1.5 rounded-[2rem] w-fit mb-12 border border-slate-100 shadow-inner">
-        <button 
-          onClick={() => setActiveView('labs')}
-          className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] transition-all ${activeView === 'labs' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-        >
-          <Users className="w-4 h-4" /> Labs
-        </button>
-        <button 
-          onClick={() => setActiveView('tests')}
-          className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] transition-all ${activeView === 'tests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-        >
-          <FlaskConical className="w-4 h-4" /> Global Tests
-        </button>
-        <button 
-          onClick={() => setActiveView('settings')}
-          className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] transition-all ${activeView === 'settings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-        >
-          <Settings className="w-4 h-4" /> Global Settings
-        </button>
-        <button 
-          onClick={() => setActiveView('parameters')}
-          className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] transition-all ${activeView === 'parameters' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-        >
-          <BookOpen className="w-4 h-4" /> Parameters
-        </button>
-        <button 
-          onClick={() => setActiveView('plans')}
-          className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] transition-all ${activeView === 'plans' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-        >
-          <CreditCard className="w-4 h-4" /> Pricing Plans
-        </button>
-        <button 
-          onClick={() => setActiveView('requests')}
-          className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] font-black uppercase tracking-widest text-[10px] transition-all relative ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-        >
-          <User className="w-4 h-4" /> 
-          Signup Requests
-          {requests.filter(r => r.status === 'pending').length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[8px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
-              {requests.filter(r => r.status === 'pending').length}
-            </span>
-          )}
-        </button>
+      <div className="flex overflow-x-auto no-scrollbar bg-slate-50 p-1.5 rounded-full md:rounded-[2rem] w-full md:w-fit mb-8 md:mb-12 border border-slate-100 shadow-inner">
+        <div className="flex gap-1.5 shrink-0">
+          <button 
+            onClick={() => setActiveView('labs')}
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'labs' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <Users className="w-3.5 h-3.5 md:w-4 md:h-4" /> Labs
+          </button>
+          <button 
+            onClick={() => setActiveView('tests')}
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'tests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <FlaskConical className="w-3.5 h-3.5 md:w-4 md:h-4" /> Global Tests
+          </button>
+          <button 
+            onClick={() => setActiveView('settings')}
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'settings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" /> Global Settings
+          </button>
+          <button 
+            onClick={() => setActiveView('parameters')}
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'parameters' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" /> Parameters
+          </button>
+          <button 
+            onClick={() => setActiveView('plans')}
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'plans' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <CreditCard className="w-3.5 h-3.5 md:w-4 md:h-4" /> Pricing Plans
+          </button>
+          <button 
+            onClick={() => setActiveView('requests')}
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all relative whitespace-nowrap ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <User className="w-3.5 h-3.5 md:w-4 md:h-4" /> 
+            Signup Requests
+            {requests.filter(r => r.status === 'pending').length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-rose-500 text-white text-[7px] md:text-[8px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
+                {requests.filter(r => r.status === 'pending').length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {activeView === 'labs' ? (
         <>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12 bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
-            <div>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-3xl md:rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
+            <div className="w-full lg:w-auto">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-brand-light rounded-[22px] border border-brand-primary/10 transition-transform rotate-3 hover:rotate-6">
-                  <Shield className="w-8 h-8 text-brand-primary" />
+                <div className="p-3 md:p-4 bg-brand-light rounded-xl md:rounded-[22px] border border-brand-primary/10 transition-transform rotate-3 hover:rotate-6">
+                  <Shield className="w-6 h-6 md:w-8 md:h-8 text-brand-primary" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                  <h1 className="text-2xl md:text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
                     Admin <span className="text-brand-primary/80">Dashboard</span>
                   </h1>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1.5">Manage all labs and their licenses here.</p>
+                  <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mt-1.5">Manage all labs and their licenses here.</p>
                 </div>
               </div>
               {activeLabId && (
-                <div className="mt-6 flex items-center gap-3 opacity-0 animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-forwards" style={{ animationDelay: '0.2s' }}>
-                   <div className="px-5 py-2.5 bg-brand-light/40 text-brand-dark rounded-full text-[10px] font-black uppercase tracking-widest border border-brand-primary/10 flex items-center gap-3 shadow-sm">
-                      <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
-                      Managing: {activeLabId}
+                <div className="mt-4 md:mt-6 flex items-center gap-3 opacity-0 animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-forwards" style={{ animationDelay: '0.2s' }}>
+                   <div className="px-4 md:px-5 py-2 md:py-2.5 bg-brand-light/40 text-brand-dark rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-brand-primary/10 flex items-center gap-3 shadow-sm">
+                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-brand-primary rounded-full animate-pulse"></div>
+                      <span className="truncate max-w-[150px] md:max-w-none">Managing: {activeLabId}</span>
                       <button onClick={() => setActiveLabId(null)} className="ml-2 w-5 h-5 bg-white rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm">&times;</button>
                    </div>
                 </div>
@@ -545,24 +618,24 @@ const SuperAdminDashboard = () => {
             </div>
             <button 
               onClick={() => setShowRegisterModal(true)}
-              className="flex items-center gap-3 px-10 py-5 bg-brand-dark text-white rounded-[24px] text-[11px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl shadow-brand-dark/20 hover:bg-brand-secondary active:scale-[0.98] border border-white/10 group"
+              className="w-full lg:w-auto flex items-center justify-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-brand-dark text-white rounded-2xl md:rounded-[24px] text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] transition-all shadow-2xl shadow-brand-dark/20 hover:bg-brand-secondary active:scale-[0.98] border border-white/10 group"
             >
-              <Plus className="w-5 h-5 text-brand-primary group-hover:rotate-90 transition-transform" /> Add Lab
+              <Plus className="w-4 h-4 md:w-5 md:h-5 text-brand-primary group-hover:rotate-90 transition-transform" /> Add Lab
             </button>
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-            <StatCard icon={<Users className="text-white" />} label="Total Labs" value={stats.total} color="from-brand-dark to-brand-secondary" gradient />
-            <StatCard icon={<CheckCircle className="text-white" />} label="Active Labs" value={stats.active} color="from-brand-primary to-lime-600" gradient />
-            <StatCard icon={<AlertTriangle className="text-white" />} label="Expired Labs" value={stats.expired} color="from-rose-500 to-rose-700" gradient />
-            <StatCard icon={<Activity className="text-white" />} label="Pro Labs" value={stats.pro} color="from-brand-secondary to-blue-700" gradient />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 mb-8 md:mb-12">
+            <StatCard icon={<Users className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Total Labs" value={stats.total} color="from-brand-dark to-brand-secondary" gradient />
+            <StatCard icon={<CheckCircle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Active Labs" value={stats.active} color="from-brand-primary to-lime-600" gradient />
+            <StatCard icon={<AlertTriangle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Expired Labs" value={stats.expired} color="from-rose-500 to-rose-700" gradient />
+            <StatCard icon={<Activity className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Pro Labs" value={stats.pro} color="from-brand-secondary to-blue-700" gradient />
           </div>
 
           {/* Lab Management Table */}
-          <div className="bg-white rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden mb-12">
-            <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row gap-6 items-center bg-slate-50/50">
-              <div className="relative flex-grow group">
+          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden mb-12">
+            <div className="p-5 md:p-8 border-b border-slate-50 flex flex-col md:flex-row gap-4 md:gap-6 items-center bg-slate-50/50">
+              <div className="relative flex-grow group w-full md:w-auto">
                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5 group-focus-within:text-brand-primary transition-colors" />
                 <input 
                   type="text" 
@@ -600,11 +673,11 @@ const SuperAdminDashboard = () => {
                 <table className="w-full text-left">
                   <thead className="bg-brand-dark">
                     <tr>
-                      <th className="px-10 py-6 text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Lab Name</th>
-                      <th className="px-10 py-6 text-[13px] font-black text-white/70 uppercase tracking-[0.2em] text-center">Plan</th>
-                      <th className="px-10 py-6 text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Status</th>
-                      <th className="px-10 py-6 text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">License</th>
-                      <th className="px-10 py-6 text-right text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Actions</th>
+                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Lab Name</th>
+                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em] text-center">Plan</th>
+                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Status</th>
+                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">License</th>
+                      <th className="px-6 py-4 md:px-10 md:py-6 text-right text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 bg-white">
@@ -614,43 +687,43 @@ const SuperAdminDashboard = () => {
                       
                       return (
                         <tr key={lab.id} className="hover:bg-brand-light/10 transition-colors group/row">
-                          <td className="px-10 py-6">
-                            <div className="font-black text-brand-dark text-base tracking-tight uppercase">{lab.labName}</div>
-                            <div className="text-[12px] text-slate-300 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                          <td className="px-6 py-4 md:px-10 md:py-6 whitespace-nowrap">
+                            <div className="font-black text-brand-dark text-[14px] md:text-base tracking-tight uppercase">{lab.labName}</div>
+                            <div className="text-[10px] md:text-[12px] text-slate-300 font-bold uppercase tracking-widest mt-1 md:mt-1.5 flex items-center gap-2">
                                <div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div>
                                ID: {lab.labId}
                             </div>
                           </td>
-                          <td className="px-10 py-6 text-center">
-                            <span className={`px-4 py-1.5 rounded-full text-[12px] font-black uppercase tracking-widest border transition-all ${lab.plan === 'pro' ? 'bg-brand-dark text-white border-brand-dark shadow-lg shadow-brand-dark/10' : 'bg-brand-light/50 text-brand-dark border-brand-primary/10'}`}>
+                          <td className="px-6 py-4 md:px-10 md:py-6 text-center">
+                            <span className={`px-3 py-1 md:px-4 md:py-1.5 rounded-full text-[10px] md:text-[12px] font-black uppercase tracking-widest border transition-all ${lab.plan === 'pro' ? 'bg-brand-dark text-white border-brand-dark shadow-lg shadow-brand-dark/10' : 'bg-brand-light/50 text-brand-dark border-brand-primary/10'}`}>
                               {lab.plan || 'basic'}
                             </span>
                           </td>
-                          <td className="px-10 py-6">
+                          <td className="px-6 py-4 md:px-10 md:py-6 whitespace-nowrap">
                             <div className="flex items-center space-x-3">
                               <div className={`w-2 h-2 rounded-full shadow-sm ${lab.status === 'active' && !isExp ? 'bg-brand-primary animate-pulse shadow-brand-primary/50' : 'bg-rose-500 shadow-rose-500/50'}`} />
-                              <span className="text-[13px] font-black text-brand-dark uppercase tracking-wide">
+                              <span className="text-[11px] md:text-[13px] font-black text-brand-dark uppercase tracking-wide">
                                 {lab.status === 'active' && !isExp ? 'Active' : isExp ? 'Expired' : 'Suspended'}
                               </span>
                             </div>
-                            <div className="flex flex-col mt-1.5 ml-5">
-                              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Expiry: {formatDisplayDate(lab.expiryDate)}</span>
-                              <span className={`text-[9px] font-black uppercase tracking-[0.2em] mt-0.5 ${isExp ? 'text-rose-500' : getRemainingDays(lab.expiryDate) < 7 ? 'text-amber-500' : 'text-brand-primary'}`}>
+                            <div className="flex flex-col mt-1 md:mt-1.5 ml-5">
+                              <span className="text-[9px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">Expiry: {formatDisplayDate(lab.expiryDate)}</span>
+                              <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-0.5 ${isExp ? 'text-rose-500' : getRemainingDays(lab.expiryDate) < 7 ? 'text-amber-500' : 'text-brand-primary'}`}>
                                 {isExp ? 'EXPIRED' : `${getRemainingDays(lab.expiryDate)} Days Remaining`}
                               </span>
                             </div>
                           </td>
-                          <td className="px-10 py-6">
-                            <code className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[12px] font-bold font-mono text-brand-secondary shadow-inner">{lab.license_key}</code>
+                          <td className="px-6 py-4 md:px-10 md:py-6">
+                            <code className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[10px] md:text-[12px] font-bold font-mono text-brand-secondary shadow-inner">{lab.license_key}</code>
                           </td>
-                          <td className="px-10 py-6 text-right">
-                            <div className="flex justify-end gap-4">
+                          <td className="px-6 py-4 md:px-10 md:py-6 text-right">
+                            <div className="flex justify-end gap-2 md:gap-4">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setActiveLabId(lab.labId); }}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase tracking-widest text-[12px] transition-all ${activeLabId === lab.labId ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-white border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95'}`}
+                                className={`flex items-center gap-2 px-4 py-2 md:px-6 md:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] md:text-[12px] transition-all ${activeLabId === lab.labId ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-white border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95'}`}
                               >
-                                <ExternalLink className="w-4 h-4" />
-                                {activeLabId === lab.labId ? 'Managing' : 'Enter Lab'}
+                                <ExternalLink className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                <span className="hidden sm:inline">{activeLabId === lab.labId ? 'Managing' : 'Enter Lab'}</span>
                               </button>
                               <button 
                                 onClick={() => { setEditingLab({...lab}); setShowEditModal(true); setActiveTab('basic'); }}
@@ -684,24 +757,34 @@ const SuperAdminDashboard = () => {
             )}
           </div>
         </>
-      ) : activeView === 'requests' ? (
+      ) : activeView === 'tests' ? (
+        <GlobalTestCatalog />
+      ) : activeView === 'parameters' ? (
+        <MasterParameters />
+      ) : activeView === 'plans' ? (
+        <PlansTab />
+      ) : activeView === 'settings' ? (
+        <GlobalSettings />
+      ) : (
         <div className="animate-in fade-in duration-700">
-          <div className="flex justify-between items-center mb-12 bg-white p-10 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-3xl md:rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
             <div>
-              <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase">Registration <span className="text-brand-primary">Requests</span></h1>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1.5">Verify and approve new laboratory signups.</p>
+              <h1 className="text-2xl md:text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                Registration <span className="text-brand-primary">Requests</span>
+              </h1>
+              <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mt-1.5">Verify and approve new laboratory signups.</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-[42px] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-sm border border-slate-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-brand-dark text-white/70">
                   <tr>
-                    <th className="px-10 py-6 text-[11px] font-black uppercase tracking-widest">Lab Details</th>
-                    <th className="px-10 py-6 text-[11px] font-black uppercase tracking-widest">Admin Details</th>
-                    <th className="px-10 py-6 text-[11px] font-black uppercase tracking-widest">Status</th>
-                    <th className="px-10 py-6 text-right text-[11px] font-black uppercase tracking-widest">Actions</th>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Lab Details</th>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Admin Details</th>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-right text-[11px] md:text-[13px] font-black uppercase tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -709,16 +792,16 @@ const SuperAdminDashboard = () => {
                     <tr><td colSpan="4" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No requests yet.</td></tr>
                   ) : requests.map((req) => (
                     <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-10 py-6">
-                        <div className="font-black text-brand-dark text-base tracking-tight uppercase">{req.labFullName || req.labName}</div>
+                      <td className="px-6 py-4 md:px-10 md:py-6">
+                        <div className="font-black text-brand-dark text-[14px] md:text-base tracking-tight uppercase">{req.labFullName || req.labName}</div>
                         <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{req.labType} // {req.city}, {req.state}</div>
                       </td>
-                      <td className="px-10 py-6">
+                      <td className="px-6 py-4 md:px-10 md:py-6">
                         <div className="font-bold text-slate-700">{req.ownerName}</div>
                         <div className="text-[11px] text-slate-400 mt-0.5">{req.email}</div>
                         <div className="text-[11px] text-slate-400">{req.phone}</div>
                       </td>
-                      <td className="px-10 py-6">
+                      <td className="px-6 py-4 md:px-10 md:py-6">
                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
                           req.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
                           req.status === 'approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
@@ -727,18 +810,16 @@ const SuperAdminDashboard = () => {
                           {req.status}
                         </span>
                       </td>
-                      <td className="px-10 py-6 text-right">
+                      <td className="px-6 py-4 md:px-10 md:py-6 text-right">
                         <div className="flex justify-end gap-3">
                           {req.status === 'pending' && (
                             <>
                               <button 
-                                onClick={async () => {
-                                  await updateDoc(doc(db, 'signupRequests', req.id), { status: 'rejected', updatedAt: serverTimestamp() });
-                                  fetchRequests();
-                                }}
-                                className="px-6 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all"
+                                onClick={() => handleRejectRequest(req.id)}
+                                disabled={processingRequestId === req.id}
+                                className="px-6 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2 min-w-[100px] justify-center"
                               >
-                                Reject
+                                {processingRequestId === req.id ? <Loader className="w-3 h-3 animate-spin" /> : 'Reject'}
                               </button>
                               <button 
                                 onClick={() => {
@@ -754,8 +835,10 @@ const SuperAdminDashboard = () => {
                                     state: req.state,
                                     pincode: req.pincode,
                                     labType: req.labType || 'Standalone',
+                                    plan: req.plan || 'basic',
                                     requestId: req.id // Store the request ID to update on success
                                   });
+                                  setActiveTab('basic');
                                   setShowRegisterModal(true);
                                 }}
                                 className="px-6 py-2.5 bg-brand-primary text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-dark hover:text-white transition-all shadow-lg shadow-brand-primary/10"
@@ -765,11 +848,12 @@ const SuperAdminDashboard = () => {
                             </>
                           )}
                           <button 
-                            onClick={() => handleDeleteRequest(req.id)}
-                            className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all"
+                            onClick={() => confirmDelete(req)}
+                            disabled={processingRequestId === req.id}
+                            className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
                             title="Delete Request"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {processingRequestId === req.id ? <Loader className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                           </button>
                         </div>
                       </td>
@@ -780,10 +864,6 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
         </div>
-      ) : activeView === 'plans' ? (
-        <PlansTab />
-      ) : (
-        <GlobalSettings />
       )}
 
       {/* Register Lab Modal */}
@@ -797,8 +877,12 @@ const SuperAdminDashboard = () => {
                    <Plus className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black tracking-tighter uppercase leading-none">Add Lab</h2>
-                  <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] mt-2">Create a new lab account</p>
+                  <h2 className="text-3xl font-black tracking-tighter uppercase leading-none">
+                    {newLabData.requestId ? 'Review & Approve Request' : 'Add New Lab'}
+                  </h2>
+                  <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] mt-2">
+                    {newLabData.requestId ? `Reviewing signup from: ${newLabData.email}` : 'Create a new lab account manualy'}
+                  </p>
                 </div>
               </div>
               <button 
@@ -1271,6 +1355,6 @@ const Select = ({ className = '', children, ...props }) => (
   </select>
 );
 
-import { ChevronRight } from 'lucide-react';
+
 
 export default SuperAdminDashboard;
