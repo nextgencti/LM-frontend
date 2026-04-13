@@ -63,6 +63,8 @@ const GlobalTestCatalog = () => {
     reportLayout: 'Standard',
   });
 
+  const [isOtherMethodology, setIsOtherMethodology] = useState(false);
+
   const [groupNameInput, setGroupNameInput] = useState('');
   const [paramInput, setParamInput] = useState({ code: '', name: '', unit: '', dataType: 'Quantitative', decimals: 2 });
   const [ruleInput,  setRuleInput]  = useState({ gender: 'Any', ageMin: 0, ageMax: 120, ageUnit: 'Years', normalRange: '', criticalLow: '', criticalHigh: '' });
@@ -73,6 +75,7 @@ const GlobalTestCatalog = () => {
   
   const [originalParamData, setOriginalParamData] = useState(null);
   const [originalRuleData, setOriginalRuleData] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchTests();
@@ -113,6 +116,7 @@ const GlobalTestCatalog = () => {
   // ── Handlers (Groups, Parameters, Rules) ──────────────────────────────────
   const resetForm = () => {
     setTestForm({ testCode:'',testName:'',category:'Hematology',sampleType:'Whole Blood (EDTA)',methodology:'',tatHours:'24 hrs',price:0,groups:[], reportLayout: 'Standard' });
+    setIsOtherMethodology(false);
     setGroupNameInput(''); 
     setSelectedGroupIndex(-1); 
     setSelectedParamIndex(-1); 
@@ -321,6 +325,16 @@ const GlobalTestCatalog = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-red-500 transition-colors" />
+            <input 
+              type="text"
+              placeholder="Search tests..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold uppercase tracking-widest outline-none focus:bg-white focus:border-red-400 focus:ring-4 focus:ring-red-50 transition-all w-64"
+            />
+          </div>
           <button onClick={() => { resetForm(); setShowAddModal(true); }} className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-100">
             <Plus className="w-4 h-4" /> New Master Test
           </button>
@@ -351,8 +365,15 @@ const GlobalTestCatalog = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {tests.map(test => (
-                  <tr key={test.id} className="group hover:bg-gray-50/50 transition-colors">
+                {tests
+                  .filter(t => 
+                    !searchQuery || 
+                    (t.testName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (t.testCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (t.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map(test => (
+                    <tr key={test.id} className="group hover:bg-gray-50/50 transition-colors">
                     <td className="px-8 py-6">
                       <div className="font-bold text-gray-900 text-base">{test.testName}</div>
                       <div className="text-xs text-gray-400 font-medium mt-0.5">{test.category} · {test.methodology || 'No Method'}</div>
@@ -470,10 +491,39 @@ const GlobalTestCatalog = () => {
                   </div>
                   <div>
                     <Label>Methodology</Label>
-                    <Select value={testForm.methodology} onChange={e => setTestForm({...testForm, methodology: e.target.value})}>
-                      <option value="">Select Method</option>
-                      {['Automated', 'Semi-Automated', 'Manual', 'Slide Agglutination', 'ELISA', 'HPLC', 'CLIA', 'Nephelometry', 'PCR', 'Microscopy', 'Culture', 'Rapid Test', 'Other'].map(m=><option key={m}>{m}</option>)}
-                    </Select>
+                    {(isOtherMethodology || (testForm.methodology && !['Automated', 'Semi-Automated', 'Manual', 'Slide Agglutination', 'ELISA', 'HPLC', 'CLIA', 'Nephelometry', 'PCR', 'Microscopy', 'Culture', 'Rapid Test', ''].includes(testForm.methodology))) ? (
+                      <div className="relative group">
+                        <Input 
+                          placeholder="Type Custom Methodology..." 
+                          value={testForm.methodology} 
+                          onChange={e => setTestForm({...testForm, methodology: e.target.value})}
+                          className="pr-10"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setIsOtherMethodology(false);
+                            setTestForm({...testForm, methodology: ''});
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <Select value={testForm.methodology} onChange={e => {
+                        if (e.target.value === 'Other') {
+                          setIsOtherMethodology(true);
+                          setTestForm({...testForm, methodology: ''});
+                        } else {
+                          setTestForm({...testForm, methodology: e.target.value});
+                        }
+                      }}>
+                        <option value="">Select Method</option>
+                        {['Automated', 'Semi-Automated', 'Manual', 'Slide Agglutination', 'ELISA', 'HPLC', 'CLIA', 'Nephelometry', 'PCR', 'Microscopy', 'Culture', 'Rapid Test'].map(m=><option key={m}>{m}</option>)}
+                        <option value="Other">Other / Add New</option>
+                      </Select>
+                    )}
                   </div>
                   <div>
                     <Label>TAT</Label>

@@ -584,7 +584,20 @@ const ReportPreview = ({ report, onClose }) => {
                                             const f = getFlag(res.value, res.range); const isAbn = f === 'H' || f === 'L';
                                             return (<tr key={i} className={`bg-white ${isAbn ? 'font-bold' : ''}`}>
                                               <td className="py-1 px-2 text-[12px] sm:text-[13px] text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis">{res.parameter}</td>
-                                              <td className="py-1 px-2"><span className={`text-[10px] sm:text-[11px] ${isAbn ? (f==='H'?'text-rose-600 font-black':'text-blue-600 font-black') : 'text-gray-800 font-bold'}`}>{res.value || '-'}</span></td>
+                                              <td className="py-1 px-2">
+                                                {(() => {
+                                                  const valStr = (res.value || '').toUpperCase();
+                                                  const isPos = valStr.includes('POSITIVE') || (valStr.includes('REACTIVE') && !valStr.includes('NON-REACTIVE'));
+                                                  const isNeg = valStr.includes('NEGATIVE') || valStr.includes('NON-REACTIVE');
+                                                  if (isPos) return <span className="text-[10px] sm:text-[11px] text-rose-600 font-black">{res.value}</span>;
+                                                  if (isNeg) return <span className="text-[10px] sm:text-[11px] text-emerald-600 font-black">{res.value}</span>;
+                                                  return (
+                                                    <span className={`text-[10px] sm:text-[11px] ${isAbn ? (f==='H'?'text-rose-600 font-black':'text-blue-600 font-black') : 'text-gray-800 font-bold'}`}>
+                                                      {res.value || '-'}
+                                                    </span>
+                                                  );
+                                                })()}
+                                              </td>
                                               <td className="py-1 px-2 text-center leading-none"><span className={`text-[10px] sm:text-[11px] font-bold ${isAbn ? (f==='H'?'text-rose-600':'text-blue-600') : 'text-emerald-600'}`}>{f}</span></td>
                                               <td className="py-1 px-2 text-[10px] sm:text-[11px] font-semibold text-slate-500">{res.unit || '-'}</td>
                                               <td className={`py-1 px-2 text-[10px] sm:text-[11px] text-right tabular-nums ${isAbn ? 'font-bold text-gray-900 border-gray-100 pl-2' : 'text-gray-500 font-medium'}`}>{res.range || '-'}</td>

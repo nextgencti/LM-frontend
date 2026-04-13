@@ -500,12 +500,15 @@ const Reports = () => {
     if (res.dataType === 'Qualitative') {
       const options = (res.allowedOptions || '').split(',').map(s => s.trim()).filter(s => s);
       if (options.length === 0) options.push('Positive','Negative');
+      const valStr = (res.value || '').toUpperCase();
+      const colorClass = (valStr.includes('POSITIVE') || valStr.includes('REACTIVE')) && !valStr.includes('NON-REACTIVE') ? 'text-rose-600' : (valStr.includes('NEGATIVE') || valStr.includes('NON-REACTIVE')) ? 'text-emerald-600' : 'text-gray-800';
+      
       return (
         <select value={res.value || ''} onFocus={() => setFocusedIndex(idx)} onBlur={() => setFocusedIndex(null)}
           onChange={(e) => handleUpdateResultValue(idx, e.target.value)}
-          className={`w-full border-2 rounded-xl py-2 px-3 text-sm font-black outline-none ${focusedIndex === idx ? 'bg-white border-blue-500 ring-4 ring-blue-100' : 'bg-slate-50/50 border-slate-100'}`}>
-          <option value="">Select Option</option>
-          {options.map(opt => <option key={opt}>{opt}</option>)}
+          className={`w-full border-2 rounded-xl py-2 px-3 text-sm font-black outline-none transition-colors ${focusedIndex === idx ? 'bg-white border-blue-500 ring-4 ring-blue-100' : 'bg-slate-50/50 border-slate-100'} ${colorClass}`}>
+          <option value="" className="text-gray-400">Select Option</option>
+          {options.map(opt => <option key={opt} className="text-gray-800">{opt}</option>)}
         </select>
       );
     }
