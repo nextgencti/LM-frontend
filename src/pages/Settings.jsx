@@ -768,9 +768,15 @@ const Settings = () => {
                         </div>
                         <div className="flex-1">
                            <div className="flex justify-between items-center mb-1">
-                              <p className="text-sm font-black text-brand-dark uppercase tracking-widest">Daily Email Report</p>
+                              <div className="flex items-center gap-2">
+                                 <p className="text-sm font-black text-brand-dark uppercase tracking-widest">Daily Email Report</p>
+                                 {!checkFeature('Email Support') && (
+                                   <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-2 py-0.5 rounded-full border border-amber-200 uppercase tracking-widest leading-none">Upgrade Req.</span>
+                                 )}
+                              </div>
                               <button 
                                  type="button"
+                                 disabled={!checkFeature('Email Support')}
                                  onClick={() => setLabData({
                                     ...labData,
                                     reportSettings: { 
@@ -778,7 +784,7 @@ const Settings = () => {
                                       dailyReport: { ...labData.reportSettings.dailyReport, enabled: !labData.reportSettings.dailyReport.enabled }
                                     }
                                  })}
-                                 className={`w-12 h-6 rounded-full relative transition-all duration-300 ${labData?.reportSettings?.dailyReport?.enabled ? 'bg-amber-500' : 'bg-slate-200'}`}
+                                 className={`w-12 h-6 rounded-full relative transition-all duration-300 ${!checkFeature('Email Support') ? 'bg-slate-100 cursor-not-allowed' : labData?.reportSettings?.dailyReport?.enabled ? 'bg-amber-500' : 'bg-slate-200'}`}
                               >
                                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${labData?.reportSettings?.dailyReport?.enabled ? 'left-7' : 'left-1'}`}></div>
                               </button>
