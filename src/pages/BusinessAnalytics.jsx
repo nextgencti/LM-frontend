@@ -176,11 +176,11 @@ const BusinessAnalytics = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-8">
         <div className="flex items-center gap-6">
           <div className="p-4 bg-brand-dark rounded-[28px] border border-white/10 shadow-xl rotate-3">
-            <BarChart3 className="w-10 h-10 text-brand-primary" />
+            <BarChart3 className="w-8 h-8 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap italic">Business <span className="text-brand-primary/80">Intelligence</span></h1>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Real-time performance metrics for {userData?.labId}.</p>
+            <h1 className="text-2xl md:text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-normal md:whitespace-nowrap italic leading-none">Business <span className="text-brand-primary/80">Intelligence</span></h1>
+            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.4em] mt-2">Real-time performance metrics for {userData?.labId}.</p>
           </div>
         </div>
         

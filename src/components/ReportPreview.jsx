@@ -381,23 +381,32 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
   return (
     <div className="fixed inset-0 z-[300] bg-gray-900/95 backdrop-blur-xl flex flex-col pt-0 pb-4 print:static print:bg-white print:overflow-visible print:block print:inset-auto">
-      <div className="bg-white/10 border-b border-white/10 px-3 sm:px-6 py-4 flex justify-between items-center shrink-0 print:hidden top-0 sticky z-[310] gap-2 sm:gap-4 overflow-visible">
-        <div className="text-white font-black tracking-widest text-sm uppercase whitespace-nowrap overflow-hidden max-w-[40%]">Previewing: {report.patientName}</div>
-        <div className="flex gap-3">
+      <div className="bg-[#1e1e2d] border-b border-white/5 px-2 sm:px-6 py-2.5 sm:py-4 flex justify-between items-center shrink-0 print:hidden top-0 sticky z-[310] gap-1 sm:gap-4 overflow-hidden">
+        <div className="text-white/90 font-black tracking-tight sm:tracking-widest text-[10px] sm:text-sm uppercase whitespace-nowrap overflow-hidden text-ellipsis max-w-[30%] sm:max-w-[40%]">
+          Preview: <span className="text-brand-primary">{report.patientName}</span>
+        </div>
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-nowrap">
           {!isPublicView && (
             <button 
               onClick={handleEmailReport} 
               disabled={emailSending}
-              className={`flex items-center px-6 py-2 rounded-xl font-bold transition shadow-lg shrink-0 ${emailSending ? 'bg-slate-100 text-slate-400' : 'bg-brand-dark text-white hover:scale-105 active:scale-95'}`}
+              className={`flex items-center px-2.5 sm:px-6 py-2 rounded-lg sm:rounded-xl font-black transition shadow-lg shrink-0 text-[10px] sm:text-sm ${emailSending ? 'bg-slate-100/10 text-slate-500' : 'bg-brand-dark border border-white/10 text-white hover:bg-brand-secondary active:scale-95'}`}
             >
-              {emailSending ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
-              Email Report
+              {emailSending ? <Loader className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin mr-1.5 sm:mr-2" /> : <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-brand-primary" />}
+              <span className="hidden xs:inline">{emailSending ? 'Sending...' : 'Email Report'}</span>
+              <span className="xs:hidden">{emailSending ? '...' : 'Email'}</span>
             </button>
           )}
-          <button onClick={handlePrint} className="flex items-center px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg shrink-0 hover:scale-105 active:scale-95">
-            <Printer className="w-4 h-4 mr-2" /> Print Report
+          <button onClick={handlePrint} className="flex items-center px-2.5 sm:px-6 py-2 bg-emerald-600 text-white rounded-lg sm:rounded-xl font-black hover:bg-emerald-700 transition shadow-lg shrink-0 active:scale-95 text-[10px] sm:text-sm">
+            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> 
+            <span className="hidden xs:inline">Print Report</span>
+            <span className="xs:hidden">Print</span>
           </button>
-          {onClose && <button onClick={onClose} className="p-2 bg-white/10 hover:bg-rose-500 text-white rounded-xl transition shrink-0"><X className="w-5 h-5" /></button>}
+          {onClose && (
+            <button onClick={onClose} className="p-1.5 sm:p-2 bg-white/5 hover:bg-rose-500 text-white/70 hover:text-white rounded-lg sm:rounded-xl transition shrink-0 border border-white/5">
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -493,32 +502,31 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
             </header>
 
             <section className="px-6 mb-8 !bg-white">
-              <div className="!bg-white border-[1.5px] border-gray-300 rounded-lg p-3 sm:p-4 flex flex-col md:flex-row justify-between gap-4 relative">
-                <div className="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto_1.4fr] gap-x-4 sm:gap-x-10 gap-y-1 sm:gap-y-0.5 text-[11px] sm:text-[13px] font-bold !text-gray-900 flex-1">
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Name</div> <div className="uppercase">: {reportData.patientName}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Reg. Date</div> <div>: {formatDate(reportData.createdAt, true)}</div>
+              <div className="!bg-white border-[1.5px] border-gray-300 rounded-lg p-3 sm:p-4 flex flex-row items-stretch justify-between gap-4 sm:gap-6">
+                <div className="grid grid-cols-[max-content_auto] sm:grid-cols-[max-content_auto_max-content_auto] gap-x-3 sm:gap-x-6 gap-y-0.5 sm:gap-y-0.5 text-[11px] sm:text-[13px] font-bold !text-gray-900 flex-1">
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Name</div> <div className="uppercase whitespace-nowrap">: {reportData.patientName}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Reg. Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.createdAt, true)}</div>
                   
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Age/Gender</div> <div>: {patientData?.age || reportData.patientAge || '??'} Y / {patientData?.gender || reportData.patientGender || '--'}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Received Date</div> <div>: {formatDate(reportData.createdAt, true)}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Age/Gender</div> <div className="whitespace-nowrap">: {patientData?.age || reportData.patientAge || '??'} Y / {patientData?.gender || reportData.patientGender || '--'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Received Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.createdAt, true)}</div>
                   
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Referred By</div> <div>: {doctorData?.name || reportData.doctorName || 'Self'}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Collection Date</div> <div>: {formatDate(reportData.createdAt, true)}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Referred By</div> <div className="uppercase whitespace-nowrap">: {doctorData?.name || reportData.doctorName || 'Self'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Collection Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.createdAt, true)}</div>
                   
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Patient ID</div> 
-                  <div>: {(() => {
+                  <div className="whitespace-nowrap">: {(() => {
                         const rawId = patientData?.patientId || reportData?.patientId || reportData?.patient_id || report?.patientId || report?.patient_id || patientData?.id;
                         if (!rawId) return '--';
-                        // Remove labId prefix if present for clean display
                         return String(rawId).split('_').pop();
                       })()}
                   </div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report Date</div> <div>: {formatDate(reportData.updatedAt || reportData.createdAt, true)}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.updatedAt || reportData.createdAt, true)}</div>
                   
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report ID</div> <div className="uppercase">: {reportData.reportId || reportData.bookingNo || reportData.bookingId || reportData.booking_id || '--'}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase">: {reportData.status || 'Final'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report ID</div> <div className="uppercase whitespace-nowrap">: {reportData.reportId || reportData.bookingNo || reportData.bookingId || reportData.booking_id || '--'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase whitespace-nowrap">: {reportData.status || 'Final'}</div>
                 </div>
-                <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex flex-col items-center !bg-white md:pl-4 md:border-l border-gray-200">
-                  <QRCodeComponent value={qrUrl} size={50} className="sm:w-[70px] sm:h-[70px]" />
+                <div className="flex flex-col items-center justify-center !bg-white pl-4 sm:pl-6 border-l border-gray-200 shrink-0">
+                  <QRCodeComponent value={qrUrl} size={50} className="sm:w-[75px] sm:h-[75px]" />
                   <p className="text-[7px] sm:text-[8px] text-gray-400 text-center mt-1 font-medium tracking-widest uppercase whitespace-nowrap">Scan to Verify</p>
                 </div>
               </div>

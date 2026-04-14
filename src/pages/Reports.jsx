@@ -633,7 +633,11 @@ const Reports = () => {
 
           return (
             <div key={group.groupKey}
-              className={`bg-white rounded-[28px] border transition-all duration-300 overflow-hidden shadow-sm hover:shadow-md ${isExpanded ? 'border-brand-primary/20 shadow-brand-primary/5' : 'border-slate-100'}`}>
+              className={`bg-white rounded-[28px] border-y border-r transition-all duration-300 overflow-hidden ${
+                isExpanded 
+                  ? 'border-l-[6px] border-l-brand-primary border-brand-primary/20 bg-brand-light/5 shadow-[0_22px_70px_rgba(155,207,131,0.15)] scale-[1.005] z-10' 
+                  : 'border-l-4 border-l-transparent border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.002]'
+              }`}>
 
               {/* Group Header Row */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 px-6 sm:px-8 py-5 sm:py-6 cursor-pointer" onClick={() => toggleGroup(group.groupKey)}>

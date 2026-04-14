@@ -598,29 +598,29 @@ const Bookings = () => {
       {/* Modern Booking Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-3xl animate-in fade-in duration-300">
-          <div className="bg-white rounded-[32px] sm:rounded-[48px] shadow-3xl max-w-6xl w-full p-6 sm:p-10 overflow-hidden relative border border-white/20 flex flex-col max-h-[95vh]">
-            <button onClick={() => setShowAddModal(false)} className="absolute top-4 sm:top-8 right-4 sm:right-8 p-2 sm:p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
-              <X className="w-6 h-6 sm:w-7 sm:h-7" />
+          <div className="bg-white rounded-[32px] sm:rounded-[48px] shadow-3xl max-w-6xl w-full p-4 sm:p-10 overflow-hidden relative border border-white/20 flex flex-col max-h-[96vh]">
+            <button onClick={() => setShowAddModal(false)} className="absolute top-3 sm:top-8 right-3 sm:right-8 p-2 sm:p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
+              <X className="w-5 h-5 sm:w-7 sm:h-7" />
             </button>
             
-            <div className="mb-6 sm:mb-10 flex items-center gap-4 sm:gap-6 shrink-0">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-brand-primary rounded-2xl sm:rounded-[28px] flex items-center justify-center shadow-xl shadow-brand-primary/20 rotate-6 shrink-0">
-                <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            <div className="mb-4 sm:mb-10 flex items-center gap-3 sm:gap-6 shrink-0">
+              <div className="w-10 h-10 sm:w-16 sm:h-16 bg-brand-primary rounded-xl sm:rounded-[28px] flex items-center justify-center shadow-xl shadow-brand-primary/20 rotate-6 shrink-0">
+                <Calendar className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">New Entry</h2>
-                <p className="text-slate-400 font-bold text-[10px] sm:text-[13px] uppercase tracking-[0.2em] mt-2 leading-none">{userData?.labId} Standard Order</p>
+                <h2 className="text-xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">New Entry</h2>
+                <p className="text-slate-400 font-bold text-[9px] sm:text-[13px] uppercase tracking-[0.2em] mt-1.5 sm:mt-2 leading-none">{userData?.labId} Standard Order</p>
               </div>
             </div>
             
-            <form onSubmit={handleAddBooking} className="flex flex-col lg:flex-row gap-8 max-h-[75vh] min-h-[500px]">
+            <form onSubmit={handleAddBooking} className="flex flex-col lg:flex-row gap-4 sm:gap-8 max-h-[85vh] min-h-[400px]">
               {/* Left Column: Inputs */}
-              <div className="flex-[1.4] space-y-8 overflow-y-auto custom-scrollbar pr-6 pb-6 lg:border-r border-slate-50">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="flex-[1.4] space-y-4 sm:space-y-8 overflow-y-auto custom-scrollbar pr-2 sm:pr-6 pb-6 lg:border-r border-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                   <div className="md:col-span-2">
-                    <label className="block text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-3 ml-2">1. Select Patient</label>
+                    <label className="block text-[10px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">1. Select Patient</label>
                     <div className="relative group">
-                      <select required className="w-full bg-slate-50 border border-slate-200 rounded-[20px] py-4 px-6 text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
+                      <select required className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
                         value={newBooking.patientId} onChange={e => setNewBooking({...newBooking, patientId: e.target.value})}
                       >
                         <option value="">Search Patient Archive...</option>
@@ -633,9 +633,9 @@ const Bookings = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-3 ml-2">2. Referrer</label>
+                    <label className="block text-[10px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">2. Referrer</label>
                     <div className="relative group">
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[20px] py-4 px-6 text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
+                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
                         value={newBooking.doctorId} onChange={e => setNewBooking({...newBooking, doctorId: e.target.value})}
                       >
                         <option value="">SELF / DIRECT VISIT</option>
@@ -648,9 +648,9 @@ const Bookings = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-3 ml-2">3. Priority</label>
+                    <label className="block text-[10px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">3. Priority</label>
                     <div className="relative group">
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[20px] py-4 px-6 text-[15px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
+                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-[14px] sm:text-[15px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
                         value={newBooking.urgency} onChange={e => setNewBooking({...newBooking, urgency: e.target.value})}
                       >
                         <option>Routine</option>
@@ -665,22 +665,22 @@ const Bookings = () => {
                 </div>
 
               <div className="lg:col-span-2">
-                <label className="block text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-4 ml-2">4. Select Tests</label>
-                <div className="mb-6 relative group">
-                  <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none group-focus-within:text-brand-primary transition-colors text-slate-400">
-                    <Search className="h-5 w-5" />
+                <label className="block text-[11px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-3 sm:mb-4 ml-2">4. Select Tests</label>
+                <div className="mb-4 sm:mb-6 relative group">
+                  <div className="absolute inset-y-0 left-0 pl-5 sm:pl-6 flex items-center pointer-events-none group-focus-within:text-brand-primary transition-colors text-slate-400">
+                    <Search className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <input 
                     type="text" 
-                    placeholder="Search master test catalog..." 
+                    placeholder="Search master catalog..." 
                     value={testSearchQuery}
                     onChange={(e) => setTestSearchQuery(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-[20px] pl-16 pr-6 py-4 text-[14px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all placeholder:text-slate-400 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] pl-12 sm:pl-16 pr-4 sm:pr-6 py-3 sm:py-4 text-[13px] sm:text-[14px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all placeholder:text-slate-400 shadow-sm"
                   />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-4 p-4 min-h-[160px] max-h-[300px] overflow-y-auto bg-slate-50/30 rounded-[36px] border border-slate-100 shadow-inner">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4 p-2 sm:p-4 min-h-[140px] max-h-[250px] overflow-y-auto bg-slate-50/30 rounded-[28px] sm:rounded-[36px] border border-slate-100 shadow-inner">
                   {tests.filter(t => t.testName?.toLowerCase().includes(testSearchQuery.toLowerCase())).map(t => (
-                    <label key={t.id} className={`flex items-center p-4 rounded-[22px] border-2 transition-all cursor-pointer group relative overflow-hidden ${newBooking.testIds.includes(t.id) ? 'bg-brand-dark border-brand-dark text-white shadow-xl shadow-brand-dark/30' : 'bg-white border-transparent text-slate-600 hover:border-brand-primary/30 shadow-sm'}`}>
+                    <label key={t.id} className={`flex items-center p-3 sm:p-4 rounded-[18px] sm:rounded-[22px] border-2 transition-all cursor-pointer group relative overflow-hidden ${newBooking.testIds.includes(t.id) ? 'bg-brand-dark border-brand-dark text-white shadow-xl shadow-brand-dark/30' : 'bg-white border-transparent text-slate-600 hover:border-brand-primary/30 shadow-sm'}`}>
                       <input 
                         type="checkbox" 
                         className="hidden"
@@ -702,30 +702,30 @@ const Bookings = () => {
             </div>
 
             {/* Right Column: Billing & Notes Sidebar */}
-              <div className="flex-1 flex flex-col gap-4">
-                <div className="bg-brand-dark p-6 rounded-[36px] space-y-4 shadow-3xl shadow-brand-dark/20 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-brand-primary/10 blur-[80px] rounded-full"></div>
+              <div className="flex-1 flex flex-col gap-3 sm:gap-4">
+                <div className="bg-brand-dark p-4 sm:p-6 rounded-[28px] sm:rounded-[36px] space-y-3 sm:space-y-4 shadow-3xl shadow-brand-dark/20 relative overflow-hidden shrink-0">
+                  <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-brand-primary/10 blur-[60px] sm:blur-[80px] rounded-full"></div>
                   <div className="relative z-10">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-2 sm:mb-4">
                       <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Subtotal</span>
-                      <span className="font-black text-brand-light text-lg tabular-nums">₹{newBooking.subtotal || 0}</span>
+                      <span className="font-black text-brand-light text-base sm:text-lg tabular-nums">₹{newBooking.subtotal || 0}</span>
                     </div>
-                    <div className="space-y-1 mb-5">
+                    <div className="space-y-1 mb-3 sm:mb-5">
                       <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">Discount (₹)</label>
-                      <input type="number" className="w-full bg-white/5 border border-white/10 rounded-[16px] p-3 text-[14px] font-black text-white outline-none focus:ring-4 focus:ring-brand-primary/30 transition-all tabular-nums"
+                      <input type="number" className="w-full bg-white/5 border border-white/10 rounded-[12px] sm:rounded-[16px] p-2.5 sm:p-3 text-[13px] sm:text-[14px] font-black text-white outline-none focus:ring-4 focus:ring-brand-primary/30 transition-all tabular-nums"
                         placeholder="0"
                         value={newBooking.discount} onChange={e => handleDiscountChange(e.target.value)}
                       />
                     </div>
-                    <div className="pt-4 border-t border-white/10 flex justify-between items-end">
-                      <div className="text-left py-1">
-                        <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-1">Total</p>
-                        <p className="text-2xl font-black text-white tracking-tighter tabular-nums">₹{newBooking.totalAmount || 0}</p>
+                    <div className="pt-3 sm:pt-4 border-t border-white/10 flex justify-between items-end">
+                      <div className="text-left py-0.5 sm:py-1">
+                        <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-0.5 sm:mb-1">Total</p>
+                        <p className="text-xl sm:text-2xl font-black text-white tracking-tighter tabular-nums">₹{newBooking.totalAmount || 0}</p>
                       </div>
-                      <div className="text-right flex flex-col items-end gap-1">
+                      <div className="text-right flex flex-col items-end gap-0.5 sm:gap-1">
                          <p className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">Paid</p>
                          <input type="number" 
-                           className="w-20 bg-transparent border-b-2 border-brand-primary py-0 text-right text-xl font-black text-brand-primary outline-none focus:bg-brand-primary/10 transition-all tabular-nums"
+                           className="w-16 sm:w-20 bg-transparent border-b-2 border-brand-primary py-0 text-right text-lg sm:text-xl font-black text-brand-primary outline-none focus:bg-brand-primary/10 transition-all tabular-nums"
                            value={newBooking.paidAmount} onChange={e => setNewBooking({...newBooking, paidAmount: parseFloat(e.target.value) || 0})}
                          />
                       </div>
@@ -733,20 +733,20 @@ const Bookings = () => {
                   </div>
                 </div>
 
-                <div className="bg-brand-light/20 p-5 rounded-[32px] border border-brand-primary/10 space-y-2">
+                <div className="bg-brand-light/20 p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-brand-primary/10 space-y-1 sm:space-y-2 shrink-0">
                    <label className="block text-[10px] font-black text-brand-dark/50 uppercase tracking-[0.3em] ml-2">Observations & History</label>
                    <textarea 
-                     className="w-full bg-white/60 border border-slate-100 rounded-[20px] p-4 text-[12px] font-bold text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 h-20 resize-none shadow-inner transition-all"
+                     className="w-full bg-white/60 border border-slate-100 rounded-[16px] sm:rounded-[20px] p-3 sm:p-4 text-[12px] font-bold text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 h-16 sm:h-20 resize-none shadow-inner transition-all"
                      placeholder="Notes, symptoms..."
                      value={newBooking.notes} onChange={e => setNewBooking({...newBooking, notes: e.target.value})}
                    ></textarea>
                 </div>
 
-                <div className="flex flex-col gap-3 mt-auto">
+                <div className="flex flex-col gap-2 sm:gap-3 mt-auto pt-2">
                     <button 
                       type="submit" 
                       disabled={isSaving} 
-                      className={`w-full py-4.5 rounded-[22px] text-xs font-black uppercase tracking-[0.3em] transition-all border border-white/10 group flex items-center justify-center gap-3 ${
+                      className={`w-full py-3.5 sm:py-4.5 rounded-[20px] sm:rounded-[22px] text-[11px] font-black uppercase tracking-[0.3em] transition-all border border-white/10 group flex items-center justify-center gap-3 ${
                         isSaving 
                           ? 'bg-brand-dark/80 cursor-not-allowed text-white/50' 
                           : 'bg-brand-dark text-white hover:shadow-2xl hover:shadow-brand-dark/30 active:scale-95'
@@ -754,17 +754,17 @@ const Bookings = () => {
                     >
                       {isSaving ? (
                         <>
-                          <Loader className="w-5 h-5 animate-spin text-brand-primary" />
-                          Saving Data.....
+                          <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-brand-primary" />
+                          Saving...
                         </>
                       ) : (
                         <>
                           Save Booking 
-                          <Plus className="inline w-4 h-4 ml-2 text-brand-primary group-hover:rotate-90 transition-transform" />
+                          <Plus className="inline w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1 text-brand-primary group-hover:rotate-90 transition-transform" />
                         </>
                       )}
                     </button>
-                    <button type="button" onClick={() => setShowAddModal(false)} className="w-full py-3.5 bg-slate-50 text-slate-400 rounded-[18px] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
+                    <button type="button" onClick={() => setShowAddModal(false)} className="w-full py-2.5 sm:py-3.5 bg-slate-50 text-slate-400 rounded-[14px] sm:rounded-[18px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
                 </div>
               </div>
             </form>

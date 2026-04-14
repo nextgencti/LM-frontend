@@ -463,20 +463,20 @@ const Bills = () => {
               {/* Top Accent Bar */}
               <div className="absolute top-0 left-0 right-0 h-4 bg-brand-primary print:h-3"></div>
               
-              <div className="p-10 pt-14">
+              <div className="p-6 sm:p-10 pt-10 sm:pt-14">
                 {/* Header */}
-                <div className="flex justify-between items-start mb-12">
+                <div className="flex justify-between items-start mb-6 sm:mb-12">
                   <div>
-                    <h1 className="text-5xl font-black text-brand-dark uppercase tracking-tighter mb-1">INVOICE</h1>
-                    <div className="h-1.5 w-24 bg-brand-primary mb-3"></div>
-                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Receipt for Medical Services</p>
+                    <h1 className="text-3xl sm:text-5xl font-black text-brand-dark uppercase tracking-tighter mb-1">INVOICE</h1>
+                    <div className="h-1 sm:h-1.5 w-16 sm:w-24 bg-brand-primary mb-3"></div>
+                    <p className="text-[10px] sm:text-[12px] font-black text-slate-400 uppercase tracking-[0.1em] sm:tracking-[0.2em] ml-1">Receipt for Medical Services</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-black text-brand-dark uppercase tracking-tighter mb-1 flex items-center justify-end">
-                      <div className="w-8 h-8 bg-brand-primary rounded-lg mr-3 shadow-sm border border-black/5 flex items-center justify-center">
-                         <IndianRupee className="w-5 h-5 text-white" />
+                    <div className="text-xl sm:text-3xl font-black text-brand-dark uppercase tracking-tighter mb-1 flex items-center justify-end">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-brand-primary rounded-lg mr-2 sm:mr-3 shadow-sm border border-black/5 flex items-center justify-center">
+                         <IndianRupee className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-white" />
                       </div>
-                      {labInfo?.labName?.split(' ')[0] || 'DBS'} <span className="text-brand-primary ml-2">{labInfo?.labName?.split(' ').slice(1).join(' ') || 'Pathology'}</span>
+                      {labInfo?.labName?.split(' ')[0] || 'DBS'} <span className="text-brand-primary ml-1.5 sm:ml-2">{labInfo?.labName?.split(' ').slice(1).join(' ') || 'Pathology'}</span>
                     </div>
                     <div className="space-y-1 mt-4">
                       <p className="text-[11px] font-black text-brand-dark uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-md inline-block">Invoice #: {selectedInvoice.billId || selectedInvoice.bookingId}</p>

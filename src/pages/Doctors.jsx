@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +29,19 @@ const Doctors = () => {
   const [newPayment, setNewPayment] = useState({ amount: '', method: 'Cash', notes: '' });
   const [selectedBillIds, setSelectedBillIds] = useState(new Set());
   const [referralStatusFilter, setReferralStatusFilter] = useState('ALL');
+  const payoutFormRef = useRef(null);
+  const ledgerTopRef = useRef(null);
+
+  // Auto-scroll logic
+  useEffect(() => {
+    if (showPaymentForm && payoutFormRef.current) {
+      setTimeout(() => {
+        payoutFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } else if (!showPaymentForm && ledgerTopRef.current && isLedgerOpen) {
+      ledgerTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showPaymentForm]);
 
   // Helper: get YYYY-MM-DD in LOCAL timezone (not UTC)
   const toLocalDateStr = (date) => {
@@ -1059,6 +1072,7 @@ const Doctors = () => {
 
             {/* Modal Body - High Fidelity */}
             <div className="flex-grow overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8 space-y-8 bg-[#FBFBFE]">
+               <div ref={ledgerTopRef} className="scroll-mt-10" />
                
                {/* Controls & Statistics Grid */}
                <div className="space-y-6">
@@ -1086,14 +1100,14 @@ const Doctors = () => {
                      </div>
 
                      {/* Action Button: Payout */}
-                     <button 
-                        onClick={() => setShowPaymentForm(!showPaymentForm)}
-                        className={`flex items-center justify-center w-full lg:w-auto px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${
-                        showPaymentForm ? 'bg-rose-50 text-rose-600 border border-rose-100 shadow-rose-500/10' : 'bg-brand-dark text-white border border-white/10 shadow-brand-dark/20 hover:bg-brand-secondary'
-                        }`}
-                     >
-                        {showPaymentForm ? 'Cancel Payment' : 'Record New Payout'}
-                     </button>
+                     {!showPaymentForm && (
+                        <button 
+                           onClick={() => setShowPaymentForm(true)}
+                           className="flex items-center justify-center w-full lg:w-auto px-8 py-3.5 bg-brand-dark text-white border border-white/10 shadow-2xl shadow-brand-dark/20 hover:bg-brand-secondary rounded-xl font-black text-[11px] uppercase tracking-[0.2em] transition-all active:scale-95"
+                        >
+                           Record New Payout
+                        </button>
+                     )}
                   </div>
 
                   {/* High-Fidelity Stats Grid */}
@@ -1201,25 +1215,37 @@ const Doctors = () => {
 
                {/* New Payout Form - Refined Block */}
                {showPaymentForm && (
-                  <div className="p-6 md:p-8 bg-white rounded-3xl border border-slate-100 shadow-xl animate-in slide-in-from-top-6 duration-500 relative overflow-hidden">
+                  <div ref={payoutFormRef} className="p-6 md:p-8 bg-white rounded-3xl border border-slate-100 shadow-xl animate-in slide-in-from-top-6 duration-500 relative overflow-hidden scroll-mt-6">
                      <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-[60px] -mr-24 -mt-24"></div>
                      <div className="relative z-10 space-y-6">
-                        <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner">
-                                 <Plus className="w-5 h-5" />
-                              </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                           <div className="flex items-center gap-3 sm:gap-4">
+                              <button 
+                                 onClick={() => setShowPaymentForm(false)}
+                                 className="w-10 h-10 bg-slate-50 text-slate-300 rounded-xl flex items-center justify-center shadow-inner hover:bg-rose-50 hover:text-rose-600 transition-colors group shrink-0"
+                                 title="Cancel Entry"
+                              >
+                                 <X className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                              </button>
                               <div>
                                  <h4 className="text-sm font-black text-brand-dark uppercase tracking-widest">Record New Payout</h4>
                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-0.5">Select bills below, then confirm payment</p>
                               </div>
                            </div>
-                           {selectedBillIds.size > 0 && (
-                              <div className="text-right">
-                                 <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">{selectedBillIds.size} Bill(s) Selected</p>
-                                 <p className="text-lg font-black text-brand-dark tabular-nums">₹{ledgerData.referrals.filter(b => selectedBillIds.has(b.id)).reduce((s, b) => s + calculateCommission(b, selectedDoc), 0).toFixed(0)}</p>
-                              </div>
-                           )}
+                           <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
+                              {selectedBillIds.size > 0 && (
+                                 <div className="text-right">
+                                    <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">{selectedBillIds.size} Bill(s) Selected</p>
+                                    <p className="text-base sm:text-lg font-black text-brand-dark tabular-nums">₹{ledgerData.referrals.filter(b => selectedBillIds.has(b.id)).reduce((s, b) => s + calculateCommission(b, selectedDoc), 0).toFixed(0)}</p>
+                                 </div>
+                              )}
+                              <button 
+                                 onClick={() => setShowPaymentForm(false)} 
+                                 className="px-4 sm:px-6 py-2 sm:py-2.5 bg-rose-50 text-rose-600 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-xl shadow-rose-500/10 active:scale-95 whitespace-nowrap"
+                              >
+                                 Cancel Payment
+                              </button>
+                           </div>
                         </div>
                         <form onSubmit={handleRecordPayment} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                            <div className="space-y-2">
@@ -1234,9 +1260,9 @@ const Doctors = () => {
                            </div>
                            <div className="md:col-span-2 space-y-2">
                               <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Reference Note</label>
-                              <div className="flex gap-3">
+                              <div className="flex flex-col sm:flex-row gap-3">
                                  <input type="text" className="flex-grow px-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary rounded-xl font-bold outline-none transition-all shadow-inner text-sm" placeholder="Optional notes..." value={newPayment.notes} onChange={e => setNewPayment({...newPayment, notes: e.target.value})} />
-                                 <button type="submit" disabled={selectedBillIds.size === 0} className="px-6 py-3 bg-brand-dark text-brand-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">Save Payout</button>
+                                 <button type="submit" disabled={selectedBillIds.size === 0} className="w-full sm:w-auto px-6 py-3 bg-brand-dark text-brand-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">Save Payout</button>
                               </div>
                            </div>
                         </form>
