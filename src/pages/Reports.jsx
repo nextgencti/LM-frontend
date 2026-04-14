@@ -257,13 +257,28 @@ const Reports = () => {
     }
   };
 
+  const generateToken = () => {
+    try {
+      return window.crypto.randomUUID().replace(/-/g, '') + Date.now().toString(16);
+    } catch(e) {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2) + Math.random().toString(36).substr(2);
+    }
+  };
+
   const handleFinalizeReport = async (reportId, group = null) => {
     try {
-      await updateDoc(doc(db, 'reports', reportId), {
+      const test = group?.tests?.find(t => t.id === reportId);
+      const updatePayload = {
         status: 'Final',
         reported_at: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      if (!test?.viewToken) {
+        updatePayload.viewToken = generateToken();
+      }
+
+      await updateDoc(doc(db, 'reports', reportId), updatePayload);
       toast.success('Report finalized!');
 
       if (group) {
