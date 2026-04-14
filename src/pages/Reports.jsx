@@ -8,7 +8,7 @@ import ReportPreview from '../components/ReportPreview';
 import { toast } from 'react-toastify';
 
 const Reports = () => {
-  const { currentUser, userData, activeLabId, subscription } = useAuth();
+  const { currentUser, userData, activeLabId, subscription, checkFeature } = useAuth();
   const navigate = useNavigate();
 
   const [reports, setReports] = useState([]);
@@ -279,9 +279,7 @@ const Reports = () => {
           
           if (labDoc.exists()) {
             const lData = labDoc.data();
-            const plan = subscription?.plan?.toLowerCase() || 'basic';
-
-            if (lData.reportSettings?.autoEmailNotify && plan === 'pro') {
+            if (lData.reportSettings?.autoEmailNotify && checkFeature('Email Support')) {
               console.log("Triggering Automatic Notification...");
               const token = await currentUser.getIdToken();
               const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';

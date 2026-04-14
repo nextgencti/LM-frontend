@@ -6,8 +6,8 @@ import { Loader, Printer, X, Download, ShieldCheck, Mail, Phone, MapPin, Buildin
 import QRCode from "react-qr-code";
 import { toast } from 'react-toastify';
 
-const ReportPreview = ({ report, onClose }) => {
-  const { currentUser, subscription } = useAuth();
+const ReportPreview = ({ report, onClose, isPublicView = false, publicData = null }) => {
+  const { subscription, userData, currentUser, checkFeature } = useAuth();
   const [loading, setLoading] = useState(true);
   const [emailSending, setEmailSending] = useState(false);
   const [reportData, setReportData] = useState(report); // Local copy for latest data
@@ -15,14 +15,14 @@ const ReportPreview = ({ report, onClose }) => {
   const [patientData, setPatientData] = useState(null);
   const [doctorData, setDoctorData] = useState(null);
   
-  // Standardized QR Data for Verification
-  const qrData = JSON.stringify({ 
-    id: report.bookingId || report.id, 
-    patient: report.patientName, 
-    test: report.testName,
-    date: report.createdAt ? (report.createdAt.seconds ? new Date(report.createdAt.seconds * 1000).toLocaleDateString() : new Date(report.createdAt).toLocaleDateString()) : 'N/A',
-    status: 'Verified' 
-  });
+  // Standardized QR Data for Verification & Direct Access
+  const qrUrl = reportData.viewToken 
+    ? `${window.location.origin}/v/${reportData.viewToken}`
+    : JSON.stringify({ 
+        id: report.bookingId || report.id, 
+        patient: report.patientName, 
+        status: 'Verified' 
+      });
   
   const QRCodeComponent = (QRCode && QRCode.default) ? QRCode.default : QRCode;
   
@@ -40,7 +40,11 @@ const ReportPreview = ({ report, onClose }) => {
 
   const formatDate = (val, includeTime = false) => {
     if (!val) return 'N/A';
-    let date = val.seconds ? new Date(val.seconds * 1000) : new Date(val);
+    let date;
+    if (val.seconds) date = new Date(val.seconds * 1000);
+    else if (val._seconds) date = new Date(val._seconds * 1000);
+    else date = new Date(val);
+    
     if (isNaN(date.getTime())) return 'N/A';
     const d = String(date.getDate()).padStart(2, '0'), m = String(date.getMonth() + 1).padStart(2, '0'), y = date.getFullYear();
     let str = `${d}/${m}/${y}`;
@@ -89,6 +93,15 @@ const ReportPreview = ({ report, onClose }) => {
   };
 
   const fetchReportContext = async () => {
+    if (isPublicView && publicData) {
+      setReportData(publicData.reportData);
+      setLabProfile(publicData.labProfile || null);
+      setPatientData(publicData.patientData || null);
+      setDoctorData(publicData.doctorData || null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     let profileToUse = { 
       labName: 'Diagnostic Laboratory',
@@ -212,10 +225,8 @@ const ReportPreview = ({ report, onClose }) => {
   };
 
   const handleEmailReport = async () => {
-    // 1. Plan Check
-    const plan = subscription?.plan?.toLowerCase() || 'basic';
-    if (plan === 'basic') {
-      toast.info('🚀 Full PDF Email is a Pro feature. Please upgrade to enable this.', { position: "top-center" });
+    if (!checkFeature('Email Support')) {
+      toast.info('🚀 Email Support is not available in your current plan. Please upgrade to enable this.', { position: "top-center" });
       return;
     }
 
@@ -372,18 +383,20 @@ const ReportPreview = ({ report, onClose }) => {
       <div className="bg-white/10 border-b border-white/10 px-3 sm:px-6 py-4 flex justify-between items-center shrink-0 print:hidden top-0 sticky z-[310] gap-2 sm:gap-4 overflow-visible">
         <div className="text-white font-black tracking-widest text-sm uppercase whitespace-nowrap overflow-hidden max-w-[40%]">Previewing: {report.patientName}</div>
         <div className="flex gap-3">
-          <button 
-            onClick={handleEmailReport} 
-            disabled={emailSending}
-            className={`flex items-center px-6 py-2 rounded-xl font-bold transition shadow-lg shrink-0 ${emailSending ? 'bg-slate-100 text-slate-400' : 'bg-brand-dark text-white hover:scale-105 active:scale-95'}`}
-          >
-            {emailSending ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
-            Email Report
-          </button>
+          {!isPublicView && (
+            <button 
+              onClick={handleEmailReport} 
+              disabled={emailSending}
+              className={`flex items-center px-6 py-2 rounded-xl font-bold transition shadow-lg shrink-0 ${emailSending ? 'bg-slate-100 text-slate-400' : 'bg-brand-dark text-white hover:scale-105 active:scale-95'}`}
+            >
+              {emailSending ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
+              Email Report
+            </button>
+          )}
           <button onClick={handlePrint} className="flex items-center px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg shrink-0 hover:scale-105 active:scale-95">
             <Printer className="w-4 h-4 mr-2" /> Print Report
           </button>
-          <button onClick={onClose} className="p-2 bg-white/10 hover:bg-rose-500 text-white rounded-xl transition shrink-0"><X className="w-5 h-5" /></button>
+          {onClose && <button onClick={onClose} className="p-2 bg-white/10 hover:bg-rose-500 text-white rounded-xl transition shrink-0"><X className="w-5 h-5" /></button>}
         </div>
       </div>
 
@@ -495,7 +508,7 @@ const ReportPreview = ({ report, onClose }) => {
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase">: {reportData.status || 'Final'}</div>
                 </div>
                 <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex flex-col items-center !bg-white md:pl-4 md:border-l border-gray-200">
-                  <QRCodeComponent value={qrData} size={50} className="sm:w-[70px] sm:h-[70px]" />
+                  <QRCodeComponent value={qrUrl} size={50} className="sm:w-[70px] sm:h-[70px]" />
                   <p className="text-[7px] sm:text-[8px] text-gray-400 text-center mt-1 font-medium tracking-widest uppercase whitespace-nowrap">Scan to Verify</p>
                 </div>
               </div>
@@ -517,7 +530,7 @@ const ReportPreview = ({ report, onClose }) => {
                 }, {});
 
                 return (
-                  <div className="flex flex-col gap-14 w-full !bg-white">
+                  <div className="flex flex-col gap-8 w-full !bg-white">
                     {Object.entries(nested).map(([testTit, grpData], tIdx) => {
                       const firstGrp = Object.values(grpData)[0] || [];
                       const firstP = firstGrp[0] || {};
@@ -526,19 +539,19 @@ const ReportPreview = ({ report, onClose }) => {
 
                       return (
                         <div key={tIdx} className="w-full !bg-white">
-                          <div className="bg-emerald-50 border-l-4 border-emerald-600 px-4 py-2 mb-6 flex items-baseline gap-3">
+                          <div className="bg-emerald-50 border-l-4 border-emerald-600 px-4 py-2 mb-4 flex items-baseline gap-3">
                              <h2 className="text-[14px] font-bold uppercase text-emerald-900 tracking-tighter shrink-0">Test: {testTit}</h2>
                              <span className="text-[11px] font-bold text-blue-900/70 border-l border-gray-300 pl-3">Category: {catName}</span>
                              <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest bg-white/60 px-2 py-0.5 rounded ml-auto">Sample: {samType}</span>
                           </div>
-                          <div className="flex flex-col gap-2 w-full px-2">
+                          <div className="flex flex-col gap-0 w-full px-2">
                            {Object.entries(grpData).map(([grpN, params], gIdx) => {
                               const isWid = testTit.toUpperCase().includes('WIDAL') || grpN.toUpperCase().includes('WIDAL');
                               const isGridTy = params[0]?.dataType === 'Grid' || params[0]?.dataType === 'Titer' || reportData?.reportLayout === 'Tabular table' || isWid;
                               return (
-                                <div key={gIdx} className="mb-2 w-full !bg-white">
+                                <div key={gIdx} className="mb-0 w-full !bg-white">
                                    {grpN !== 'General' && (
-                                      <div className="flex items-center gap-3 mt-4 mb-2">
+                                      <div className="flex items-center gap-3 mt-1.5 mb-0.5">
                                          <h4 className="text-[12px] font-black uppercase text-blue-900 bg-slate-100/50 px-4 py-1.5 rounded-lg border-l-4 border-blue-600 tracking-widest !bg-white whitespace-nowrap">
                                             {grpN}
                                          </h4>
@@ -641,7 +654,7 @@ const ReportPreview = ({ report, onClose }) => {
                 </div>
               )}
               <div className="flex justify-between items-end !bg-white pt-4">
-                 <div className="opacity-70 grayscale hover:grayscale-0 transition-all"><QRCodeComponent value={qrData} size={65} /></div>
+                 <div className="opacity-70 grayscale hover:grayscale-0 transition-all"><QRCodeComponent value={qrUrl} size={65} /></div>
                  <div className="text-right flex flex-col items-end">
                     <div className="w-64 h-[1.5px] bg-gray-800 mb-2"></div>
                     <p className="text-[13px] font-black text-gray-900 uppercase tracking-tighter">Authorized Signatory</p>

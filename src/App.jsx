@@ -19,6 +19,7 @@ import BusinessAnalytics from './pages/BusinessAnalytics';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import AboutUs from './pages/AboutUs';
+import PublicReportView from './pages/PublicReportView';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { Activity, Users, FileText, Calendar, LogOut, Stethoscope, IndianRupee, Shield, BookOpen, Settings as SettingsIcon, Globe, CreditCard, BarChart3, Menu, X } from 'lucide-react';
@@ -454,6 +455,9 @@ function App() {
           </ProtectedRoute>
         } 
       />
+
+      {/* Public Secure Report View */}
+      <Route path="/v/:token" element={<PublicReportView />} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

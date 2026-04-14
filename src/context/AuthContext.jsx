@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -12,6 +12,8 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
+  const [labFullName, setLabFullName] = useState('');
+  const [allPlans, setAllPlans] = useState([]);
   const [selectedLabId, setSelectedLabId] = useState(localStorage.getItem('selectedLabId') || null);
 
   const setActiveLabId = (id) => {
@@ -22,6 +24,15 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('selectedLabId');
     }
   };
+
+  useEffect(() => {
+    const unsubPlans = onSnapshot(collection(db, 'plans'), (snapshot) => {
+      const plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllPlans(plans);
+    });
+
+    return () => unsubPlans();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -46,10 +57,16 @@ export const AuthProvider = ({ children }) => {
 
             // Determine which lab context to load
             const currentLabId = labId || data.labId || selectedLabId;
-            console.log("Loading subscription for labId (via Backend):", currentLabId);
+            console.log("Loading metadata for labId:", currentLabId);
             
             if (currentLabId) {
               try {
+                // Fetch Lab Name globally to avoid UI flicker
+                const labSnap = await getDoc(doc(db, 'labs', currentLabId));
+                if (labSnap.exists()) {
+                  setLabFullName(labSnap.data().labName);
+                }
+
                 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
                 const token = await user.getIdToken();
                 
@@ -92,10 +109,30 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, [selectedLabId]);
 
+  const checkFeature = (featureName) => {
+    if (!subscription) return false;
+    const planId = subscription.plan || 'basic';
+    
+    // Always use the master plan record for real-time feature gating
+    const masterPlan = allPlans.find(p => p.id === planId.toLowerCase());
+    if (!masterPlan) {
+      // Fallback to subscription snapshot if master plan not loaded yet
+      if (!subscription.features) return false;
+      const feat = subscription.features.find(f => f.text === featureName);
+      return feat ? feat.available : false;
+    }
+
+    const feat = masterPlan.features.find(f => f.text === featureName);
+    return feat ? feat.available : false;
+  };
+
   const value = {
     currentUser,
     userData,
     subscription,
+    allPlans,
+    labFullName,
+    checkFeature,
     loading,
     activeLabId: userData?.labId || selectedLabId,
     setActiveLabId

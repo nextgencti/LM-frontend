@@ -31,12 +31,8 @@ const Home = () => {
     }, []);
 
     const formatPrice = (priceStr) => {
-        if (!priceStr) return { monthly: '0', yearly: '0' };
-        const numeric = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
-        return {
-            monthly: Math.floor(numeric / 12).toLocaleString(),
-            yearly: numeric.toLocaleString()
-        };
+        if (!priceStr) return '0';
+        return priceStr; // Already formatted as string in DB
     };
 
     useEffect(() => {
@@ -329,8 +325,7 @@ const Home = () => {
                                         <h5 className="text-3xl font-black text-brand-dark mb-2 tracking-tight">{plans.basic.name} Plan</h5>
                                         <p className="text-slate-500 font-bold text-sm mb-8">{plans.basic.description}</p>
                                         <div className="flex flex-col mb-10 p-6 bg-slate-50 rounded-3xl border border-slate-100 shadow-inner">
-                                            <div className="text-5xl font-black text-brand-dark">₹{formatPrice(plans.basic.price).monthly}<span className="text-lg text-slate-400 font-bold uppercase tracking-widest ml-1">/mo</span></div>
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-2 ml-1">Billed {plans.basic.price} Yearly</span>
+                                            <div className="text-5xl font-black text-brand-dark">{formatPrice(plans.basic.price)}<span className="text-lg text-slate-400 font-bold uppercase tracking-widest ml-1">/mo</span></div>
                                         </div>
                                         
                                         <div className="space-y-5 mb-12 flex-grow">
@@ -359,8 +354,7 @@ const Home = () => {
                                         <p className="text-slate-400 font-bold text-sm mb-8">{plans.pro.description}</p>
                                         
                                         <div className="flex flex-col mb-10 p-6 bg-white/5 rounded-3xl border border-white/5 shadow-inner backdrop-blur-sm">
-                                            <div className="text-5xl font-black text-brand-primary">₹{formatPrice(plans.pro.price).monthly}<span className="text-lg text-brand-light font-bold uppercase tracking-widest ml-1">/mo</span></div>
-                                            <span className="text-[10px] font-black text-brand-light/60 uppercase tracking-[0.2em] mt-2 ml-1">Billed {plans.pro.price} Yearly</span>
+                                            <div className="text-5xl font-black text-brand-primary">{formatPrice(plans.pro.price)}<span className="text-lg text-brand-light font-bold uppercase tracking-widest ml-1">/mo</span></div>
                                         </div>
                                         
                                         <div className="space-y-5 mb-12 flex-grow">

@@ -118,18 +118,32 @@ const ResultEntry = () => {
     return { status: 'Normal', color: 'text-green-600 bg-green-50 border-green-200' };
   };
 
+  const generateToken = () => {
+    try {
+      return window.crypto.randomUUID().replace(/-/g, '') + Date.now().toString(16);
+    } catch(e) {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2) + Math.random().toString(36).substr(2);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'reports', bookingId), {
+      const updatePayload = {
         results: results,
-        status: 'Results Ready',
+        status: 'Final',
         updatedAt: serverTimestamp()
-      });
+      };
+      
+      if (report && !report.viewToken) {
+        updatePayload.viewToken = generateToken();
+      }
+
+      await updateDoc(doc(db, 'reports', bookingId), updatePayload);
       
       // Also update booking status
       await updateDoc(doc(db, 'bookings', bookingId), {
-        status: 'Results Ready'
+        status: 'Final'
       });
 
       alert("Results saved successfully!");
@@ -146,13 +160,20 @@ const ResultEntry = () => {
     setNotifying(true);
     try {
       // 1. Save Results
-      await updateDoc(doc(db, 'reports', bookingId), {
+      const updatePayload = {
         results: results,
-        status: 'Results Ready',
+        status: 'Final',
         updatedAt: serverTimestamp()
-      });
+      };
+      
+      if (report && !report.viewToken) {
+        updatePayload.viewToken = generateToken();
+      }
+
+      await updateDoc(doc(db, 'reports', bookingId), updatePayload);
+      
       await updateDoc(doc(db, 'bookings', bookingId), {
-        status: 'Results Ready'
+        status: 'Final'
       });
 
       // 2. Fetch Lab Details (if needed) for the email or fallback to userData

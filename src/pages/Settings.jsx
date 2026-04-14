@@ -34,7 +34,7 @@ import {
 import { toast } from 'react-toastify';
 
 const Settings = () => {
-  const { userData, activeLabId } = useAuth();
+  const { userData, activeLabId, checkFeature, allPlans } = useAuth();
   const targetLabId = activeLabId || userData?.labId;
   
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,6 @@ const Settings = () => {
 
   // Subscription States
   const [subData, setSubData] = useState(null);
-  const [allPlans, setAllPlans] = useState([]);
   const [subLoading, setSubLoading] = useState(true);
   const [sendingReport, setSendingReport] = useState(false);
 
@@ -78,11 +77,6 @@ const Settings = () => {
       if (subSnap.exists()) {
         setSubData(subSnap.data());
       }
-
-      // 2. Fetch all plans for comparison
-      const plansSnap = await getDocs(collection(db, 'plans'));
-      const pList = plansSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order || 0) - (b.order || 0));
-      setAllPlans(pList);
     } catch (error) {
       console.error("Error fetching sub info:", error);
     } finally {
@@ -742,13 +736,19 @@ const Settings = () => {
                       </div>
                       <div className="flex-1">
                          <div className="flex justify-between items-center mb-1">
-                            <p className="text-sm font-black text-brand-dark uppercase tracking-widest">Auto Email Notify</p>
+                            <div className="flex items-center gap-2">
+                               <p className="text-sm font-black text-brand-dark uppercase tracking-widest">Auto Email Notify</p>
+                               {!checkFeature('Email Support') && (
+                                 <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-2 py-0.5 rounded-full border border-amber-200 uppercase tracking-widest">Upgrade Req.</span>
+                               )}
+                            </div>
                             <button 
+                               disabled={!checkFeature('Email Support')}
                                onClick={() => setLabData({
                                   ...labData,
                                   reportSettings: { ...labData.reportSettings, autoEmailNotify: !labData.reportSettings.autoEmailNotify }
                                })}
-                               className={`w-12 h-6 rounded-full relative transition-all duration-300 ${labData?.reportSettings?.autoEmailNotify ? 'bg-brand-primary' : 'bg-slate-200'}`}
+                               className={`w-12 h-6 rounded-full relative transition-all duration-300 ${!checkFeature('Email Support') ? 'bg-slate-100 cursor-not-allowed' : labData?.reportSettings?.autoEmailNotify ? 'bg-brand-primary' : 'bg-slate-200'}`}
                             >
                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${labData?.reportSettings?.autoEmailNotify ? 'left-7' : 'left-1'}`}></div>
                             </button>

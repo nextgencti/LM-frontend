@@ -29,8 +29,8 @@ const PlansTab = () => {
           {
             id: 'basic',
             name: 'Basic',
-            price: '₹5,000',
-            period: '/ year',
+            price: '₹499',
+            period: '/ month',
             description: 'Perfect for small diagnostic collection centers.',
             color: 'from-slate-700 to-slate-900',
             iconName: 'Shield',
@@ -45,6 +45,7 @@ const PlansTab = () => {
               { text: 'Multi-Staff Accounts', available: false },
               { text: 'Business Analytics', available: false },
               { text: 'Priority WhatsApp Support (Upcoming)', available: false },
+              { text: 'Doctor Ledger Management', available: false },
             ],
             cta: 'Plan Details',
             popular: false,
@@ -54,8 +55,8 @@ const PlansTab = () => {
           {
             id: 'pro',
             name: 'Pro',
-            price: '₹12,000',
-            period: '/ year',
+            price: '₹999',
+            period: '/ month',
             description: 'Advanced features for full-scale pathology laboratories.',
             color: 'from-brand-dark to-brand-secondary',
             iconName: 'Crown',
@@ -70,6 +71,7 @@ const PlansTab = () => {
               { text: 'Patient Portal Access (Live)', available: true },
               { text: 'WhatsApp & Call Support (Upcoming)', available: false },
               { text: 'Customized Letterheads', available: true },
+              { text: 'Doctor Ledger Management', available: true },
             ],
             cta: 'Recently Launched',
             popular: true,
@@ -105,7 +107,16 @@ const PlansTab = () => {
 
   const handleEdit = (plan) => {
     setIsEditing(plan.id);
-    setEditData({ ...plan });
+    
+    // Ensure "Doctor Ledger Management" exists in the features list for editing
+    const features = plan.features || [];
+    const hasLedger = features.find(f => f.text === 'Doctor Ledger Management');
+    
+    if (!hasLedger) {
+      features.push({ text: 'Doctor Ledger Management', available: false });
+    }
+    
+    setEditData({ ...plan, features: [...features] });
   };
 
   const handleSave = async () => {
@@ -115,6 +126,7 @@ const PlansTab = () => {
       const planRef = doc(db, 'plans', editData.id);
       await updateDoc(planRef, {
         price: editData.price,
+        period: '/ month', // Enforce monthly
         description: editData.description,
         features: editData.features,
         popular: editData.popular,
@@ -141,6 +153,13 @@ const PlansTab = () => {
     const updatedFeatures = [...editData.features];
     updatedFeatures[index].text = text;
     setEditData({ ...editData, features: updatedFeatures });
+  };
+
+  const addFeature = () => {
+    setEditData({
+      ...editData,
+      features: [...editData.features, { text: 'New Feature', available: true }]
+    });
   };
 
   if (loading) {
@@ -312,14 +331,22 @@ const PlansTab = () => {
               <div className="space-y-6">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Plan Features (Active Toggles)</label>
-                  <div className="flex items-center gap-3">
-                    <input 
-                       type="checkbox" 
-                       checked={editData.popular}
-                       onChange={(e) => setEditData({ ...editData, popular: e.target.checked })}
-                       className="w-5 h-5 accent-brand-primary"
-                    />
-                    <span className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Mark as Popular</span>
+                  <div className="flex items-center gap-6">
+                    <button 
+                      onClick={addFeature}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-brand-primary/10 text-brand-primary rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-all border border-brand-primary/20"
+                    >
+                      <Plus className="w-3 h-3" /> Add Feature
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <input 
+                         type="checkbox" 
+                         checked={editData.popular}
+                         onChange={(e) => setEditData({ ...editData, popular: e.target.checked })}
+                         className="w-5 h-5 accent-brand-primary"
+                      />
+                      <span className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Mark as Popular</span>
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-4">

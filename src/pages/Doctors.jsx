@@ -6,7 +6,7 @@ import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Pr
 import { toast } from 'react-toastify';
 
 const Doctors = () => {
-  const { userData, activeLabId, currentUser, subscription } = useAuth();
+  const { userData, activeLabId, currentUser, subscription, checkFeature } = useAuth();
   const isSuperAdmin = userData?.role === 'SuperAdmin';
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +124,10 @@ const Doctors = () => {
   };
 
   const fetchLedgerData = async (doctor) => {
+    if (!checkFeature('Doctor Ledger Management')) {
+      toast.info('🚀 Doctor Ledger is a premium feature. Please upgrade your plan to enable this.', { position: "top-center" });
+      return;
+    }
     setSelectedDoc(doctor);
     setIsLedgerOpen(true);
     setIsLedgerLoading(true);
@@ -341,6 +345,10 @@ const Doctors = () => {
   };
 
   const handleEmailLedger = async () => {
+    if (!checkFeature('Email Support')) {
+      toast.info('🚀 Email Ledger is a premium feature. Please upgrade your plan to enable this.', { position: "top-center" });
+      return;
+    }
     let targetEmail = selectedDoc?.email;
     
     if (!targetEmail) {
@@ -586,8 +594,13 @@ const Doctors = () => {
                       <div className="flex justify-end space-x-2">
                         <button
                           onClick={() => fetchLedgerData(doc)}
-                          className="px-4 py-2 bg-brand-light text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest border border-brand-primary/10 hover:bg-brand-primary hover:text-white transition-all shadow-sm active:scale-95"
+                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all shadow-sm active:scale-95 flex items-center gap-2 ${
+                            checkFeature('Doctor Ledger Management') 
+                            ? 'bg-brand-light text-brand-dark border-brand-primary/10 hover:bg-brand-primary hover:text-white' 
+                            : 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-70'
+                          }`}
                         >
+                          {!checkFeature('Doctor Ledger Management') && <Activity className="w-3 h-3 text-brand-primary animate-pulse" />}
                           View Ledger
                         </button>
                         {doc.phone && (

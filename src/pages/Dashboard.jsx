@@ -9,7 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { userData, subscription, activeLabId } = useAuth();
+  const { userData, subscription, activeLabId, labFullName } = useAuth();
   const navigate = useNavigate();
   const isSuperAdmin = userData?.role === 'SuperAdmin';
   const [stats, setStats] = useState({
@@ -138,13 +138,34 @@ const Dashboard = () => {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
           <div className="md:max-w-xl">
-            <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter">
-              {isSuperAdmin ? 'Admin Overview' : 'Lab Overview'}
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tighter flex items-center flex-wrap gap-x-3 gap-y-2">
+              {isSuperAdmin ? (
+                <span className="text-brand-dark">Admin <span className="text-brand-primary">Overview</span></span>
+              ) : (() => {
+                const nameToUse = labFullName || subscription?.labFullName || subscription?.labName || 'Lab';
+                const words = nameToUse.split(' ');
+                const first = words[0];
+                const rest = words.slice(1).join(' ');
+                return (
+                  <>
+                    <span className="text-brand-dark">{first}</span>
+                    {rest && <span className="text-brand-primary ml-2">{rest}</span>}
+                    <span className="text-slate-300 font-medium scale-110 hidden sm:inline mx-2">|</span>
+                    <span className="text-brand-primary italic opacity-80 sm:text-[0.9em]">Overview</span>
+                  </>
+                );
+              })()}
             </h1>
             <p className="text-slate-500 mt-3 text-sm sm:text-base font-medium leading-relaxed">
               {isSuperAdmin 
                 ? 'Comprehensive overview of your diagnostic network performance and synchronized lab activities.' 
-                : <span className="flex flex-wrap items-center gap-y-2">Manage your lab <span className="mx-2 px-3 py-1 bg-brand-light text-brand-dark rounded-xl border border-brand-primary/20 font-black tracking-tight uppercase text-[10px] shadow-sm">{userData?.labId}</span> from here.</span>}
+                : <span className="flex flex-wrap items-center gap-y-1">
+                    Manage your clinical operations for 
+                    <span className="mx-2 px-3 py-1 bg-brand-light text-brand-dark rounded-xl border border-brand-primary/20 font-black tracking-tight uppercase text-[10px] shadow-sm">
+                      {activeLabId}
+                    </span> 
+                    from here.
+                  </span>}
             </p>
           </div>
           

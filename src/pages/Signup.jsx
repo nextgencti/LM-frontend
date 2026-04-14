@@ -62,12 +62,8 @@ const Signup = () => {
     }, []);
 
     const formatPrice = (priceStr) => {
-        if (!priceStr) return { monthly: '0', yearly: '0' };
-        const numeric = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
-        return {
-            monthly: Math.floor(numeric / 12).toLocaleString(),
-            yearly: numeric.toLocaleString()
-        };
+        if (!priceStr) return '0';
+        return priceStr; // Already formatted in DB
     };
 
     // Real-time validation
@@ -421,9 +417,8 @@ const Signup = () => {
                                                     </div>
                                                     <h3 className="text-xl font-black text-brand-dark uppercase tracking-tight mb-2">{plans.basic.name}</h3>
                                                     <div className="mb-6">
-                                                        <span className="text-3xl font-black text-brand-dark">₹{formatPrice(plans.basic.price).monthly}</span>
+                                                        <span className="text-3xl font-black text-brand-dark">{formatPrice(plans.basic.price)}</span>
                                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">/mo</span>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Billed {plans.basic.price} Year</p>
                                                     </div>
                                                     <ul className="space-y-3 mb-8 flex-grow">
                                                         {plans.basic.features.filter(f => f.available).slice(0, 3).map((f, i) => (
@@ -455,9 +450,8 @@ const Signup = () => {
                                                     </div>
                                                     <h3 className={`text-xl font-black uppercase tracking-tight mb-2 ${formData.plan === 'pro' ? 'text-white' : 'text-brand-dark'}`}>{plans.pro.name}</h3>
                                                     <div className="mb-6">
-                                                        <span className={`text-3xl font-black ${formData.plan === 'pro' ? 'text-brand-primary' : 'text-brand-dark'}`}>₹{formatPrice(plans.pro.price).monthly}</span>
+                                                        <span className={`text-3xl font-black ${formData.plan === 'pro' ? 'text-brand-primary' : 'text-brand-dark'}`}>{formatPrice(plans.pro.price)}</span>
                                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">/mo</span>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Billed {plans.pro.price} Year</p>
                                                     </div>
                                                     <ul className="space-y-3 mb-8 flex-grow">
                                                         {plans.pro.features.filter(f => f.available).slice(0, 3).map((f, i) => (
