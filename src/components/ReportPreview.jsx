@@ -173,11 +173,12 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
       }
       setLabProfile(profileToUse);
 
-      const pId = reportData.patientId || (reportData.labId && reportData.patient_id ? `${reportData.labId}_${reportData.patient_id}` : null);
+      // Use the 'report' prop directly to avoid stale state issues in the first pass
+      const pId = report.patientId || (report.labId && report.patient_id ? String(report.labId) + '_' + String(report.patient_id) : report.patient_id);
       if (pId) {
         try {
-          const pDoc = await getDoc(doc(db, 'patients', pId));
-          if (pDoc.exists()) setPatientData(pDoc.data());
+          const pDoc = await getDoc(doc(db, 'patients', String(pId)));
+          if (pDoc.exists()) setPatientData({ id: pDoc.id, ...pDoc.data() });
         } catch (e) { console.warn("Patient fetch failed"); }
       }
       
@@ -442,6 +443,14 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
             <div className="relative z-10 flex-grow flex flex-col pb-20">
             <header className="border-b-[3px] border-emerald-900 pb-6 mb-6 px-6 pt-10 !bg-white relative">
+              {/* Lab Mitra App Branding */}
+              <div className="absolute top-2 right-6 flex items-center gap-1.5 opacity-60 print:opacity-50 select-none">
+                <span className="text-[7px] font-black uppercase tracking-[0.2em] text-gray-400">Powered By</span>
+                <div className="flex items-center gap-0.5">
+                  <img src="/favicon.png" alt="Logo" className="w-2.5 h-2.5 opacity-80" style={{ filter: 'grayscale(100%)' }} />
+                  <span className="text-[8px] font-black tracking-[0.1em] text-gray-700">LabMitra</span>
+                </div>
+              </div>
               {labProfile?.reportSettings?.useCustomHeader && labProfile?.reportSettings?.headerImage ? (
                 <div className="w-full mb-2">
                   <img 
@@ -497,14 +506,15 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                   
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Patient ID</div> 
                   <div>: {(() => {
-                        const rawId = patientData?.patientId || reportData.patientId;
+                        const rawId = patientData?.patientId || reportData?.patientId || reportData?.patient_id || report?.patientId || report?.patient_id || patientData?.id;
                         if (!rawId) return '--';
+                        // Remove labId prefix if present for clean display
                         return String(rawId).split('_').pop();
                       })()}
                   </div>
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report Date</div> <div>: {formatDate(reportData.updatedAt || reportData.createdAt, true)}</div>
                   
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report ID</div> <div className="uppercase">: {reportData.reportId || reportData.bookingId || '--'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report ID</div> <div className="uppercase">: {reportData.reportId || reportData.bookingNo || reportData.bookingId || reportData.booking_id || '--'}</div>
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase">: {reportData.status || 'Final'}</div>
                 </div>
                 <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex flex-col items-center !bg-white md:pl-4 md:border-l border-gray-200">

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Printer, Edit2, Users, IndianRupee, CreditCard, Activity } from 'lucide-react';
+import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Printer, Edit2, Users, IndianRupee, CreditCard, Activity, CheckSquare, Square, Info } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Doctors = () => {
@@ -27,10 +27,21 @@ const Doctors = () => {
   const [isEmailing, setIsEmailing] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [newPayment, setNewPayment] = useState({ amount: '', method: 'Cash', notes: '' });
+  const [selectedBillIds, setSelectedBillIds] = useState(new Set());
+  const [referralStatusFilter, setReferralStatusFilter] = useState('ALL');
+
+  // Helper: get YYYY-MM-DD in LOCAL timezone (not UTC)
+  const toLocalDateStr = (date) => {
+    const d = date instanceof Date ? date : (date?.toDate ? date.toDate() : new Date(date));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const [ledgerDateRange, setLedgerDateRange] = useState({
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+    start: toLocalDateStr(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
+    end: toLocalDateStr(new Date())
   });
 
   useEffect(() => {
@@ -155,12 +166,15 @@ const Doctors = () => {
       const snapP = await getDocs(qP);
       const payments = snapP.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      setLedgerData({
+      const data = {
         referrals: finalBookings,
         payments: payments.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0))
-      });
+      };
+      setLedgerData(data);
+      return data;
     } catch (error) {
       console.error("Error fetching ledger:", error);
+      return null;
     } finally {
       setIsLedgerLoading(false);
     }
@@ -169,25 +183,100 @@ const Doctors = () => {
   const handleRecordPayment = async (e) => {
     e.preventDefault();
     if (!selectedDoc || !newPayment.amount) return;
+    if (selectedBillIds.size === 0) {
+      toast.warn("Please select at least one bill to clear.");
+      return;
+    }
 
     try {
+      const clearedIds = Array.from(selectedBillIds);
+      const payAmount = parseFloat(newPayment.amount);
+
+      // 1. Save payout record with audit trail
       await addDoc(collection(db, 'doctorPayments'), {
         labId: activeLabId,
         doctorId: selectedDoc.id,
-        amount: parseFloat(newPayment.amount),
+        amount: payAmount,
         method: newPayment.method,
         notes: newPayment.notes,
+        clearedBookingIds: clearedIds,
         date: serverTimestamp(),
         createdAt: serverTimestamp()
       });
+
+      // 2. Batch update each selected booking: commissionCleared = true
+      const batch = writeBatch(db);
+      clearedIds.forEach(bookingId => {
+        const bookingRef = doc(db, 'bookings', bookingId);
+        batch.update(bookingRef, { commissionCleared: true });
+      });
+      await batch.commit();
+
+      toast.success(`Payout of ₹${payAmount} recorded! ${clearedIds.length} bills cleared.`);
       
+      // Reset form and selection
       setNewPayment({ amount: '', method: 'Cash', notes: '' });
+      setSelectedBillIds(new Set());
       setShowPaymentForm(false);
-      // Refresh ledger
-      fetchLedgerData(selectedDoc);
+      
+      // 3. Refresh and prompt for email dispatch
+      const freshData = await fetchLedgerData(selectedDoc);
+      
+      if (freshData) {
+        const sendEmail = window.confirm(`Payout of ₹${payAmount} recorded successfully! Would you like to send the updated ledger report to Dr. ${selectedDoc.name} via email?`);
+        if (sendEmail) {
+           handleEmailLedger(freshData);
+        }
+      }
     } catch (error) {
       console.error("Error recording payment:", error);
-      alert("Failed to record payment");
+      toast.error("Failed to record payout. Please try again.");
+    }
+  };
+
+  const handleResetPayoutHistory = async () => {
+    if (!selectedDoc) return;
+    const confirmDelete = window.confirm("Are you sure you want to delete ALL payout history for this doctor? This action cannot be undone and will reset the payout records list.");
+    if (!confirmDelete) return;
+
+    try {
+      setIsLedgerLoading(true);
+      const batch = writeBatch(db);
+      
+      // 1. Get all payment records for this doctor
+      const pRef = collection(db, 'doctorPayments');
+      const q = query(pRef, where('labId', '==', activeLabId), where('doctorId', '==', selectedDoc.id));
+      const snap = await getDocs(q);
+      
+      snap.forEach(d => {
+        batch.delete(doc(db, 'doctorPayments', d.id));
+      });
+
+      // 2. Also reset commissionCleared on ALL bookings for this doctor to start fully fresh
+      const bRef = collection(db, 'bookings');
+      const qB = query(bRef, where('labId', '==', activeLabId), where('doctorId', '==', selectedDoc.id));
+      const snapB = await getDocs(qB);
+      
+      snapB.forEach(d => {
+        if (d.data().commissionCleared) {
+          batch.update(doc(db, 'bookings', d.id), { commissionCleared: false });
+        }
+      });
+
+      await batch.commit();
+      toast.success("Payout history and clearance status has been reset successfully.");
+      
+      // Clear local states
+      setSelectedBillIds(new Set());
+      setNewPayment(p => ({ ...p, amount: '' }));
+      
+      // Refresh
+      fetchLedgerData(selectedDoc);
+    } catch (error) {
+      console.error("Error resetting history:", error);
+      toast.error("Failed to reset payout history");
+    } finally {
+      setIsLedgerLoading(false);
     }
   };
 
@@ -202,14 +291,43 @@ const Doctors = () => {
     
     const filteredReferrals = ledgerData.referrals.filter(b => {
       if (!b.createdAt) return true;
-      const d = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = toLocalDateStr(b.createdAt);
       return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
     });
 
-    const earned = filteredReferrals.reduce((s, b) => s + calculateCommission(b, selectedDoc), 0);
-    const paid = ledgerData.payments.reduce((s, p) => s + p.amount, 0);
-    const balance = earned - paid;
+    const filteredPayments = ledgerData.payments.filter(p => {
+       const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
+       const dateStr = toLocalDateStr(pDate);
+       return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
+    });
+
+    let openingEarned = 0;
+    let openingPaid = 0;
+    let periodEarned = 0;
+    let periodPaid = 0;
+
+    ledgerData.referrals.forEach(b => {
+       const comm = calculateCommission(b, selectedDoc);
+       const dStr = b.createdAt ? toLocalDateStr(b.createdAt) : null;
+       if (dStr && dStr < ledgerDateRange.start) {
+          openingEarned += comm;
+       } else if (dStr && dStr <= ledgerDateRange.end) {
+          periodEarned += comm;
+       }
+    });
+
+    ledgerData.payments.forEach(p => {
+       const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
+       const dStr = toLocalDateStr(pDate);
+       if (dStr < ledgerDateRange.start) {
+          openingPaid += p.amount;
+       } else if (dStr <= ledgerDateRange.end) {
+          periodPaid += p.amount;
+       }
+    });
+
+    const arrears = openingEarned - openingPaid;
+    const totalDue = (openingEarned + periodEarned) - (openingPaid + periodPaid);
 
     const printWindow = window.open('', '_blank');
     const html = `
@@ -262,20 +380,20 @@ const Doctors = () => {
 
           <div class="summary-grid">
             <div class="stat-card">
-              <div class="stat-label">Total Referrals</div>
-              <div class="stat-value">${filteredReferrals.length}</div>
+              <div class="stat-label">Opening Balance</div>
+              <div class="stat-value">₹${arrears.toFixed(0)}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Total Commission</div>
-              <div class="stat-value">₹${earned.toFixed(0)}</div>
+              <div class="stat-label">Period Commission</div>
+              <div class="stat-value">₹${periodEarned.toFixed(0)}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Total Paid</div>
-              <div class="stat-value">₹${paid.toFixed(0)}</div>
+              <div class="stat-label">Period Paid</div>
+              <div class="stat-value">₹${periodPaid.toFixed(0)}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Balance Due</div>
-              <div class="stat-value urgent">₹${balance.toFixed(0)}</div>
+              <div class="stat-label" style="color: #ef4444">Net Outstanding</div>
+              <div class="stat-value" style="color: #ef4444">₹${totalDue.toFixed(0)}</div>
             </div>
           </div>
 
@@ -300,8 +418,14 @@ const Doctors = () => {
                   <td class="text-right tabular-nums font-bold">₹${calculateCommission(b, selectedDoc).toFixed(1)}</td>
                 </tr>
               `).join('')}
-              ${filteredReferrals.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding: 40px; color: #94a3b8">No referrals found for this period.</td></tr>' : ''}
             </tbody>
+            <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; color: #0f172a;">
+              <tr>
+                <td colspan="3" style="padding: 12px; text-align: right; text-transform: uppercase; font-size: 10px; color: #64748b;">Total for Period</td>
+                <td style="padding: 12px; text-align: right;">₹${filteredReferrals.reduce((s, b) => s + (parseFloat(b.paidAmount) || 0), 0).toFixed(0)}</td>
+                <td style="padding: 12px; text-align: right; color: #059669;">₹${periodEarned.toFixed(0)}</td>
+              </tr>
+            </tfoot>
           </table>
 
           <h3>Payment & Payout History</h3>
@@ -315,7 +439,7 @@ const Doctors = () => {
               </tr>
             </thead>
             <tbody>
-              ${ledgerData.payments.map(p => `
+              ${filteredPayments.map(p => `
                 <tr>
                   <td class="font-bold">${formatDate(p.date)}</td>
                   <td style="text-transform: uppercase; font-weight: 700; color: #0ea5e9">${p.method}</td>
@@ -323,12 +447,41 @@ const Doctors = () => {
                   <td class="text-right tabular-nums font-bold">₹${p.amount.toFixed(0)}</td>
                 </tr>
               `).join('')}
-              ${ledgerData.payments.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding: 40px; color: #94a3b8">No payout records found.</td></tr>' : ''}
+              ${filteredPayments.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding: 40px; color: #94a3b8">No payout records found for this period.</td></tr>' : ''}
             </tbody>
           </table>
 
+          <div style="margin-top: 40px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <h4 style="margin: 0 0 15px 0; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Ledger Terms Glossary / शब्दावली</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #1e293b;">Opening Balance (Arrears):</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Unpaid balance before the start date.<br/>HI: चुनी गई तारीख से पहले का बकाया।</p>
+              </div>
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #059669;">Period Commission:</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: New earnings during these dates.<br/>HI: इन तारीखों के दौरान की कमाई।</p>
+              </div>
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #0284c7;">Period Paid:</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total payments made in this period.<br/>HI: इन तारीखों के दौरान किया गया भुगतान।</p>
+              </div>
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #b91c1c;">Net Outstanding:</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total absolute amount currently due.<br/>HI: अभी देय कुल वास्तविक राशि।</p>
+              </div>
+            </div>
+          </div>
+
           <div class="footer">
-            Generated on ${new Date().toLocaleString()} • This is a computer generated report.
+            Generated on ${(() => {
+              const now = new Date();
+              const d = now.getDate().toString().padStart(2, '0');
+              const m = (now.getMonth() + 1).toString().padStart(2, '0');
+              const y = now.getFullYear();
+              const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+              return `${d}-${m}-${y}, ${time}`;
+            })()} • This is a computer generated report.
           </div>
           
           <script>
@@ -344,11 +497,12 @@ const Doctors = () => {
     printWindow.document.close();
   };
 
-  const handleEmailLedger = async () => {
+  const handleEmailLedger = async (dataOverride = null) => {
     if (!checkFeature('Email Support')) {
       toast.info('🚀 Email Ledger is a premium feature. Please upgrade your plan to enable this.', { position: "top-center" });
       return;
     }
+    const currentData = dataOverride || ledgerData;
     let targetEmail = selectedDoc?.email;
     
     if (!targetEmail) {
@@ -360,16 +514,45 @@ const Doctors = () => {
     setIsEmailing(true);
     const toastId = toast.loading(`Preparing to send report to ${targetEmail}...`);
     try {
-      const filteredReferrals = ledgerData.referrals.filter(b => {
+      let openingEarned = 0;
+      let openingPaid = 0;
+      let periodEarned = 0;
+      let periodPaid = 0;
+
+      currentData.referrals.forEach(b => {
+         const comm = calculateCommission(b, selectedDoc);
+         const dStr = b.createdAt ? toLocalDateStr(b.createdAt) : null;
+         if (dStr && dStr < ledgerDateRange.start) {
+            openingEarned += comm;
+         } else if (dStr && dStr <= ledgerDateRange.end) {
+            periodEarned += comm;
+         }
+      });
+
+      currentData.payments.forEach(p => {
+         const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
+         const dStr = toLocalDateStr(pDate);
+         if (dStr < ledgerDateRange.start) {
+            openingPaid += p.amount;
+         } else if (dStr <= ledgerDateRange.end) {
+            periodPaid += p.amount;
+         }
+      });
+
+      const arrears = openingEarned - openingPaid;
+      const totalDue = (openingEarned + periodEarned) - (openingPaid + periodPaid);
+
+      const filteredReferrals = currentData.referrals.filter(b => {
         if (!b.createdAt) return true;
-        const d = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = toLocalDateStr(b.createdAt);
         return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
       });
 
-      const earned = filteredReferrals.reduce((s, b) => s + calculateCommission(b, selectedDoc), 0);
-      const paid = ledgerData.payments.reduce((s, p) => s + p.amount, 0);
-      const balance = earned - paid;
+      const filteredPayments = currentData.payments.filter(p => {
+        const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
+        const dateStr = toLocalDateStr(pDate);
+        return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
+      });
 
       const reportHtml = `
         <div style="font-family: Arial, sans-serif; padding: 30px; color: #1e293b; background: #f8fafc;">
@@ -388,20 +571,20 @@ const Doctors = () => {
 
             <div style="display: flex; gap: 15px; margin-bottom: 40px;">
               <div style="flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Referrals</div>
-                <div style="font-size: 18px; font-weight: 900; color: #0f172a;">${filteredReferrals.length}</div>
+                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Opening Balance</div>
+                <div style="font-size: 18px; font-weight: 900; color: #0f172a;">₹${arrears.toFixed(0)}</div>
               </div>
               <div style="flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Commission</div>
-                <div style="font-size: 18px; font-weight: 900; color: #059669;">₹${earned.toFixed(0)}</div>
+                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Earnings</div>
+                <div style="font-size: 18px; font-weight: 900; color: #059669;">₹${periodEarned.toFixed(0)}</div>
               </div>
               <div style="flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
                 <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Paid</div>
-                <div style="font-size: 18px; font-weight: 900; color: #0284c7;">₹${paid.toFixed(0)}</div>
+                <div style="font-size: 18px; font-weight: 900; color: #0284c7;">₹${periodPaid.toFixed(0)}</div>
               </div>
               <div style="flex: 1; padding: 15px; border: 1px solid #ef4444; border-radius: 12px; text-align: center; background: #fef2f2;">
-                <div style="font-size: 8px; font-weight: 800; color: #b91c1c; text-transform: uppercase;">Balance</div>
-                <div style="font-size: 18px; font-weight: 900; color: #b91c1c;">₹${balance.toFixed(0)}</div>
+                <div style="font-size: 8px; font-weight: 800; color: #b91c1c; text-transform: uppercase;">Outstanding</div>
+                <div style="font-size: 18px; font-weight: 900; color: #b91c1c;">₹${totalDue.toFixed(0)}</div>
               </div>
             </div>
 
@@ -423,9 +606,34 @@ const Doctors = () => {
                   </tr>
                 `).join('')}
               </tbody>
+              <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; color: #0f172a;">
+                 <tr>
+                    <td colspan="2" style="padding: 10px; text-align: right; font-size: 10px; color: #64748b; text-transform: uppercase;">Total for Period</td>
+                    <td style="padding: 10px; text-align: right; font-size: 11px; color: #059669;">₹${periodEarned.toFixed(0)}</td>
+                 </tr>
+              </tfoot>
             </table>
 
-            <p style="font-size: 10px; color: #94a3b8; text-align: center;">Generated via Lab Mitra Pathology System</p>
+            <div style="margin-top: 40px; padding: 15px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;">
+               <p style="margin: 0 0 10px 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase;">Ledger Glossary (शब्दावली)</p>
+               <div style="font-size: 9px; line-height: 1.4; color: #475569;">
+                  <p style="margin: 0 0 5px 0;"><b>Opening Balance:</b> EN: Unpaid before start date | HI: चुनी गई तारीख से पहले का बकाया।</p>
+                  <p style="margin: 0 0 5px 0;"><b>Earnings:</b> EN: New commission earned | HI: इन तारीखों के दौरान की कमाई।</p>
+                  <p style="margin: 0 0 5px 0;"><b>Paid:</b> EN: Payments made in this period | HI: इन तारीखों के दौरान किया गया भुगतान।</p>
+                  <p style="margin: 0 0 5px 0;"><b>Outstanding:</b> EN: Total absolute amount due | HI: अभी देय कुल वास्तविक राशि।</p>
+               </div>
+            </div>
+
+            <p style="font-size: 10px; color: #94a3b8; text-align: center; margin-top: 30px;">
+              Generated on ${(() => {
+                const now = new Date();
+                const d = now.getDate().toString().padStart(2, '0');
+                const m = (now.getMonth() + 1).toString().padStart(2, '0');
+                const y = now.getFullYear();
+                const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+                return `${d}-${m}-${y}, ${time}`;
+              })()} • Lab Mitra Pathology System
+            </p>
           </div>
         </div>
       `;
@@ -800,7 +1008,7 @@ const Doctors = () => {
           <div className="bg-white h-full w-full max-w-7xl shadow-[0_32px_128px_rgba(0,0,0,0.5)] rounded-[32px] md:rounded-[48px] flex flex-col relative overflow-hidden animate-in zoom-in-95 duration-500 border border-white/20">
             
             {/* Modal Header - Refined Premium */}
-            <div className="px-8 py-8 md:px-12 md:py-12 bg-brand-dark text-white relative overflow-hidden shrink-0">
+            <div className="px-6 py-4 md:px-8 md:py-6 bg-brand-dark text-white relative overflow-hidden shrink-0">
                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-primary/10 rounded-full blur-[120px] -mr-48 -mt-48"></div>
                <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-secondary/5 rounded-full blur-[100px] -ml-20 -mb-20"></div>
                
@@ -814,7 +1022,15 @@ const Doctors = () => {
                         <div className="flex flex-wrap items-center gap-3 mt-3">
                            <span className="text-[10px] md:text-[11px] font-black text-brand-primary uppercase tracking-[0.4em]">{selectedDoc.clinic || 'Medical Practice'}</span>
                            <span className="w-1.5 h-1.5 rounded-full bg-white/20"></span>
-                           <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.4em]">ID: {selectedDoc.doctorId}</span>
+                           {(() => {
+                              const clearedCount = ledgerData.referrals.filter(b => b.commissionCleared).length;
+                              const totalCount = ledgerData.referrals.length;
+                              return (
+                                 <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full ${clearedCount > 0 ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300' : 'bg-slate-500/20 border border-slate-500/30 text-slate-300'}`}>
+                                    ✅ {clearedCount}/{totalCount} Bills Cleared
+                                 </span>
+                              );
+                           })()}
                         </div>
                      </div>
                   </div>
@@ -842,10 +1058,10 @@ const Doctors = () => {
             </div>
 
             {/* Modal Body - High Fidelity */}
-            <div className="flex-grow overflow-y-auto custom-scrollbar p-6 sm:p-10 md:p-14 space-y-12 bg-[#FBFBFE]">
+            <div className="flex-grow overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8 space-y-8 bg-[#FBFBFE]">
                
                {/* Controls & Statistics Grid */}
-               <div className="space-y-10">
+               <div className="space-y-6">
                   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                      {/* Refined Date Toolbar */}
                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-4 bg-white p-2 rounded-[24px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full lg:w-auto overflow-hidden">
@@ -872,7 +1088,7 @@ const Doctors = () => {
                      {/* Action Button: Payout */}
                      <button 
                         onClick={() => setShowPaymentForm(!showPaymentForm)}
-                        className={`flex items-center justify-center w-full lg:w-auto px-10 py-5 rounded-[24px] font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 ${
+                        className={`flex items-center justify-center w-full lg:w-auto px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${
                         showPaymentForm ? 'bg-rose-50 text-rose-600 border border-rose-100 shadow-rose-500/10' : 'bg-brand-dark text-white border border-white/10 shadow-brand-dark/20 hover:bg-brand-secondary'
                         }`}
                      >
@@ -881,51 +1097,101 @@ const Doctors = () => {
                   </div>
 
                   {/* High-Fidelity Stats Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                      {(() => {
                         const filteredReferrals = ledgerData.referrals.filter(b => {
                            if (!b.createdAt) return true;
-                           const d = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-                           const dateStr = d.toISOString().split('T')[0];
+                           const dateStr = toLocalDateStr(b.createdAt);
                            return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
                         });
 
-                        const earned = filteredReferrals.reduce((s, b) => s + calculateCommission(b, selectedDoc), 0);
-                        const paid = ledgerData.payments.reduce((s, p) => s + p.amount, 0);
-                        const balance = earned - paid;
+                        const filteredPayments = ledgerData.payments.filter(p => {
+                           const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
+                           const dateStr = toLocalDateStr(pDate);
+                           return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
+                        });
+
+                        let openingEarned = 0;
+                        let openingPaid = 0;
+                        let periodEarned = 0;
+                        let periodPaid = 0;
+
+                        // 1. Calculate Opening Balance (Prior to selected start date)
+                        ledgerData.referrals.forEach(b => {
+                           const comm = calculateCommission(b, selectedDoc);
+                           const dStr = b.createdAt ? toLocalDateStr(b.createdAt) : null;
+                           if (dStr && dStr < ledgerDateRange.start) {
+                              openingEarned += comm;
+                           } else if (dStr && dStr <= ledgerDateRange.end) {
+                              periodEarned += comm;
+                           }
+                        });
+
+                        ledgerData.payments.forEach(p => {
+                           const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
+                           const dStr = toLocalDateStr(pDate);
+                           if (dStr < ledgerDateRange.start) {
+                              openingPaid += p.amount;
+                           } else if (dStr <= ledgerDateRange.end) {
+                              periodPaid += p.amount;
+                           }
+                        });
+
+                        const arrears = openingEarned - openingPaid;
+                        const totalDue = (openingEarned + periodEarned) - (openingPaid + periodPaid);
 
                         return [
-                           { label: 'Total Referrals', val: filteredReferrals.length, unit: 'Patients', icon: <Users className="w-5 h-5"/>, color: 'brand' },
-                           { label: 'Total Earnings', val: earned.toFixed(0), unit: 'INR', icon: <IndianRupee className="w-5 h-5"/>, color: 'emerald' },
-                           { label: 'Total Paid', val: paid.toFixed(0), unit: 'INR', icon: <CreditCard className="w-5 h-5"/>, color: 'sky' },
-                           { label: 'Balance Due', val: balance.toFixed(0), unit: 'INR', icon: <Activity className="w-5 h-5"/>, color: 'rose' }
+                           { label: 'Opening Balance', val: arrears.toFixed(0), unit: 'INR', icon: <Activity className="w-5 h-5"/>, color: arrears > 0 ? 'rose' : 'emerald', help: { en: 'Unpaid balance from before the start date.', hi: 'चुनी गई तारीख से पहले का बकाया।' } },
+                           { label: 'Period Earnings', val: periodEarned.toFixed(0), unit: 'INR', icon: <IndianRupee className="w-5 h-5"/>, color: 'emerald', help: { en: 'New commission earned during these dates.', hi: 'इन तारीखों के दौरान की कमाई।' } },
+                           { label: 'Period Payouts', val: periodPaid.toFixed(0), unit: 'INR', icon: <CreditCard className="w-5 h-5"/>, color: 'sky', help: { en: 'Total paid to doctor during these dates.', hi: 'इन तारीखों के दौरान किया गया भुगतान।' } },
+                           { label: 'Net Outstanding', val: totalDue.toFixed(0), unit: 'INR', icon: <Activity className="w-5 h-5"/>, color: totalDue > 0 ? 'rose' : 'emerald', help: { en: 'Total absolute amount currently due.', hi: 'अभी देय कुल वास्तविक राशि।' } }
                         ].map((stat, i) => (
-                           <div key={i} className="bg-white p-7 md:p-9 rounded-[32px] border border-slate-100 shadow-[0_15px_60px_rgb(0,0,0,0.02)] transition-all hover:shadow-[0_20px_80px_rgb(0,0,0,0.05)] hover:-translate-y-1 group relative overflow-hidden">
-                              <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl -mr-12 -mt-12 transition-opacity opacity-0 group-hover:opacity-40 ${
-                                 stat.color === 'emerald' ? 'bg-emerald-500' : 
-                                 stat.color === 'brand' ? 'bg-brand-primary' :
-                                 stat.color === 'rose' ? 'bg-rose-500' : 'bg-sky-500'
-                              }`}></div>
+                           <div key={i} className="bg-white p-5 md:p-6 rounded-[24px] border border-slate-100 shadow-[0_10px_40px_rgb(0,0,0,0.02)] transition-all hover:shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:-translate-y-1 group relative">
+                              {/* Decorative Blur Clipper */}
+                              <div className="absolute inset-0 rounded-[24px] overflow-hidden pointer-events-none">
+                                 <div className={`absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl -mr-10 -mt-10 transition-opacity opacity-0 group-hover:opacity-40 ${
+                                    stat.color === 'emerald' ? 'bg-emerald-500' : 
+                                    stat.color === 'sky' ? 'bg-sky-500' : 
+                                    stat.color === 'rose' ? 'bg-rose-500' : 'bg-brand-primary'
+                                 }`}></div>
+                              </div>
                               
-                              <div className="flex justify-between items-start mb-6">
-                                 <div className={`p-4 rounded-2xl ${
+                              <div className="relative flex items-center justify-between mb-4">
+                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 ${
                                     stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-500' : 
-                                    stat.color === 'brand' ? 'bg-brand-light text-brand-primary' :
-                                    stat.color === 'rose' ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'
+                                    stat.color === 'sky' ? 'bg-sky-50 text-sky-500' : 
+                                    stat.color === 'rose' ? 'bg-rose-50 text-rose-500' : 'bg-brand-light text-brand-primary'
                                  }`}>
                                     {stat.icon}
                                  </div>
-                                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{stat.unit}</p>
+                                 <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest tabular-nums">{stat.unit}</div>
                               </div>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{stat.label}</p>
-                              <div className="flex items-baseline gap-2">
-                                 <p className={`text-2xl md:text-3xl font-black tracking-tighter tabular-nums ${
-                                    stat.color === 'rose' ? 'text-rose-500' : 
-                                    stat.color === 'emerald' ? 'text-emerald-500' :
-                                    stat.color === 'sky' ? 'text-sky-500' : 'text-brand-dark'
-                                 }`}>
-                                    {stat.val === 0 ? '00' : (stat.unit === 'INR' ? `₹${stat.val}` : stat.val)}
-                                 </p>
+
+                              <div className="relative">
+                                 <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{stat.label}</div>
+                                 <div className={`text-2xl font-black tabular-nums tracking-tighter ${
+                                    stat.color === 'emerald' ? 'text-emerald-500' : 
+                                    stat.color === 'sky' ? 'text-sky-500' : 
+                                    stat.color === 'rose' ? 'text-rose-500' : 'text-slate-900'
+                                 }`}>₹{stat.val}</div>
+                              </div>
+
+                              {/* Repositioned Info Button - Bottom Right */}
+                              <div className="group/help absolute bottom-4 right-4 z-20">
+                                 <Info className="w-4 h-4 text-slate-400 hover:text-brand-primary cursor-help transition-colors" />
+                                 <div className="absolute right-0 bottom-full mb-3 w-56 p-4 bg-slate-900/95 text-white text-[10px] rounded-2xl opacity-0 translate-y-2 group-hover/help:opacity-100 group-hover/help:translate-y-0 pointer-events-none transition-all duration-300 shadow-2xl backdrop-blur-md border border-white/10">
+                                    <div className="font-black text-brand-primary uppercase tracking-widest mb-2 pb-2 border-b border-white/5 flex items-center gap-2">
+                                       <div className="w-1 h-3 bg-brand-primary rounded-full"></div>
+                                       Metric Info
+                                    </div>
+                                    <div className="space-y-2.5">
+                                       <p className="font-bold leading-relaxed">{stat.help.en}</p>
+                                       <p className="text-slate-300 font-medium leading-relaxed italic border-t border-white/5 pt-2 font-serif">{stat.help.hi}</p>
+                                    </div>
+                                    <div className="absolute top-full right-1 transform -translate-y-px">
+                                       <div className="border-[6px] border-transparent border-t-slate-900/95"></div>
+                                    </div>
+                                 </div>
                               </div>
                            </div>
                         ));
@@ -935,55 +1201,42 @@ const Doctors = () => {
 
                {/* New Payout Form - Refined Block */}
                {showPaymentForm && (
-                  <div className="p-10 bg-white rounded-[40px] border border-slate-100 shadow-2xl animate-in slide-in-from-top-6 duration-500 relative overflow-hidden">
-                     <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] -mr-32 -mt-32"></div>
-                     <div className="relative z-10 space-y-8">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
-                              <Plus className="w-6 h-6" />
+                  <div className="p-6 md:p-8 bg-white rounded-3xl border border-slate-100 shadow-xl animate-in slide-in-from-top-6 duration-500 relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-[60px] -mr-24 -mt-24"></div>
+                     <div className="relative z-10 space-y-6">
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner">
+                                 <Plus className="w-5 h-5" />
+                              </div>
+                              <div>
+                                 <h4 className="text-sm font-black text-brand-dark uppercase tracking-widest">Record New Payout</h4>
+                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-0.5">Select bills below, then confirm payment</p>
+                              </div>
                            </div>
-                           <div>
-                              <h4 className="text-sm font-black text-brand-dark uppercase tracking-widest">Record New Payout</h4>
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Enter Payout Details</p>
-                           </div>
+                           {selectedBillIds.size > 0 && (
+                              <div className="text-right">
+                                 <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">{selectedBillIds.size} Bill(s) Selected</p>
+                                 <p className="text-lg font-black text-brand-dark tabular-nums">₹{ledgerData.referrals.filter(b => selectedBillIds.has(b.id)).reduce((s, b) => s + calculateCommission(b, selectedDoc), 0).toFixed(0)}</p>
+                              </div>
+                           )}
                         </div>
-                        <form onSubmit={handleRecordPayment} className="grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
-                           <div className="space-y-3">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Amount (₹)</label>
-                              <input 
-                                 required type="number" 
-                                 className="w-full px-6 py-5 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary placeholder:text-slate-200 rounded-2xl font-black outline-none transition-all shadow-inner text-lg" 
-                                 placeholder="₹ 0.00"
-                                 value={newPayment.amount}
-                                 onChange={e => setNewPayment({...newPayment, amount: e.target.value})}
-                              />
+                        <form onSubmit={handleRecordPayment} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                           <div className="space-y-2">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Pay Amount (₹)</label>
+                              <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary placeholder:text-slate-200 rounded-xl font-black outline-none transition-all shadow-inner text-sm" placeholder="₹ 0.00" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: e.target.value})} />
                            </div>
-                           <div className="space-y-3">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Payment Method</label>
-                              <select 
-                                 className="w-full px-6 py-5 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary rounded-2xl font-black outline-none appearance-none cursor-pointer shadow-inner"
-                                 value={newPayment.method}
-                                 onChange={e => setNewPayment({...newPayment, method: e.target.value})}
-                              >
+                           <div className="space-y-2">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Payment Mode</label>
+                              <select className="w-full px-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary rounded-xl font-black outline-none appearance-none cursor-pointer shadow-inner text-sm" value={newPayment.method} onChange={e => setNewPayment({...newPayment, method: e.target.value})}>
                                  {['Cash', 'UPI / PhonePe', 'Bank Transfer', 'Cheque'].map(m => <option key={m}>{m}</option>)}
                               </select>
                            </div>
-                           <div className="md:col-span-2 space-y-3">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Payment Notes</label>
-                              <div className="flex gap-4">
-                                 <input 
-                                    type="text" 
-                                    className="flex-grow px-6 py-5 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary rounded-2xl font-bold outline-none transition-all shadow-inner" 
-                                    placeholder="Optional reference notes..."
-                                    value={newPayment.notes}
-                                    onChange={e => setNewPayment({...newPayment, notes: e.target.value})}
-                                 />
-                                 <button 
-                                    type="submit"
-                                    className="px-10 py-5 bg-brand-dark text-brand-primary rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-black transition-all active:scale-95 whitespace-nowrap"
-                                 >
-                                    Record Payout
-                                 </button>
+                           <div className="md:col-span-2 space-y-2">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Reference Note</label>
+                              <div className="flex gap-3">
+                                 <input type="text" className="flex-grow px-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary rounded-xl font-bold outline-none transition-all shadow-inner text-sm" placeholder="Optional notes..." value={newPayment.notes} onChange={e => setNewPayment({...newPayment, notes: e.target.value})} />
+                                 <button type="submit" disabled={selectedBillIds.size === 0} className="px-6 py-3 bg-brand-dark text-brand-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">Save Payout</button>
                               </div>
                            </div>
                         </form>
@@ -996,61 +1249,139 @@ const Doctors = () => {
                   
                   {/* Referral Detailed Record */}
                   <div className="space-y-8">
-                     <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-black text-brand-dark tracking-tighter uppercase flex items-center gap-4">
-                           <div className="w-8 h-8 bg-brand-light rounded-lg flex items-center justify-center text-brand-primary">
-                              <Activity className="w-4 h-4" />
-                           </div>
-                           Referral History
-                        </h3>
-                        <div className="text-[10px] px-4 py-2 bg-white border border-slate-100 rounded-full text-slate-400 font-black uppercase tracking-widest shadow-sm">
-                           {ledgerData.referrals.length} Clinical Records
-                        </div>
-                     </div>
-                     <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-[0_10px_40px_rgb(0,0,0,0.02)]">
-                        <div className="overflow-x-auto">
-                           <table className="min-w-full divide-y divide-slate-50">
-                              <thead className="bg-slate-50/50">
-                                 <tr>
-                                    <th className="px-10 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Patient / Date</th>
-                                    <th className="px-10 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Tests</th>
-                                    <th className="px-10 py-6 text-right text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Paid Amount</th>
-                                    <th className="px-10 py-6 text-right text-[11px] font-black text-brand-primary uppercase tracking-[0.2em]">Commission</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-50">
-                                 {ledgerData.referrals
-                                 .filter(b => {
-                                    if (!b.createdAt) return true;
-                                    const d = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-                                    const dateStr = d.toISOString().split('T')[0];
-                                    return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
-                                 })
-                                 .map((b, i) => (
-                                    <tr key={i} className="hover:bg-slate-50 transition-colors group">
-                                       <td className="px-10 py-8">
-                                          <div className="text-sm font-black text-brand-dark uppercase tracking-tight group-hover:text-brand-primary transition-colors">{b.patientName}</div>
-                                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{formatDate(b.createdAt)}</div>
-                                       </td>
-                                       <td className="px-10 py-8 min-w-[300px]">
-                                          <div className="text-[11px] font-black text-slate-500 uppercase leading-relaxed tracking-tight break-words">{b.testNames}</div>
-                                       </td>
-                                       <td className="px-10 py-8 text-right tabular-nums text-sm font-black text-slate-400">₹{b.paidAmount}</td>
-                                       <td className="px-10 py-8 text-right tabular-nums text-base font-black text-brand-dark">₹{calculateCommission(b, selectedDoc).toFixed(1)}</td>
-                                    </tr>
-                                 ))}
-                                 {ledgerData.referrals.length === 0 && (
-                                    <tr><td colSpan="4" className="px-10 py-24 text-center">
-                                       <div className="flex flex-col items-center opacity-20">
-                                          <Activity className="w-12 h-12 mb-4" />
-                                          <p className="text-[11px] font-black uppercase tracking-[0.4em]">No Activity Records Found</p>
+                     {(() => {
+                        const finalFilteredReferrals = ledgerData.referrals.filter(b => {
+                           if (!b.createdAt) return true;
+                           const dateStr = toLocalDateStr(b.createdAt);
+                           if (dateStr < ledgerDateRange.start || dateStr > ledgerDateRange.end) return false;
+                           
+                           if (referralStatusFilter === 'PAID' && !b.commissionCleared) return false;
+                           if (referralStatusFilter === 'DUE' && b.commissionCleared) return false;
+                           
+                           return true;
+                        });
+
+                        const dueBills = finalFilteredReferrals.filter(b => !b.commissionCleared);
+
+                        const toggleBillSelection = (id) => {
+                           setSelectedBillIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(id)) { next.delete(id); } else { next.add(id); }
+                              
+                              // Recalculate exact sum from ALL referrals
+                              const selectedBills = ledgerData.referrals.filter(b => next.has(b.id));
+                              const totalComm = selectedBills.reduce((s, b) => s + calculateCommission(b, selectedDoc), 0);
+                              
+                              setNewPayment(p => ({ ...p, amount: totalComm > 0 ? totalComm.toFixed(0) : '' }));
+                              return next;
+                           });
+                        };
+
+                        const selectAllDue = () => {
+                           // Filter from the CURRENT VISIBLE due bills or ALL due bills?
+                           // Usually user wants to pay what they SEE.
+                           const visibleDue = finalFilteredReferrals.filter(b => !b.commissionCleared);
+                           const allDueIds = new Set(visibleDue.map(b => b.id));
+                           
+                           setSelectedBillIds(allDueIds);
+                           const totalComm = visibleDue.reduce((s, b) => s + calculateCommission(b, selectedDoc), 0);
+                           setNewPayment(p => ({ ...p, amount: totalComm.toFixed(0) }));
+                        };
+
+                        const deselectAll = () => {
+                           setSelectedBillIds(new Set());
+                           setNewPayment(p => ({ ...p, amount: '' }));
+                        };
+
+                        return (
+                           <>
+                              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                 <div className="flex items-center gap-6">
+                                    <h3 className="text-2xl font-black text-brand-dark tracking-tighter uppercase flex items-center gap-4">
+                                       <div className="w-8 h-8 bg-brand-light rounded-lg flex items-center justify-center text-brand-primary">
+                                          <Activity className="w-4 h-4" />
                                        </div>
-                                    </td></tr>
-                                 )}
-                              </tbody>
-                           </table>
-                        </div>
-                     </div>
+                                       Referral History
+                                    </h3>
+                                    {showPaymentForm && dueBills.length > 0 && (
+                                       <button onClick={selectedBillIds.size === dueBills.length ? deselectAll : selectAllDue} className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white transition-all border border-brand-primary/20 shadow-sm">
+                                          {selectedBillIds.size === dueBills.length ? 'Deselect All' : 'Select All Due'}
+                                       </button>
+                                    )}
+                                 </div>
+                                 <div className="flex items-center gap-3">
+                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+                                       <button onClick={() => setReferralStatusFilter('ALL')} className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${referralStatusFilter === 'ALL' ? 'bg-brand-dark text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark'}`}>All</button>
+                                       <button onClick={() => setReferralStatusFilter('PAID')} className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${referralStatusFilter === 'PAID' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-emerald-600'}`}>Paid</button>
+                                       <button onClick={() => setReferralStatusFilter('DUE')} className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${referralStatusFilter === 'DUE' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-amber-600'}`}>Due</button>
+                                    </div>
+                                    <div className="text-[10px] px-4 py-2.5 bg-white border border-slate-100 rounded-lg text-slate-400 font-black uppercase tracking-widest shadow-[0_2px_10px_rgb(0,0,0,0.02)] hidden sm:block">
+                                       {finalFilteredReferrals.length} Records
+                                    </div>
+                                 </div>
+                              </div>
+                              <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-[0_10px_40px_rgb(0,0,0,0.02)]">
+                                 <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-slate-50">
+                                       <thead className="bg-slate-50/50">
+                                          <tr>
+                                             {showPaymentForm && <th className="pl-6 pr-2 py-6 text-center w-12"></th>}
+                                             <th className="px-8 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Patient / Date</th>
+                                             <th className="px-8 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Tests</th>
+                                             <th className="px-8 py-6 text-right text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Bill Amount</th>
+                                             <th className="px-8 py-6 text-right text-[11px] font-black text-brand-primary uppercase tracking-[0.2em]">Commission</th>
+                                             <th className="px-8 py-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                                          </tr>
+                                       </thead>
+                                       <tbody className="divide-y divide-slate-50">
+                                          {finalFilteredReferrals.map((b, i) => {
+                                             const isPaid = b.commissionCleared === true;
+                                             const isSelected = selectedBillIds.has(b.id);
+                                             return (
+                                                <tr key={i} className={`transition-colors group ${isSelected ? 'bg-brand-primary/5' : 'hover:bg-slate-50'}`}>
+                                                   {showPaymentForm && (
+                                                      <td className="pl-6 pr-2 py-6 text-center">
+                                                         {!isPaid ? (
+                                                            <button type="button" onClick={() => toggleBillSelection(b.id)} className="transition-all hover:scale-110">
+                                                               {isSelected ? <CheckSquare className="w-5 h-5 text-brand-primary" /> : <Square className="w-5 h-5 text-slate-300" />}
+                                                            </button>
+                                                         ) : (
+                                                            <span className="text-emerald-400">✔</span>
+                                                         )}
+                                                      </td>
+                                                   )}
+                                                   <td className="px-8 py-6">
+                                                      <div className="text-sm font-black text-brand-dark uppercase tracking-tight group-hover:text-brand-primary transition-colors">{b.patientName}</div>
+                                                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formatDate(b.createdAt)}</div>
+                                                   </td>
+                                                   <td className="px-8 py-6 min-w-[250px]">
+                                                      <div className="text-[11px] font-black text-slate-500 uppercase leading-relaxed tracking-tight break-words">{b.testNames}</div>
+                                                   </td>
+                                                   <td className="px-8 py-6 text-right tabular-nums text-sm font-black text-slate-400">₹{b.paidAmount}</td>
+                                                   <td className="px-8 py-6 text-right tabular-nums text-base font-black text-brand-dark">₹{calculateCommission(b, selectedDoc).toFixed(0)}</td>
+                                                   <td className="px-8 py-6 text-center">
+                                                      <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-md ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                         {isPaid ? '✔ PAID' : '⏳ DUE'}
+                                                      </span>
+                                                   </td>
+                                                </tr>
+                                             )
+                                          })}
+                                          {finalFilteredReferrals.length === 0 && (
+                                             <tr><td colSpan={showPaymentForm ? 6 : 5} className="px-10 py-24 text-center">
+                                                <div className="flex flex-col items-center opacity-20">
+                                                   <Activity className="w-12 h-12 mb-4" />
+                                                   <p className="text-[11px] font-black uppercase tracking-[0.4em]">No Records Found</p>
+                                                </div>
+                                             </td></tr>
+                                          )}
+                                       </tbody>
+                                    </table>
+                                 </div>
+                              </div>
+                           </>
+                        );
+                     })()}
                   </div>
 
                   {/* Payouts Detailed History */}
@@ -1062,8 +1393,15 @@ const Doctors = () => {
                            </div>
                            Payout History
                         </h3>
-                        <div className="text-[10px] px-4 py-2 bg-white border border-slate-100 rounded-full text-slate-400 font-black uppercase tracking-widest shadow-sm">
-                           {ledgerData.payments.length} Records
+                        <div className="flex items-center gap-3">
+                           {isSuperAdmin && (
+                              <button onClick={handleResetPayoutHistory} className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md text-rose-500 hover:bg-rose-50 transition-all border border-rose-100 italic">
+                                 Reset History
+                              </button>
+                           )}
+                           <div className="text-[10px] px-4 py-2 bg-white border border-slate-100 rounded-full text-slate-400 font-black uppercase tracking-widest shadow-sm">
+                              {ledgerData.payments.length} Records
+                           </div>
                         </div>
                      </div>
                      <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-[0_10px_40px_rgb(0,0,0,0.02)]">

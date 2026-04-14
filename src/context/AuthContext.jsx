@@ -118,12 +118,31 @@ export const AuthProvider = ({ children }) => {
     if (!masterPlan) {
       // Fallback to subscription snapshot if master plan not loaded yet
       if (!subscription.features) return false;
-      const feat = subscription.features.find(f => f.text === featureName);
+      const feat = subscription.features.find(f => f.text.toLowerCase().trim() === featureName.toLowerCase().trim() || f.text.toLowerCase().includes(featureName.toLowerCase().trim()));
       return feat ? feat.available : false;
     }
 
-    const feat = masterPlan.features.find(f => f.text === featureName);
-    return feat ? feat.available : false;
+    // Exact or loose match in the current plan plan
+    let feat = masterPlan.features.find(f => f.text.toLowerCase().trim() === featureName.toLowerCase().trim());
+    if (!feat) {
+       feat = masterPlan.features.find(f => f.text.toLowerCase().includes(featureName.toLowerCase().trim()));
+    }
+
+    if (feat) {
+      return feat.available;
+    }
+
+    // Implicit inheritance: If the feature is missing in Pro/Enterprise completely, but exists in Basic, assume it's inherited.
+    if (planId.toLowerCase() === 'pro' || planId.toLowerCase() === 'enterprise') {
+        const basicPlan = allPlans.find(p => p.id === 'basic');
+        if (basicPlan) {
+           const basicFeat = basicPlan.features.find(f => f.text.toLowerCase().trim() === featureName.toLowerCase().trim());
+           // If it's a recognized feature from a lower tier, premium plans naturally inherit it
+           if (basicFeat) return true;
+        }
+    }
+
+    return false;
   };
 
   const value = {
