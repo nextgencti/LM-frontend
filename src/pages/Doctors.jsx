@@ -342,13 +342,18 @@ const Doctors = () => {
     const arrears = openingEarned - openingPaid;
     const totalDue = (openingEarned + periodEarned) - (openingPaid + periodPaid);
 
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'width=900,height=900');
+    if (!printWindow) {
+      alert('Mobile browser ne popup block kar diya hai. Please settings me "Allow Popups" karein ya fir desktop par try karein.');
+      return;
+    }
+
     const html = `
       <html>
         <head>
           <title>Doctor Ledger - ${selectedDoc.name}</title>
           <style>
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; }
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .header { border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
             .lab-info h1 { margin: 0; font-size: 24px; font-weight: 900; color: #020617; text-transform: uppercase; }
             .lab-info p { margin: 5px 0 0; font-size: 12px; color: #64748b; font-weight: 600; }
@@ -369,8 +374,9 @@ const Doctors = () => {
             .font-bold { font-weight: 700; }
             .footer { margin-top: 50px; font-size: 10px; text-align: center; color: #94a3b8; font-weight: 600; border-top: 1px solid #f1f5f9; padding-top: 20px; }
             @media print {
-              body { padding: 0; }
+              body { padding: 0; margin: 0; }
               .no-print { display: none; }
+              @page { size: A4; margin: 10mm; }
             }
           </style>
         </head>
@@ -496,18 +502,15 @@ const Doctors = () => {
               return `${d}-${m}-${y}, ${time}`;
             })()} • This is a computer generated report.
           </div>
-          
-          <script>
-            window.onload = () => {
-              window.print();
-              setTimeout(() => window.close(), 500);
-            }
-          </script>
         </body>
       </html>
     `;
     printWindow.document.write(html);
     printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 1200);
   };
 
   const handleEmailLedger = async (dataOverride = null) => {

@@ -201,28 +201,51 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
   const handlePrint = () => {
     const printContent = document.querySelector('.printable-page');
     if (!printContent) return;
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
-    if (!printWindow) return;
+    
+    // Pattern matched from Bills.jsx (Known to work on mobile)
+    const printWindow = window.open('', '_blank', 'width=900,height=800');
+    if (!printWindow) {
+      alert('Mobile browser ne popup block kar diya hai. Please settings me "Allow Popups" karein ya fir desktop par try karein.');
+      return;
+    }
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Report</title><script src="https://cdn.tailwindcss.com"></script><style>
-      @page { size: A4 portrait; margin: 6mm; } 
-      html { zoom: 100%; } 
-      body { background: white; font-family: Arial; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; }
-      .printable-page { -webkit-print-color-adjust: exact; print-color-adjust: exact; position: relative; z-index: 10; background: transparent !important; }
-      .watermark-layer { 
-        position: fixed !important; 
-        top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
-        display: flex !important; align-items: center !important; justify-content: center !important;
-        z-index: 5 !important; 
-        opacity: 1 !important; 
-        visibility: visible !important;
-        pointer-events: none !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-    </style></head><body>${printContent.outerHTML}<script>window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 1200); };</script></body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Report - ${reportData.patientName}</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+      <style>
+        @page { size: A4 portrait; margin: 6mm; } 
+        html { zoom: 100%; } 
+        body { background: white; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+        .printable-page { -webkit-print-color-adjust: exact; print-color-adjust: exact; position: relative; z-index: 10; background: white !important; }
+        .watermark-layer { 
+          position: fixed !important; 
+          top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
+          display: flex !important; align-items: center !important; justify-content: center !important;
+          z-index: 5 !important; 
+          opacity: 1 !important; 
+          visibility: visible !important;
+          pointer-events: none !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        @media print {
+          body { margin: 0; }
+          .no-print { display: none !important; }
+        }
+      </style></head>
+      <body>
+        <div class="printable-wrapper">
+          ${printContent.outerHTML}
+        </div>
+      </body></html>`;
+
     printWindow.document.write(html);
     printWindow.document.close();
+    printWindow.focus();
+
+    // Trigger print from parent window after content & Tailwind CDN loads
+    setTimeout(() => {
+      printWindow.print();
+    }, 1500);
   };
 
   const handleEmailReport = async () => {
