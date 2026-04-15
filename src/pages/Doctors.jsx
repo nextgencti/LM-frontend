@@ -515,7 +515,11 @@ const Doctors = () => {
       toast.info('🚀 Email Ledger is a premium feature. Please upgrade your plan to enable this.', { position: "top-center" });
       return;
     }
-    const currentData = dataOverride || ledgerData;
+
+    // Defensive check: If called from onClick={handleEmailLedger}, dataOverride will be a React event object.
+    // We only want to use dataOverride if it's an actual ledger data object (which has a 'referrals' property).
+    const currentData = (dataOverride && dataOverride.referrals) ? dataOverride : ledgerData;
+
     let targetEmail = selectedDoc?.email;
     
     if (!targetEmail) {
@@ -532,7 +536,11 @@ const Doctors = () => {
       let periodEarned = 0;
       let periodPaid = 0;
 
-      currentData.referrals.forEach(b => {
+      const referrals = currentData?.referrals || [];
+      const payments = currentData?.payments || [];
+
+      referrals.forEach(b => {
+
          const comm = calculateCommission(b, selectedDoc);
          const dStr = b.createdAt ? toLocalDateStr(b.createdAt) : null;
          if (dStr && dStr < ledgerDateRange.start) {
@@ -542,7 +550,7 @@ const Doctors = () => {
          }
       });
 
-      currentData.payments.forEach(p => {
+      payments.forEach(p => {
          const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
          const dStr = toLocalDateStr(pDate);
          if (dStr < ledgerDateRange.start) {
@@ -555,13 +563,13 @@ const Doctors = () => {
       const arrears = openingEarned - openingPaid;
       const totalDue = (openingEarned + periodEarned) - (openingPaid + periodPaid);
 
-      const filteredReferrals = currentData.referrals.filter(b => {
+      const filteredReferrals = referrals.filter(b => {
         if (!b.createdAt) return true;
         const dateStr = toLocalDateStr(b.createdAt);
         return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
       });
 
-      const filteredPayments = currentData.payments.filter(p => {
+      const filteredPayments = payments.filter(p => {
         const pDate = p.date?.toDate ? p.date.toDate() : new Date(p.date || Date.now());
         const dateStr = toLocalDateStr(pDate);
         return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
@@ -1050,7 +1058,7 @@ const Doctors = () => {
                   <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                      <button 
                        disabled={isEmailing}
-                       onClick={handleEmailLedger}
+                       onClick={() => handleEmailLedger()}
                        className="flex-1 md:flex-none px-6 py-4 bg-brand-primary/10 hover:bg-brand-primary text-brand-primary hover:text-white rounded-[20px] transition-all border border-brand-primary/20 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest group disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-brand-primary/5 active:scale-95"
                      >
                         {isEmailing ? <Loader className="w-4 h-4 animate-spin text-white" /> : <Mail className="w-4 h-4 group-hover:scale-110 transition-transform" />}
