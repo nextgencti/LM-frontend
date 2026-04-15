@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, getDoc, doc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Loader, FileText, IndianRupee, CheckCircle2, AlertCircle, Clock, Filter, Printer, X, Users, Stethoscope } from 'lucide-react';
+import { Search, Loader, FileText, IndianRupee, CheckCircle2, AlertCircle, Clock, Filter, Printer, X, Users, Stethoscope, Pencil } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const Bills = () => {
   const { userData, activeLabId } = useAuth();
+  const navigate = useNavigate();
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('All');
   const [payAmountInput, setPayAmountInput] = useState({});
+  const [payMethodInput, setPayMethodInput] = useState({}); // Default Cash
+  const [showHistory, setShowHistory] = useState({}); // Track which bill history is open
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [labInfo, setLabInfo] = useState(null);
 
@@ -258,18 +263,28 @@ const Bills = () => {
     const bill = bills.find(b => b.id === billId);
     if (!bill || !addAmount || isNaN(addAmount)) return;
     
+    const method = payMethodInput[billId] || 'Cash';
     const newPaid = (parseFloat(bill.paidAmount) || 0) + parseFloat(addAmount);
     const newBalance = Math.max((parseFloat(bill.totalAmount) || 0) - newPaid, 0);
     
+    // New payment record
+    const paymentRecord = {
+      amount: parseFloat(addAmount),
+      method: method,
+      date: new Date()
+    };
+
     try {
       await updateDoc(doc(db, 'bookings', billId), {
         paidAmount: newPaid,
         balance: newBalance,
         paymentStatus: newBalance <= 0 ? 'Paid' : 'Unpaid',
+        paymentHistory: bill.paymentHistory ? [...bill.paymentHistory, paymentRecord] : [paymentRecord],
         updatedAt: serverTimestamp()
       });
       setPayAmountInput(prev => ({ ...prev, [billId]: '' }));
       fetchBills();
+      toast.success(`Payment of ₹${addAmount} (${method}) recorded!`);
     } catch (error) {
       console.error('Error updating payment:', error);
       alert("Update failed: " + error.message);
@@ -351,7 +366,8 @@ const Bills = () => {
                 </tr>
               ) : (
                 filteredBills.map((bill) => (
-                  <tr key={bill.id} className="hover:bg-brand-light/10 transition-colors group">
+                  <React.Fragment key={bill.id}>
+                  <tr className="hover:bg-brand-light/10 transition-colors group">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-brand-light/40 rounded-xl border border-brand-primary/10">
@@ -393,41 +409,120 @@ const Bills = () => {
                       <div className="flex items-center justify-end gap-3 transition-all min-h-[40px]">
                         {bill.paymentStatus !== 'Paid' ? (
                           <>
+                             <button 
+                               onClick={() => navigate(`/bookings?edit=${bill.id}`)}
+                               className="p-2.5 bg-amber-50 text-amber-500 rounded-xl hover:bg-amber-100 transition-all border border-amber-100 flex items-center justify-center h-[40px] w-[40px] shrink-0"
+                               title="Edit Booking"
+                             >
+                               <Pencil className="w-4 h-4" />
+                             </button>
+                             <div className="flex bg-slate-50 border border-slate-100 rounded-xl p-1 overflow-hidden h-[40px]">
+                              <select 
+                                className="bg-transparent border-none text-[10px] font-black text-brand-dark focus:ring-0 cursor-pointer pr-6"
+                                value={payMethodInput[bill.id] || 'Cash'}
+                                onChange={(e) => setPayMethodInput(prev => ({ ...prev, [bill.id]: e.target.value }))}
+                              >
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="Card">Card</option>
+                              </select>
+                            </div>
                             <input 
                               type="number"
                               placeholder="Amount"
-                              className="w-24 px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 transition-all tabular-nums"
+                              className="w-24 px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 transition-all tabular-nums h-[40px]"
                               value={payAmountInput[bill.id] || ''}
                               onChange={(e) => setPayAmountInput(prev => ({ ...prev, [bill.id]: e.target.value }))}
                             />
                              <button 
-                              onClick={() => handleUpdatePayment(bill.id, payAmountInput[bill.id])}
-                              className="px-5 py-2.5 bg-brand-dark text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-brand-secondary transition-all shadow-lg shadow-brand-dark/10 active:scale-95"
-                            >
-                              Collect
-                            </button>
-                            <button 
-                              onClick={() => handleUpdatePayment(bill.id, bill.balance)}
-                              className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
-                              title="Receive Full Payment"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              Full Pay
-                            </button>
+                               onClick={() => handleUpdatePayment(bill.id, payAmountInput[bill.id])}
+                               className="px-5 py-2.5 bg-brand-dark text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-brand-secondary transition-all shadow-lg shadow-brand-dark/10 active:scale-95 h-[40px]"
+                             >
+                               Collect
+                             </button>
+                             <button 
+                               onClick={() => {
+                                 const currentMethod = payMethodInput[bill.id] || 'Cash';
+                                 setPayMethodInput(prev => ({ ...prev, [bill.id]: currentMethod }));
+                                 handleUpdatePayment(bill.id, bill.balance);
+                               }}
+                               className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-1.5 whitespace-nowrap h-[40px]"
+                               title="Receive Full Payment"
+                             >
+                               <CheckCircle2 className="w-4 h-4" />
+                               Full Pay
+                             </button>
                           </>
                         ) : (
-                          <button 
-                            onClick={() => setSelectedInvoice(bill)}
-                            className="p-2.5 bg-brand-light/30 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-white transition-all shadow-sm group/btn flex items-center gap-2 px-4"
-                            title="Print Invoice"
-                          >
-                            <Printer className="w-4 h-4" />
-                            <span className="text-[11px] font-black uppercase tracking-widest">Print Invoice</span>
-                          </button>
+                           <div className="flex items-center gap-2">
+                             <button 
+                               onClick={() => navigate(`/bookings?edit=${bill.id}`)}
+                               className="p-2.5 bg-amber-50 text-amber-500 rounded-xl hover:bg-amber-100 transition-all border border-amber-100 flex items-center justify-center h-[40px] w-[40px]"
+                               title="Edit Booking"
+                             >
+                               <Pencil className="w-4 h-4" />
+                             </button>
+                             {bill.paymentHistory && bill.paymentHistory.length > 0 && (
+                               <button 
+                                 onClick={() => setShowHistory(prev => ({ ...prev, [bill.id]: !prev[bill.id] }))}
+                                 className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-brand-light hover:text-brand-primary transition-all border border-slate-100 flex items-center gap-2 px-4 h-[40px]"
+                               >
+                                 <Clock className="w-4 h-4" />
+                                 <span className="text-[10px] font-black uppercase tracking-widest">History</span>
+                               </button>
+                             )}
+                             <button 
+                               onClick={() => setSelectedInvoice(bill)}
+                               className="p-2.5 bg-brand-light/30 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-white transition-all shadow-sm group/btn flex items-center gap-2 px-4 h-[40px]"
+                               title="Print Invoice"
+                             >
+                               <Printer className="w-4 h-4" />
+                               <span className="text-[11px] font-black uppercase tracking-widest">Print Invoice</span>
+                             </button>
+                          </div>
                         )}
                       </div>
                     </td>
                   </tr>
+
+                  {/* Expandable Payment History Row */}
+                  {showHistory[bill.id] && bill.paymentHistory && (
+                    <tr className="bg-slate-50/50">
+                      <td colSpan="5" className="px-12 py-8 border-b border-slate-100">
+                        <div className="flex items-center gap-3 mb-6">
+                           <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 flex items-center justify-center rotate-3 shadow-inner">
+                              <Clock className="w-5 h-5 text-brand-primary" />
+                           </div>
+                           <div>
+                             <h4 className="text-[13px] font-black text-brand-dark uppercase tracking-[0.2em] leading-none">Payment Timeline</h4>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Sequential records of all financial transactions</p>
+                           </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {bill.paymentHistory.map((p, idx) => (
+                            <div key={idx} className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm flex flex-col items-center text-center relative group/card hover:border-brand-primary/20 transition-all hover:shadow-md">
+                               <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase mb-3 border shadow-sm ${
+                                 p.method === 'UPI' ? 'bg-sky-50 text-sky-500 border-sky-100' : 
+                                 p.method === 'Card' ? 'bg-violet-50 text-violet-500 border-violet-100' : 
+                                 'bg-emerald-50 text-emerald-500 border-emerald-100'
+                               }`}>
+                                 {p.method}
+                               </div>
+                               <div className="text-xl font-black text-brand-dark mb-1 tabular-nums tracking-tighter">₹{p.amount}</div>
+                               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                 {(() => {
+                                   if (!p.date) return 'N/A';
+                                   const d = p.date.seconds ? new Date(p.date.seconds * 1000) : new Date(p.date);
+                                   return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()} • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+                                 })()}
+                               </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>

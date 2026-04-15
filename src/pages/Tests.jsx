@@ -815,7 +815,7 @@ const Tests = () => {
                                       <span>{p.code}</span> <span className="text-slate-200">|</span> <span>{p.unit || 'No unit'}</span>
                                     </div>
                                   </div>
-                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(selectedGroupIndex, pi); }} className="p-2 text-slate-300 hover:text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(selectedGroupIndex, pi); }} className="p-2 text-slate-300 hover:text-rose-500 rounded-lg transition-all">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>

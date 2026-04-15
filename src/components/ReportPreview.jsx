@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { Loader, Printer, X, Download, ShieldCheck, Mail, Phone, MapPin, Building } from 'lucide-react';
+import { Loader, Printer, X, Download, ShieldCheck, Mail, Phone, MapPin, Building, IndianRupee, Save, CheckCircle2, Activity } from 'lucide-react';
 import QRCode from "react-qr-code";
 import { toast } from 'react-toastify';
 
@@ -14,6 +14,9 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
   const [labProfile, setLabProfile] = useState(null);
   const [patientData, setPatientData] = useState(null);
   const [doctorData, setDoctorData] = useState(null);
+  const [bookingData, setBookingData] = useState(null);
+  const [showQuickPay, setShowQuickPay] = useState(false);
+  const [isQuickPaying, setIsQuickPaying] = useState(false);
   
   // Standardized QR Data for Verification & Direct Access
   const qrUrl = reportData.viewToken 
@@ -182,14 +185,21 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
         } catch (e) { console.warn("Patient fetch failed"); }
       }
       
-      if (report.bookingId) {
+      // Resolve booking ID more robustly
+      const resolvedBookingId = report.bookingId || (report.labId && report.bookingNo ? `${report.labId}_${report.bookingNo}` : null);
+      
+      if (resolvedBookingId) {
         try {
-          const bDoc = await getDoc(doc(db, 'bookings', report.bookingId));
-          if (bDoc.exists() && bDoc.data().doctorId) {
-            const dDoc = await getDoc(doc(db, 'doctors', bDoc.data().doctorId));
-            if (dDoc.exists()) setDoctorData(dDoc.data());
+          const bDoc = await getDoc(doc(db, 'bookings', resolvedBookingId));
+          if (bDoc.exists()) {
+            const bData = { id: bDoc.id, ...bDoc.data() };
+            setBookingData(bData);
+            if (bData.doctorId) {
+              const dDoc = await getDoc(doc(db, 'doctors', bData.doctorId));
+              if (dDoc.exists()) setDoctorData(dDoc.data());
+            }
           }
-        } catch (e) { console.warn("Doctor fetch failed"); }
+        } catch (e) { console.warn("Booking/Doctor fetch failed"); }
       }
     } catch (globalError) {
       console.error("Critical error in report fetch:", globalError);
@@ -199,6 +209,22 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
   };
 
   const handlePrint = () => {
+    if (!bookingData) {
+      toast.warn("Verifying payment status... please wait.");
+      return;
+    }
+    if (parseFloat(bookingData.balance || 0) > 0) {
+      toast.error(`🛑 Payment Pending: Please settle the balance of ₹${bookingData.balance} to unlock printing.`, {
+        position: "top-center",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      setShowQuickPay(true);
+      return;
+    }
     const printContent = document.querySelector('.printable-page');
     if (!printContent) return;
     
@@ -208,6 +234,8 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
       alert('Mobile browser ne popup block kar diya hai. Please settings me "Allow Popups" karein ya fir desktop par try karein.');
       return;
     }
+
+    const isUnpaid = bookingData && parseFloat(bookingData.balance || 0) > 0;
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Report - ${reportData.patientName}</title>
       <script src="https://cdn.tailwindcss.com"></script>
@@ -227,6 +255,21 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
+        .unpaid-watermark {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-45deg);
+          font-size: 80px;
+          font-weight: 900;
+          color: rgba(220, 38, 38, 0.15);
+          border: 10px solid rgba(220, 38, 38, 0.15);
+          padding: 20px 40px;
+          text-transform: uppercase;
+          z-index: 0;
+          pointer-events: none;
+          white-space: nowrap;
+        }
         @media print {
           body { margin: 0; }
           .no-print { display: none !important; }
@@ -234,6 +277,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
       </style></head>
       <body>
         <div class="printable-wrapper">
+          ${isUnpaid ? '<div class="unpaid-watermark">PAYMENT PENDING</div>' : ''}
           ${printContent.outerHTML}
         </div>
       </body></html>`;
@@ -409,6 +453,12 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
           Preview: <span className="text-brand-primary">{report.patientName}</span>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3 flex-nowrap">
+          {bookingData && parseFloat(bookingData.balance || 0) > 0 && (
+            <div className="bg-rose-500 text-white text-[9px] sm:text-[10px] font-black px-3 sm:px-4 py-1.5 rounded-lg flex items-center gap-2 animate-pulse shadow-lg shadow-rose-500/20 mr-2 border border-rose-400">
+               <Activity className="w-3.5 h-3.5" />
+               PAYMENT PENDING
+            </div>
+          )}
           {!isPublicView && (
             <button 
               onClick={handleEmailReport} 
@@ -420,11 +470,22 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
               <span className="xs:hidden">{emailSending ? '...' : 'Email'}</span>
             </button>
           )}
-          <button onClick={handlePrint} className="flex items-center px-2.5 sm:px-6 py-2 bg-emerald-600 text-white rounded-lg sm:rounded-xl font-black hover:bg-emerald-700 transition shadow-lg shrink-0 active:scale-95 text-[10px] sm:text-sm">
-            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> 
-            <span className="hidden xs:inline">Print Report</span>
-            <span className="xs:hidden">Print</span>
-          </button>
+            <button 
+              onClick={handlePrint} 
+              className={`flex items-center px-2.5 sm:px-6 py-2 rounded-lg sm:rounded-xl font-black transition shadow-lg shrink-0 active:scale-95 text-[10px] sm:text-sm ${
+                (!bookingData || parseFloat(bookingData.balance || 0) > 0)
+                ? 'bg-slate-700 text-slate-400 border border-white/5 opacity-80 cursor-not-allowed' 
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
+            >
+              <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> 
+              <span className="hidden xs:inline">
+                {!bookingData ? 'Verifying...' : (parseFloat(bookingData.balance || 0) > 0 ? 'Pay to Print' : 'Print Report')}
+              </span>
+              <span className="xs:hidden">
+                {!bookingData ? '...' : (parseFloat(bookingData.balance || 0) > 0 ? 'Pay' : 'Print')}
+              </span>
+            </button>
           {onClose && (
             <button onClick={onClose} className="p-1.5 sm:p-2 bg-white/5 hover:bg-rose-500 text-white/70 hover:text-white rounded-lg sm:rounded-xl transition shrink-0 border border-white/5">
               <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -724,6 +785,154 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
           @page { size: A4 portrait; margin: 6mm; } 
         }
       `}} />
+
+      {/* Floating Red Payment Button (FAB) */}
+      {bookingData && parseFloat(bookingData.balance || 0) > 0 && !showQuickPay && (
+        <button 
+          onClick={() => setShowQuickPay(true)}
+          className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[350] bg-rose-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl shadow-2xl shadow-rose-600/40 hover:bg-rose-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-2 sm:gap-3 animate-bounce print:hidden border border-rose-500/30"
+        >
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center backdrop-blur-md">
+            <IndianRupee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </div>
+          <div className="text-left">
+            <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-tighter leading-none opacity-80 mb-0.5">Pay Balance</p>
+            <p className="text-sm sm:text-lg font-black tabular-nums tracking-tighter">₹{bookingData.balance}</p>
+          </div>
+        </button>
+      )}
+
+      {/* Integrated Quick Payment Modal */}
+      {showQuickPay && bookingData && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-brand-dark/90 backdrop-blur-2xl" onClick={() => setShowQuickPay(false)}></div>
+          <div className="relative bg-white w-full max-w-lg rounded-[48px] shadow-3xl overflow-hidden border border-white/20 animate-in zoom-in duration-300">
+            <div className="bg-rose-600 p-10 text-white relative">
+               <div className="absolute top-0 right-0 p-8">
+                  <button onClick={() => setShowQuickPay(false)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
+                    <X className="w-6 h-6" />
+                  </button>
+               </div>
+               <div className="flex items-center gap-5 mb-2">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
+                    <IndianRupee className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-tighter">Settle Payment</h3>
+                    <p className="text-white/60 font-bold text-xs uppercase tracking-widest mt-1">Unlock Report Features</p>
+                  </div>
+               </div>
+            </div>
+            
+            <div className="p-10 space-y-8">
+               <div className="flex justify-between items-end bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-inner">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Balance Due</p>
+                    <p className="text-4xl font-black text-brand-dark tabular-nums tracking-tighter">₹{bookingData.balance}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patient</p>
+                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight">{reportData.patientName}</p>
+                  </div>
+               </div>
+
+               <div className="space-y-6">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Receiving Amount (₹)</label>
+                    <input 
+                      type="number" 
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-5 px-8 text-2xl font-black text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 focus:bg-white transition-all tabular-nums"
+                      autoFocus
+                      placeholder="0.00"
+                      id="preview-pay-amount"
+                      defaultValue={bookingData.balance}
+                    />
+                  </div>
+
+                  <div>
+                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Payment Method</label>
+                     <div className="grid grid-cols-3 gap-3">
+                        {['Cash', 'UPI', 'Card'].map(m => (
+                          <button 
+                            key={m}
+                            onClick={() => {
+                              document.querySelectorAll('.preview-pay-mode').forEach(b => {
+                                b.classList.remove('bg-brand-dark', 'text-white', 'shadow-lg', 'border-transparent');
+                                b.classList.add('bg-slate-50', 'text-slate-600', 'border-slate-100');
+                              });
+                              const el = document.getElementById(`preview-mode-${m}`);
+                              el.classList.remove('bg-slate-50', 'text-slate-600', 'border-slate-100');
+                              el.classList.add('bg-brand-dark', 'text-white', 'shadow-lg', 'border-transparent');
+                            }}
+                            id={`preview-mode-${m}`}
+                            className={`preview-pay-mode py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest border transition-all duration-300 ${m === 'Cash' ? 'bg-brand-dark text-white shadow-lg border-transparent' : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'}`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+
+               <div className="flex flex-col gap-3 pt-4">
+                  <button 
+                    disabled={isQuickPaying}
+                    onClick={async () => {
+                      const amount = parseFloat(document.getElementById('preview-pay-amount').value);
+                      const method = document.querySelector('.preview-pay-mode.bg-brand-dark').innerText;
+                      
+                      if (!amount || amount <= 0) {
+                        toast.error("Please enter a valid amount");
+                        return;
+                      }
+
+                      setIsQuickPaying(true);
+                      try {
+                        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+                        const { db } = await import('../firebase');
+                        
+                        const newPaid = (parseFloat(bookingData.paidAmount) || 0) + amount;
+                        const newBalance = Math.max((parseFloat(bookingData.totalAmount) || 0) - newPaid, 0);
+                        
+                        const paymentRecord = {
+                          amount: amount,
+                          method: method,
+                          date: new Date()
+                        };
+
+                        await updateDoc(doc(db, 'bookings', bookingData.id), {
+                          paidAmount: newPaid,
+                          balance: newBalance,
+                          paymentStatus: newBalance <= 0 ? 'Paid' : 'Unpaid',
+                          paymentHistory: bookingData.paymentHistory ? [...bookingData.paymentHistory, paymentRecord] : [paymentRecord],
+                          updatedAt: serverTimestamp()
+                        });
+                        
+                        toast.success(`🎉 Success! Received ₹${amount} via ${method}`);
+                        // Refresh local state
+                        setBookingData(prev => ({
+                          ...prev,
+                          paidAmount: newPaid,
+                          balance: newBalance,
+                          paymentStatus: newBalance <= 0 ? 'Paid' : 'Unpaid',
+                          paymentHistory: prev.paymentHistory ? [...prev.paymentHistory, paymentRecord] : [paymentRecord]
+                        }));
+                        setShowQuickPay(false);
+                      } catch (err) {
+                        toast.error("Payment failed: " + err.message);
+                      } finally {
+                        setIsQuickPaying(false);
+                      }
+                    }}
+                    className="w-full py-5 bg-rose-600 text-white rounded-[24px] text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-rose-600/20 hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {isQuickPaying ? <Loader className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Confirm Payment</>}
+                  </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

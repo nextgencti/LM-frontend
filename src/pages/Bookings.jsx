@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Loader, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, Database } from 'lucide-react';
+import { Search, Plus, Loader, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, Database, Pencil, IndianRupee } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { generateLabId, generateBatchIds } from '../utils/idGenerator';
 
 const Bookings = () => {
   const { userData, activeLabId } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Create Modal State
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingBookingId, setEditingBookingId] = useState(null);
+  const [originalTestIds, setOriginalTestIds] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [tests, setTests] = useState([]);
@@ -42,6 +48,50 @@ const Bookings = () => {
       fetchCreationData();
     }
   }, [userData, activeLabId, showAddModal]);
+
+  // Handle URL Param for Editing
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const editId = params.get('edit');
+    if (editId && activeLabId) {
+      handleOpenEditFromUrl(editId);
+    }
+  }, [location.search, activeLabId]);
+
+  const handleOpenEditFromUrl = async (bId) => {
+    try {
+      const bSnap = await getDoc(doc(db, 'bookings', bId));
+      if (bSnap.exists()) {
+        const bData = { id: bSnap.id, ...bSnap.data() };
+        handleEditBooking(bData);
+        // Clear param after opening
+        navigate('/bookings', { replace: true });
+      }
+    } catch (e) {
+      console.error("URL Edit load error:", e);
+    }
+  };
+
+  const handleEditBooking = (booking) => {
+    setNewBooking({
+      patientId: booking.patientId,
+      doctorId: booking.doctorId || '',
+      testIds: booking.testIds || [],
+      subtotal: booking.subtotal || 0,
+      discount: booking.discount || 0,
+      totalAmount: booking.totalAmount || 0,
+      paidAmount: booking.paidAmount || 0,
+      status: booking.status || 'Pending',
+      urgency: booking.urgency || 'Routine',
+      notes: booking.notes || '',
+      paymentStatus: booking.paymentStatus || 'Unpaid',
+      balance: booking.balance || 0
+    });
+    setEditingBookingId(booking.id);
+    setOriginalTestIds(booking.testIds || []);
+    setIsEditing(true);
+    setShowAddModal(true);
+  };
 
   const confirmDeleteBooking = async () => {
     if (!bookingToDelete) return;
@@ -294,6 +344,117 @@ const Bookings = () => {
     } catch (error) {
       console.error("Error creating booking:", error);
       toast.error("Failed to create booking: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateBooking = async (e) => {
+    if (e) e.preventDefault();
+    if (!activeLabId || !editingBookingId) return;
+
+    setIsSaving(true);
+    try {
+      const selectedPatient = patients.find(p => p.id === newBooking.patientId);
+      const selectedDoctor = doctors.find(d => d.id === newBooking.doctorId);
+      const bookingNo = bookings.find(b => b.id === editingBookingId)?.bookingNo;
+
+      // 1. Calculate Test Diffs
+      const addedTestIds = newBooking.testIds.filter(id => !originalTestIds.includes(id));
+      const removedTestIds = originalTestIds.filter(id => !newBooking.testIds.includes(id));
+
+      // 2. Generate IDs for NEW reports if needed
+      let newReportIds = [];
+      if (addedTestIds.length > 0) {
+        newReportIds = await generateBatchIds('RA', activeLabId, addedTestIds.length);
+      }
+
+      // 3. Prep detailed test info
+      const booked_tests = newBooking.testIds.map(testId => {
+        const test = tests.find(t => t.id === testId);
+        return { name: test?.testName || 'Unknown Test', price: test?.price || 0 };
+      });
+      const testNames = booked_tests.map(t => t.name).join(', ');
+
+      const batch = writeBatch(db);
+
+      // --- A. Update Booking Doc ---
+      batch.update(doc(db, 'bookings', editingBookingId), {
+        doctorId: newBooking.doctorId || null,
+        doctorName: selectedDoctor?.name || 'Self',
+        testIds: newBooking.testIds,
+        testNames: testNames,
+        tests_detail: booked_tests,
+        status: newBooking.status,
+        urgency: newBooking.urgency,
+        notes: newBooking.notes,
+        subtotal: newBooking.subtotal,
+        discount: newBooking.discount,
+        totalAmount: newBooking.totalAmount,
+        paidAmount: newBooking.paidAmount || 0,
+        balance: newBooking.totalAmount - (newBooking.paidAmount || 0),
+        paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
+        updatedAt: serverTimestamp()
+      });
+
+      // --- B. Create NEW Reports ---
+      addedTestIds.forEach((testId, idx) => {
+        const test = tests.find(t => t.id === testId);
+        if (!test) return;
+        const testSlug = test.testName.replace(/ /g, "_").replace(/\//g, "-");
+        const reportDocId = `${activeLabId}_${bookingNo}_${testSlug}`;
+        
+        batch.set(doc(db, 'reports', reportDocId), {
+          reportId: newReportIds[idx],
+          bookingNo: bookingNo,
+          billId: newBooking.billId || bookings.find(b => b.id === editingBookingId)?.billId || '',
+          patientId: newBooking.patientId,
+          patientName: selectedPatient?.name || 'Unknown',
+          patientAge: selectedPatient?.age || 0,
+          patientGender: selectedPatient?.gender || 'Any',
+          testName: test.testName,
+          status: 'Pending',
+          labId: activeLabId,
+          reportLayout: test.reportLayout || 'Standard',
+          results: [],
+          registered_at: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      // --- C. Handle REMOVED Reports ---
+      for (const testId of removedTestIds) {
+          const test = tests.find(t => t.id === testId);
+          if (test) {
+            const testSlug = test.testName.replace(/ /g, "_").replace(/\//g, "-");
+            const reportDocId = `${activeLabId}_${bookingNo}_${testSlug}`;
+            batch.delete(doc(db, 'reports', reportDocId));
+          }
+      }
+
+      // --- D. Update Bill Document ---
+      batch.update(doc(db, 'bills', editingBookingId), {
+        testIds: newBooking.testIds,
+        testNames: testNames,
+        tests_detail: booked_tests,
+        totalAmount: newBooking.totalAmount,
+        paidAmount: newBooking.paidAmount,
+        balance: newBooking.totalAmount - newBooking.paidAmount,
+        paymentStatus: newBooking.paidAmount >= newBooking.totalAmount ? 'Paid' : 'Unpaid',
+        updatedAt: serverTimestamp()
+      });
+
+      await batch.commit();
+      toast.success('🎉 Booking updated successfully!');
+      
+      setShowAddModal(false);
+      setIsEditing(false);
+      setEditingBookingId(null);
+      fetchBookings();
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      toast.error("Failed to update booking: " + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -576,7 +737,12 @@ const Bookings = () => {
                       </div>
                     </td>
                     <td className="px-8 py-7 text-right">
-                      <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                      <div className="flex justify-end gap-3 transition-all">
+                        <button 
+                          onClick={() => handleEditBooking(b)}
+                          className="p-3 bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white rounded-2xl transition-all shadow-sm border border-amber-100" title="Edit Booking">
+                          <Pencil className="w-5 h-5" />
+                        </button>
                         <button className="p-3 bg-brand-light/50 text-brand-dark hover:bg-brand-primary hover:text-white rounded-2xl transition-all shadow-sm border border-brand-primary/10" title="Print Invoice">
                           <FileText className="w-5 h-5" />
                         </button>
@@ -604,24 +770,32 @@ const Bookings = () => {
             </button>
             
             <div className="mb-4 sm:mb-10 flex items-center gap-3 sm:gap-6 shrink-0">
-              <div className="w-10 h-10 sm:w-16 sm:h-16 bg-brand-primary rounded-xl sm:rounded-[28px] flex items-center justify-center shadow-xl shadow-brand-primary/20 rotate-6 shrink-0">
-                <Calendar className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
+              <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl sm:rounded-[28px] flex items-center justify-center shadow-xl rotate-6 shrink-0 transition-all ${isEditing ? 'bg-amber-500 shadow-amber-500/20' : 'bg-brand-primary shadow-brand-primary/20'}`}>
+                {isEditing ? <Pencil className="w-5 h-5 sm:w-8 sm:h-8 text-white" /> : <Calendar className="w-5 h-5 sm:w-8 sm:h-8 text-white" />}
               </div>
               <div>
-                <h2 className="text-xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">New Entry</h2>
-                <p className="text-slate-400 font-bold text-[9px] sm:text-[13px] uppercase tracking-[0.2em] mt-1.5 sm:mt-2 leading-none">{userData?.labId} Standard Order</p>
+                <h2 className="text-xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">
+                  {isEditing ? 'Modify Booking' : 'New Entry'}
+                </h2>
+                <p className="text-slate-400 font-bold text-[9px] sm:text-[13px] uppercase tracking-[0.2em] mt-1.5 sm:mt-2 leading-none">
+                  {isEditing ? `Editing Order: ${editingBookingId}` : `${userData?.labId} Standard Order`}
+                </p>
               </div>
             </div>
             
-            <form onSubmit={handleAddBooking} className="flex flex-col lg:flex-row gap-4 sm:gap-8 max-h-[85vh] min-h-[400px]">
+            <form onSubmit={isEditing ? handleUpdateBooking : handleAddBooking} className="flex flex-col lg:flex-row gap-4 sm:gap-8 max-h-[85vh] min-h-[400px]">
               {/* Left Column: Inputs */}
               <div className="flex-[1.4] space-y-4 sm:space-y-8 overflow-y-auto custom-scrollbar pr-2 sm:pr-6 pb-6 lg:border-r border-slate-50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                   <div className="md:col-span-2">
                     <label className="block text-[10px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">1. Select Patient</label>
                     <div className="relative group">
-                      <select required className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
-                        value={newBooking.patientId} onChange={e => setNewBooking({...newBooking, patientId: e.target.value})}
+                      <select 
+                        required 
+                        disabled={isEditing}
+                        className={`w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300 ${isEditing ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
+                        value={newBooking.patientId} 
+                        onChange={e => !isEditing && setNewBooking({...newBooking, patientId: e.target.value})}
                       >
                         <option value="">Search Patient Archive...</option>
                         {patients.map(p => <option key={p.id} value={p.id}>{p.name} — {p.phone || 'NO CONTACT'}</option>)}
@@ -749,22 +923,28 @@ const Bookings = () => {
                       className={`w-full py-3.5 sm:py-4.5 rounded-[20px] sm:rounded-[22px] text-[11px] font-black uppercase tracking-[0.3em] transition-all border border-white/10 group flex items-center justify-center gap-3 ${
                         isSaving 
                           ? 'bg-brand-dark/80 cursor-not-allowed text-white/50' 
-                          : 'bg-brand-dark text-white hover:shadow-2xl hover:shadow-brand-dark/30 active:scale-95'
+                          : isEditing 
+                            ? 'bg-amber-500 text-white hover:bg-amber-600 hover:shadow-2xl hover:shadow-amber-500/30 active:scale-95'
+                            : 'bg-brand-dark text-white hover:shadow-2xl hover:shadow-brand-dark/30 active:scale-95'
                       }`}
                     >
                       {isSaving ? (
                         <>
                           <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-brand-primary" />
-                          Saving...
+                          {isEditing ? 'Updating...' : 'Saving...'}
                         </>
                       ) : (
                         <>
-                          Save Booking 
-                          <Plus className="inline w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1 text-brand-primary group-hover:rotate-90 transition-transform" />
+                          {isEditing ? 'Update Booking' : 'Save Booking'}
+                          {isEditing ? (
+                            <Pencil className="inline w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1 text-white hover:rotate-12 transition-transform" />
+                          ) : (
+                            <Plus className="inline w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1 text-brand-primary group-hover:rotate-90 transition-transform" />
+                          )}
                         </>
                       )}
                     </button>
-                    <button type="button" onClick={() => setShowAddModal(false)} className="w-full py-2.5 sm:py-3.5 bg-slate-50 text-slate-400 rounded-[14px] sm:rounded-[18px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
+                    <button type="button" onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingBookingId(null); }} className="w-full py-2.5 sm:py-3.5 bg-slate-50 text-slate-400 rounded-[14px] sm:rounded-[18px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
                 </div>
               </div>
             </form>

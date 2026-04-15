@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Loader, FileText, Eye, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, Clock, Mail, Zap, Bell } from 'lucide-react';
+import { Search, Loader, FileText, Eye, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, Clock, Mail, Zap, Bell, IndianRupee, Pencil } from 'lucide-react';
 import ReportPreview from '../components/ReportPreview';
 import { toast } from 'react-toastify';
 
@@ -22,10 +22,13 @@ const Reports = () => {
   const [editedResults, setEditedResults] = useState([]);
   const [saving, setSaving] = useState(false);
   const [fetchingMaster, setFetchingMaster] = useState(false);
+  const [pendingPaymentBooking, setPendingPaymentBooking] = useState(null); 
   // expandedGroups: set of billIds that are expanded
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [emailSending, setEmailSending] = useState(null); // billId of group currently sending email
   const [labProfile, setLabProfile] = useState(null);
+  const [paymentBooking, setPaymentBooking] = useState(null); // The booking document for the current quick payment
+  const [isQuickPaying, setIsQuickPaying] = useState(false);
 
   // ─── Fetch reports from Firestore ─────────────────────────────────────────
   useEffect(() => {
@@ -53,6 +56,25 @@ const Reports = () => {
 
     return () => unsubscribe();
   }, [userData, activeLabId]);
+
+  // --- PERSISTENCE: Restore pending payment from localStorage on mount ---
+  useEffect(() => {
+    const saved = localStorage.getItem('pending_payment_booking');
+    if (saved) {
+      try {
+        setPendingPaymentBooking(JSON.parse(saved));
+      } catch (e) { console.error("Error restoring pending payment:", e); }
+    }
+  }, []);
+
+  // Sync state to localStorage
+  useEffect(() => {
+    if (pendingPaymentBooking) {
+      localStorage.setItem('pending_payment_booking', JSON.stringify(pendingPaymentBooking));
+    } else {
+      localStorage.removeItem('pending_payment_booking');
+    }
+  }, [pendingPaymentBooking]);
 
   // Fetch Lab Details for Automation Settings
   useEffect(() => {
@@ -283,6 +305,28 @@ const Reports = () => {
 
       if (group) {
         await triggerBookingSync(reportId, 'Final', group);
+
+        // --- NEW: Payment Check for Quick Popup ---
+        try {
+          const labId = activeLabId || userData?.labId;
+          const bookingNo = group.tests?.[0]?.bookingNo;
+          if (labId && bookingNo) {
+            const bDocId = `${labId}_${bookingNo}`;
+            const bSnap = await getDoc(doc(db, 'bookings', bDocId));
+            if (bSnap.exists()) {
+              const bData = bSnap.data();
+              if (parseFloat(bData.balance || 0) > 0) {
+                // Trigger the payment popup after a short delay for better UX
+                setTimeout(() => {
+                  setPaymentBooking({ id: bDocId, ...bData });
+                  setPendingPaymentBooking({ id: bDocId, ...bData });
+                }, 800);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Quick payment trigger failed:", e);
+        }
 
         // --- AUTOMATION LOGIC (Notifications) ---
         const otherTests = group.tests.filter(t => t.id !== reportId);
@@ -690,6 +734,19 @@ const Reports = () => {
 
                   {/* Collective Actions */}
                   <div className="flex flex-grow sm:flex-grow-0 justify-end gap-2">
+                      <button
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          const test0 = group.tests?.[0];
+                          const bId = test0?.bookingId || (test0?.labId && test0?.bookingNo ? `${test0.labId}_${test0.bookingNo}` : null);
+                          if (bId) navigate(`/bookings?edit=${bId}`); 
+                        }}
+                        className="p-2 sm:px-4 sm:py-2 bg-amber-50 text-amber-500 font-black text-[10px] uppercase rounded-xl border border-amber-100 hover:bg-amber-100 transition-all flex items-center justify-center gap-1.5"
+                        title="Edit Booking"
+                      >
+                        <Pencil className="w-4 h-4" />
+                        <span className="hidden sm:inline">Edit</span>
+                      </button>
                       {!group.tests.some(t => t.collected_at) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'collected_at'); }}
@@ -899,6 +956,151 @@ const Reports = () => {
       {/* Report Preview */}
       {previewReport && (
         <ReportPreview report={previewReport} onClose={() => setPreviewGroupId(null)} />
+      )}
+
+      {/* Sticky Floating Red Button for skipped payments */}
+      {pendingPaymentBooking && !paymentBooking && (
+        <button 
+          onClick={() => setPaymentBooking(pendingPaymentBooking)}
+          className="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 z-[150] bg-rose-600 text-white px-3 sm:px-5 py-2 sm:py-3 rounded-xl sm:rounded-2xl shadow-2xl shadow-rose-600/40 hover:bg-rose-700 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-2 sm:gap-3 animate-bounce border border-rose-500/30"
+        >
+          <div className="w-7 h-7 sm:w-9 sm:h-9 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center backdrop-blur-md">
+            <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="text-left">
+            <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] leading-none opacity-80 mb-0.5 sm:mb-1 whitespace-nowrap">Pending: {pendingPaymentBooking.patientName}</p>
+            <p className="text-sm sm:text-lg font-black tabular-nums tracking-tighter">₹{pendingPaymentBooking.balance}</p>
+          </div>
+        </button>
+      )}
+
+      {/* Quick Payment Modal */}
+      {paymentBooking && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-brand-dark/90 backdrop-blur-2xl" onClick={() => setPaymentBooking(null)}></div>
+          <div className="relative bg-white w-full max-w-lg rounded-[48px] shadow-3xl overflow-hidden border border-white/20 animate-in zoom-in duration-300">
+            <div className="bg-brand-primary p-10 text-white relative">
+               <div className="absolute top-0 right-0 p-8">
+                  <button onClick={() => setPaymentBooking(null)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
+                    <X className="w-6 h-6" />
+                  </button>
+               </div>
+               <div className="flex items-center gap-5 mb-2">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
+                    <CheckCircle2 className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-tighter">Report Finalized!</h3>
+                    <p className="text-white/60 font-bold text-xs uppercase tracking-widest mt-1">Direct Payment Collection</p>
+                  </div>
+               </div>
+            </div>
+            
+            <div className="p-10 space-y-8">
+               <div className="flex justify-between items-end bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-inner">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Balance Due</p>
+                    <p className="text-4xl font-black text-brand-dark tabular-nums tracking-tighter">₹{paymentBooking.balance}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patient</p>
+                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight">{paymentBooking.patientName}</p>
+                  </div>
+               </div>
+
+               <div className="space-y-6">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Receiving Amount (₹)</label>
+                    <input 
+                      type="number" 
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-5 px-8 text-2xl font-black text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 focus:bg-white transition-all tabular-nums"
+                      autoFocus
+                      placeholder="0.00"
+                      id="quick-pay-amount"
+                      defaultValue={paymentBooking.balance}
+                    />
+                  </div>
+
+                  <div>
+                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Payment Method</label>
+                     <div className="grid grid-cols-3 gap-3">
+                        {['Cash', 'UPI', 'Card'].map(m => (
+                          <button 
+                            key={m}
+                            onClick={() => {
+                              // Direct DOM manipulation fallback for speed + State sync
+                              document.querySelectorAll('.pay-mode-btn').forEach(b => {
+                                b.classList.remove('bg-brand-dark', 'text-white', 'shadow-lg', 'border-transparent');
+                                b.classList.add('bg-slate-50', 'text-slate-600', 'border-slate-100');
+                              });
+                              const el = document.getElementById(`mode-${m}`);
+                              el.classList.remove('bg-slate-50', 'text-slate-600', 'border-slate-100');
+                              el.classList.add('bg-brand-dark', 'text-white', 'shadow-lg', 'border-transparent');
+                            }}
+                            id={`mode-${m}`}
+                            className={`pay-mode-btn py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest border transition-all duration-300 ${m === 'Cash' ? 'bg-brand-dark text-white shadow-lg border-transparent' : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'}`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+
+               <div className="flex flex-col gap-3 pt-4">
+                  <button 
+                    disabled={isQuickPaying}
+                    onClick={async () => {
+                      const amount = parseFloat(document.getElementById('quick-pay-amount').value);
+                      const method = document.querySelector('.pay-mode-btn.bg-brand-dark').innerText;
+                      
+                      if (!amount || amount <= 0) {
+                        toast.error("Please enter a valid amount");
+                        return;
+                      }
+
+                      setIsQuickPaying(true);
+                      try {
+                        const newPaid = (parseFloat(paymentBooking.paidAmount) || 0) + amount;
+                        const newBalance = Math.max((parseFloat(paymentBooking.totalAmount) || 0) - newPaid, 0);
+                        
+                        const paymentRecord = {
+                          amount: amount,
+                          method: method,
+                          date: new Date()
+                        };
+
+                        await updateDoc(doc(db, 'bookings', paymentBooking.id), {
+                          paidAmount: newPaid,
+                          balance: newBalance,
+                          paymentStatus: newBalance <= 0 ? 'Paid' : 'Unpaid',
+                          paymentHistory: paymentBooking.paymentHistory ? [...paymentBooking.paymentHistory, paymentRecord] : [paymentRecord],
+                          updatedAt: serverTimestamp()
+                        });
+                        
+                        toast.success(`🎉 Success! Received ₹${amount} via ${method}`);
+                        setPaymentBooking(null);
+                        setPendingPaymentBooking(null);
+                      } catch (err) {
+                        toast.error("Payment failed: " + err.message);
+                      } finally {
+                        setIsQuickPaying(false);
+                      }
+                    }}
+                    className="w-full py-5 bg-brand-primary text-white rounded-[24px] text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-brand-primary/20 hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {isQuickPaying ? <Loader className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Confirm Payment</>}
+                  </button>
+                  <button 
+                    onClick={() => setPaymentBooking(null)}
+                    className="w-full py-3 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-brand-dark transition-all"
+                  >
+                    Skip For Now
+                  </button>
+               </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation */}
