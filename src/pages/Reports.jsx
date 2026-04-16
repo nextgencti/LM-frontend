@@ -1,11 +1,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { Search, Loader, FileText, Eye, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, Clock, Mail, Zap, Bell, IndianRupee, Pencil } from 'lucide-react';
 import ReportPreview from '../components/ReportPreview';
 import { toast } from 'react-toastify';
+
+const getGroupStatus = (tests) => {
+  if (tests.length === 0) return 'Pending';
+  const allDelivered = tests.every(t => t.status === 'Delivered');
+  if (allDelivered) return 'Delivered';
+  
+  const allFinalOrDelivered = tests.every(t => t.status === 'Final' || t.status === 'Delivered');
+  if (allFinalOrDelivered) return 'Final';
+  
+  const anyProgress = tests.some(t => t.status === 'Final' || t.status === 'In Progress' || t.status === 'Delivered');
+  return anyProgress ? 'In Progress' : 'Pending';
+};
 
 const Reports = () => {
   const { currentUser, userData, activeLabId, subscription, checkFeature } = useAuth();
@@ -17,7 +29,7 @@ const Reports = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [previewGroupId, setPreviewGroupId] = useState(null);
   const [reportToDelete, setReportToDelete] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [statusFilter, setStatusFilter] = useState('Active'); // Default: Pending + In Progress
   const [focusedIndex, setFocusedIndex] = useState(null);
   const [editedResults, setEditedResults] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -142,13 +154,22 @@ const Reports = () => {
       const billMatch = g.billId?.toLowerCase().includes(searchTerm.toLowerCase());
       const testMatch = g.tests.some(t => t.testName?.toLowerCase().includes(searchTerm.toLowerCase()));
       if (!nameMatch && !billMatch && !testMatch) return false;
+
+      const groupStatus = getGroupStatus(g.tests);
       if (statusFilter === 'All Status') return true;
-      const allFinal = g.tests.every(t => t.status === 'Final');
-      const anyProgress = g.tests.some(t => t.status === 'In Progress');
-      const groupStatus = allFinal ? 'Final' : anyProgress ? 'In Progress' : 'Pending';
+      if (statusFilter === 'Active') return groupStatus === 'Pending' || groupStatus === 'In Progress' || groupStatus === 'Final';
       return groupStatus === statusFilter;
     });
   }, [groupedReports, searchTerm, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts = { Pending: 0, 'In Progress': 0, Final: 0, Delivered: 0, Total: groupedReports.length };
+    groupedReports.forEach(g => {
+      const s = getGroupStatus(g.tests);
+      if (counts[s] !== undefined) counts[s]++;
+    });
+    return counts;
+  }, [groupedReports]);
 
   // ─── Load results when a report is selected ───────────────────────────────
   useEffect(() => {
@@ -218,6 +239,7 @@ const Reports = () => {
     let g = {}; try { g = JSON.parse(u[idx].value || '{}'); } catch { g = {}; }
     g[titration] = val; u[idx].value = JSON.stringify(g); setEditedResults(u);
   };
+
 
   const triggerBookingSync = async (reportId, nextState, group) => {
     if (!group) return;
@@ -306,21 +328,25 @@ const Reports = () => {
       if (group) {
         await triggerBookingSync(reportId, 'Final', group);
 
-        // --- NEW: Payment Check for Quick Popup ---
+        // --- NEW: Payment Check for Quick Popup (Now triggers ONLY when ALL tests are final) ---
         try {
-          const labId = activeLabId || userData?.labId;
-          const bookingNo = group.tests?.[0]?.bookingNo;
-          if (labId && bookingNo) {
-            const bDocId = `${labId}_${bookingNo}`;
-            const bSnap = await getDoc(doc(db, 'bookings', bDocId));
-            if (bSnap.exists()) {
-              const bData = bSnap.data();
-              if (parseFloat(bData.balance || 0) > 0) {
-                // Trigger the payment popup after a short delay for better UX
-                setTimeout(() => {
-                  setPaymentBooking({ id: bDocId, ...bData });
-                  setPendingPaymentBooking({ id: bDocId, ...bData });
-                }, 800);
+          const allTestsFinal = group.tests.every(t => t.id === reportId || t.status === 'Final' || t.status === 'Delivered');
+          
+          if (allTestsFinal) {
+            const labId = activeLabId || userData?.labId;
+            const bId = test?.bookingId || (labId && test?.bookingNo ? `${labId}_${test.bookingNo}` : null);
+            
+            if (bId) {
+              const bSnap = await getDoc(doc(db, 'bookings', bId));
+              if (bSnap.exists()) {
+                const bData = bSnap.data();
+                if (parseFloat(bData.balance || 0) > 0) {
+                  // Trigger the payment popup after a short delay for better UX
+                  setTimeout(() => {
+                    setPaymentBooking({ id: bId, ...bData });
+                    setPendingPaymentBooking({ id: bId, ...bData });
+                  }, 800);
+                }
               }
             }
           }
@@ -330,7 +356,7 @@ const Reports = () => {
 
         // --- AUTOMATION LOGIC (Notifications) ---
         const otherTests = group.tests.filter(t => t.id !== reportId);
-        const allOthersFinal = otherTests.every(t => t.status === 'Final');
+        const allOthersFinal = otherTests.every(t => t.status === 'Final' || t.status === 'Delivered');
 
         if (allOthersFinal) {
           const labId = activeLabId || userData?.labId;
@@ -421,6 +447,39 @@ const Reports = () => {
     }
   };
 
+  const handleMarkDelivered = async (group) => {
+    if (!group) return;
+    try {
+      const batch = writeBatch(db);
+      const reportsToUpdate = group.tests.filter(t => t.status !== 'Delivered');
+      
+      // 1. Update all reports in group to Delivered
+      reportsToUpdate.forEach(test => {
+        batch.update(doc(db, 'reports', test.id), { 
+          status: 'Delivered',
+          delivered_at: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      // 2. ALSO Update Booking status to Delivered
+      const labId = activeLabId || userData?.labId;
+      const firstTest = group.tests[0];
+      const bId = firstTest?.bookingId || (labId && firstTest?.bookingNo ? `${labId}_${firstTest.bookingNo}` : null);
+      
+      if (bId) {
+        batch.update(doc(db, 'bookings', bId), { 
+          status: 'Delivered',
+          updatedAt: serverTimestamp() 
+        });
+      }
+
+      await batch.commit();
+    } catch (err) {
+      console.error("Delivery Status Sync Error:", err);
+    }
+  };
+
   const confirmDeleteReport = async () => {
     if (!reportToDelete) return;
     try {
@@ -488,14 +547,10 @@ const Reports = () => {
   };
 
   // ─── Render Helpers ───────────────────────────────────────────────────────
-  const getGroupStatus = (tests) => {
-    if (tests.every(t => t.status === 'Final')) return 'Final';
-    if (tests.some(t => t.status === 'In Progress')) return 'In Progress';
-    return 'Pending';
-  };
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case 'Delivered': return 'bg-emerald-500 text-white border-emerald-600 shadow-emerald-500/20';
       case 'Final': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case 'In Progress': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
       default: return 'bg-amber-50 text-amber-600 border-amber-200';
@@ -593,6 +648,7 @@ const Reports = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
+    <>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
 
       {/* Header */}
@@ -626,49 +682,73 @@ const Reports = () => {
           )}
 
           {/* Live Sync Badge */}
-          <div className="flex items-center gap-3 bg-brand-light/20 px-6 py-3 rounded-full border border-brand-primary/10 select-none shadow-sm">
+          <div className="flex items-center gap-3 bg-brand-light/20 px-6 py-3 rounded-full border border-brand-primary/10 select-none shadow-sm h-fit">
             <div className="w-2.5 h-2.5 bg-brand-primary rounded-full animate-pulse shadow-md shadow-brand-primary/50"></div>
             <span className="text-[11px] font-black text-brand-dark uppercase tracking-[0.2em] leading-none">Live Sync Active</span>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-5 sm:p-6 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10 flex flex-col md:flex-row gap-5 sm:gap-8 items-center">
-        <div className="relative flex-grow w-full max-w-2xl group">
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+      {/* Sticky Filters Header */}
+      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-4 items-center">
+          {/* Search Bar */}
+          <div className="relative flex-grow w-full group">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+            </div>
+            <input type="text"
+              className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
+              placeholder="Search by patient, bill ID, or test name..." value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <input type="text"
-            className="block w-full pl-14 pr-6 py-4.5 bg-slate-50/50 border border-slate-100 rounded-[28px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-inner"
-            placeholder="Search by patient, bill ID, or test name..." value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
-        <div className="flex items-center gap-4 bg-white px-6 py-3 sm:py-4 rounded-[28px] border border-slate-100 shadow-sm w-full sm:w-auto justify-between sm:justify-start">
-          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Filter</span>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-transparent border-none py-1 text-[12px] font-black text-brand-dark focus:ring-0 outline-none cursor-pointer flex-grow text-right sm:text-left">
-            <option value="All Status">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Final">Final</option>
-          </select>
+
+          {/* Status Quick Filters */}
+          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto overflow-x-auto no-scrollbar">
+            {[
+              { id: 'Active', label: 'Active', color: 'bg-brand-primary', count: statusCounts.Pending + statusCounts['In Progress'] + statusCounts.Final },
+              { id: 'Pending', label: 'Pending', color: 'bg-amber-500', count: statusCounts.Pending },
+              { id: 'In Progress', label: 'In Progress', color: 'bg-indigo-500', count: statusCounts['In Progress'] },
+              { id: 'Final', label: 'Finalized', color: 'bg-emerald-500', count: statusCounts.Final },
+              { id: 'Delivered', label: 'Delivered', color: 'bg-emerald-600', count: statusCounts.Delivered },
+              { id: 'All Status', label: 'All', color: 'bg-slate-400', count: statusCounts.Total }
+            ].map((btn) => (
+              <button
+                key={btn.id}
+                onClick={() => setStatusFilter(btn.id)}
+                className={`flex items-center gap-2.5 px-4 py-2 rounded-[18px] transition-all whitespace-nowrap group/btn ${
+                  statusFilter === btn.id 
+                    ? 'bg-brand-dark text-white shadow-lg scale-[1.05] z-10' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${statusFilter === btn.id ? 'bg-white' : btn.color}`}></div>
+                <span className="text-[11px] font-black uppercase tracking-wider">{btn.label}</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg tabular-nums ${
+                  statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {btn.count}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Grouped Reports List */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="bg-white rounded-[40px] p-32 flex flex-col items-center justify-center border border-slate-100 shadow-sm">
-            <Loader className="w-12 h-12 animate-spin text-brand-primary mb-4" />
-            <p className="text-brand-dark/40 font-black uppercase text-[12px] tracking-[0.3em]">Loading reports...</p>
-          </div>
-        ) : filteredGroups.length === 0 ? (
-          <div className="bg-white rounded-[40px] p-32 text-center border border-slate-100 shadow-sm">
-            <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-            <p className="text-xl font-black text-brand-dark/30 uppercase tracking-[0.3em]">No reports found.</p>
-          </div>
-        ) : filteredGroups.map((group) => {
+      {/* Grouped Reports List - Scrollable Area */}
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0" style={{ maxHeight: 'calc(100vh - 340px)' }}>
+        <div className="space-y-4 pb-10">
+          {loading ? (
+            <div className="bg-white rounded-[40px] p-32 flex flex-col items-center justify-center border border-slate-100 shadow-sm">
+              <Loader className="w-12 h-12 animate-spin text-brand-primary mb-4" />
+              <p className="text-brand-dark/40 font-black uppercase text-[12px] tracking-[0.3em]">Loading reports...</p>
+            </div>
+          ) : filteredGroups.length === 0 ? (
+            <div className="bg-white rounded-[40px] p-32 text-center border border-slate-100 shadow-sm">
+              <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+              <p className="text-xl font-black text-brand-dark/30 uppercase tracking-[0.3em]">No reports found.</p>
+            </div>
+          ) : filteredGroups.map((group) => {
           const isExpanded = expandedGroups.has(group.groupKey);
           const groupStatus = getGroupStatus(group.tests);
           const allFinal = groupStatus === 'Final';
@@ -688,8 +768,27 @@ const Reports = () => {
                 
                 {/* ID + Mobile Status Row */}
                 <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-                  <div className="text-[10px] sm:text-[11px] font-black text-brand-dark bg-brand-light/50 px-3 py-1.5 rounded-xl border border-brand-primary/10 uppercase tabular-nums whitespace-nowrap text-center shadow-sm">
-                    {group.billId}
+                  <div className="flex items-center gap-2">
+                    <div className={`text-[10px] sm:text-[11px] font-black px-3 py-1.5 rounded-xl border uppercase tabular-nums whitespace-nowrap text-center shadow-sm transition-all duration-500 ${
+                      group.tests.some(t => t.paymentStatus === 'Unpaid')
+                        ? 'bg-rose-500 text-white border-rose-400 animate-[pulse_1s_cubic-bezier(0.4,0,0.6,1)_infinite] shadow-[0_0_15px_rgba(244,63,94,0.4)]'
+                        : 'text-brand-dark bg-brand-light/50 border-brand-primary/10'
+                    }`}>
+                      {group.billId}
+                    </div>
+                    {/* Edit Button - Icon only next to ID */}
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const test0 = group.tests?.[0];
+                        const bId = test0?.bookingId || (test0?.labId && test0?.bookingNo ? `${test0.labId}_${test0.bookingNo}` : null);
+                        if (bId) navigate(`/bookings?edit=${bId}&from=reports`); 
+                      }}
+                      className="p-1.5 bg-amber-50 text-amber-500 rounded-lg border border-amber-100 hover:bg-amber-100 transition-all shadow-sm group/edit"
+                      title="Edit Booking"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                   <div className={`sm:hidden px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border whitespace-nowrap ${getStatusBadge(groupStatus)}`}>
                     {groupStatus}
@@ -725,28 +824,15 @@ const Reports = () => {
                   </div>
 
                   {/* Desktop Status Badge */}
-                  <div className={`hidden sm:flex px-4 py-1.5 rounded-2xl text-[11px] font-black uppercase border whitespace-nowrap ${getStatusBadge(groupStatus)}`}>
+                  <div className={`hidden sm:flex px-4 py-1.5 rounded-2xl text-[11px] font-black uppercase border whitespace-nowrap transition-all duration-500 ${getStatusBadge(groupStatus)}`}>
                     <span className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${allFinal ? 'bg-emerald-500' : 'bg-current'}`}></span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${groupStatus === 'Final' || groupStatus === 'Delivered' ? (groupStatus === 'Delivered' ? 'bg-white' : 'bg-emerald-500') : 'bg-current'}`}></span>
                       {groupStatus}
                     </span>
                   </div>
 
                   {/* Collective Actions */}
                   <div className="flex flex-grow sm:flex-grow-0 justify-end gap-2">
-                      <button
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          const test0 = group.tests?.[0];
-                          const bId = test0?.bookingId || (test0?.labId && test0?.bookingNo ? `${test0.labId}_${test0.bookingNo}` : null);
-                          if (bId) navigate(`/bookings?edit=${bId}`); 
-                        }}
-                        className="p-2 sm:px-4 sm:py-2 bg-amber-50 text-amber-500 font-black text-[10px] uppercase rounded-xl border border-amber-100 hover:bg-amber-100 transition-all flex items-center justify-center gap-1.5"
-                        title="Edit Booking"
-                      >
-                        <Pencil className="w-4 h-4" />
-                        <span className="hidden sm:inline">Edit</span>
-                      </button>
                       {!group.tests.some(t => t.collected_at) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'collected_at'); }}
@@ -765,15 +851,21 @@ const Reports = () => {
                       )}
 
                     {/* Preview/Email */}
-                    {allFinal && (
+                    {(groupStatus === 'Final' || groupStatus === 'Delivered') && (
                       <div className="flex gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); setPreviewGroupId(group.groupKey); }}
-                          className="p-2 sm:px-4 sm:py-2 bg-brand-primary text-white font-black text-[10px] uppercase rounded-xl shadow-lg shadow-brand-primary/10 hover:scale-105 active:scale-95">
-                          <Eye className="w-4 h-4 sm:mr-1 inline" /> <span className="hidden sm:inline">Preview</span>
+                        <button onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setPreviewGroupId(group.groupKey); 
+                            handleMarkDelivered(group);
+                          }}
+                          className={`p-2 sm:px-4 sm:py-2 text-white font-black text-[10px] uppercase rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 ${groupStatus === 'Delivered' ? 'bg-brand-dark' : 'bg-brand-primary shadow-brand-primary/10'}`}>
+                          <Eye className="w-4 h-4 sm:mr-1 inline" /> <span className="hidden sm:inline">{groupStatus === 'Delivered' ? 'Re-Print' : 'Preview & Print'}</span>
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); handleSendGroupEmail(group); }} disabled={emailSending === group.groupKey}
-                          className="p-2 sm:px-4 sm:py-2 bg-brand-dark text-white font-black text-[10px] uppercase rounded-xl shadow-lg hover:scale-105 active:scale-95">
-                          {emailSending === group.groupKey ? <Loader className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4 sm:mr-1 inline" />} <span className="hidden sm:inline">Email</span>
+                          className="p-2 sm:p-2.5 bg-brand-dark text-white font-black text-[10px] uppercase rounded-xl shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center"
+                          title="Send Email"
+                        >
+                          {emailSending === group.groupKey ? <Loader className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
                         </button>
                       </div>
                     )}
@@ -823,7 +915,7 @@ const Reports = () => {
                       <div className="flex gap-2 items-center w-full sm:w-auto mt-2 sm:mt-0 justify-end">
                         {test.received_at && (
                           <div className="flex gap-2 flex-grow sm:flex-grow-0">
-                            {test.status !== 'Final' && (
+                            {test.status !== 'Final' && test.status !== 'Delivered' && (
                               <button onClick={() => { setSelectedReport(test); setEditedResults([]); }}
                                 className="flex-1 sm:flex-none bg-brand-dark text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-dark/10 hover:bg-brand-secondary transition-all uppercase tracking-widest active:scale-95 leading-none">
                                 Results
@@ -851,9 +943,11 @@ const Reports = () => {
             </div>
           );
         })}
+        </div>
       </div>
+    </div>
 
-      {/* Results Entry Modal */}
+    {/* Results Entry Modal */}
       {selectedReport && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-3xl" onClick={() => setSelectedReport(null)}></div>
@@ -955,7 +1049,23 @@ const Reports = () => {
 
       {/* Report Preview */}
       {previewReport && (
-        <ReportPreview report={previewReport} onClose={() => setPreviewGroupId(null)} />
+        <ReportPreview 
+          report={previewReport} 
+          onClose={() => {
+            setPreviewGroupId(null);
+            // Re-sync pending payment state from storage when modal closes
+            const saved = localStorage.getItem('pending_payment_booking');
+            if (saved) {
+              try {
+                setPendingPaymentBooking(JSON.parse(saved));
+              } catch (e) {
+                setPendingPaymentBooking(null);
+              }
+            } else {
+              setPendingPaymentBooking(null);
+            }
+          }} 
+        />
       )}
 
       {/* Sticky Floating Red Button for skipped payments */}
@@ -968,7 +1078,10 @@ const Reports = () => {
             <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="text-left">
-            <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] leading-none opacity-80 mb-0.5 sm:mb-1 whitespace-nowrap">Pending: {pendingPaymentBooking.patientName}</p>
+            <div className="flex flex-col max-w-[120px] sm:max-w-[150px]">
+              <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] leading-tight opacity-80 mb-0.5">Pending: {pendingPaymentBooking.patientName}</p>
+              <p className="text-[6px] sm:text-[8px] font-black text-white bg-white/20 px-1.5 py-0.5 rounded-md uppercase tracking-wider leading-none mt-0.5 w-fit">ID: {pendingPaymentBooking.billId || pendingPaymentBooking.id}</p>
+            </div>
             <p className="text-sm sm:text-lg font-black tabular-nums tracking-tighter">₹{pendingPaymentBooking.balance}</p>
           </div>
         </button>
@@ -1004,7 +1117,12 @@ const Reports = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patient</p>
-                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight">{paymentBooking.patientName}</p>
+                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight leading-none">{paymentBooking.patientName}</p>
+                    <div className="mt-1.5 flex justify-end">
+                      <span className="text-[10px] font-black text-brand-primary bg-brand-light px-2.5 py-1 rounded-xl border border-brand-primary/10 uppercase tracking-widest tabular-nums">
+                        ID: {paymentBooking.billId || paymentBooking.id}
+                      </span>
+                    </div>
                   </div>
                </div>
 
@@ -1070,17 +1188,46 @@ const Reports = () => {
                           date: new Date()
                         };
 
-                        await updateDoc(doc(db, 'bookings', paymentBooking.id), {
+                        const batch = writeBatch(db);
+                        const newPayStatus = newBalance <= 0 ? 'Paid' : 'Unpaid';
+
+                        // 1. Update Booking
+                        batch.update(doc(db, 'bookings', paymentBooking.id), {
                           paidAmount: newPaid,
                           balance: newBalance,
-                          paymentStatus: newBalance <= 0 ? 'Paid' : 'Unpaid',
+                          paymentStatus: newPayStatus,
                           paymentHistory: paymentBooking.paymentHistory ? [...paymentBooking.paymentHistory, paymentRecord] : [paymentRecord],
                           updatedAt: serverTimestamp()
                         });
+
+                        // 2. Sync Payment Status to all associated reports
+                        try {
+                          const qSync = query(collection(db, 'reports'), 
+                                              where('labId', '==', paymentBooking.labId), 
+                                              where('bookingNo', '==', paymentBooking.bookingNo));
+                          const sSnap = await getDocs(qSync);
+                          sSnap.forEach(rDoc => {
+                            batch.update(rDoc.ref, { paymentStatus: newPayStatus, updatedAt: serverTimestamp() });
+                          });
+                        } catch (e) {
+                          console.warn("Reports paymentStatus sync failed:", e);
+                        }
+
+                        await batch.commit();
                         
                         toast.success(`🎉 Success! Received ₹${amount} via ${method}`);
+                        
+                        if (newBalance <= 0) {
+                          localStorage.removeItem('pending_payment_booking');
+                          setPendingPaymentBooking(null);
+                        } else {
+                          // Update for partial payment
+                          const updated = { ...paymentBooking, balance: newBalance, paidAmount: newPaid };
+                          localStorage.setItem('pending_payment_booking', JSON.stringify(updated));
+                          setPendingPaymentBooking(updated);
+                        }
+                        
                         setPaymentBooking(null);
-                        setPendingPaymentBooking(null);
                       } catch (err) {
                         toast.error("Payment failed: " + err.message);
                       } finally {
@@ -1133,7 +1280,7 @@ const Reports = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

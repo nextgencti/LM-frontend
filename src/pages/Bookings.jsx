@@ -23,6 +23,7 @@ const Bookings = () => {
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [tests, setTests] = useState([]);
+  const [sourcePage, setSourcePage] = useState(null); 
   
   const [newBooking, setNewBooking] = useState({
     patientId: '', doctorId: '', testIds: [], 
@@ -31,7 +32,7 @@ const Bookings = () => {
     paymentStatus: 'Unpaid', balance: 0
   });
   
-  const [statusFilter, setStatusFilter] = useState('Pending');
+  const [statusFilter, setStatusFilter] = useState('Active'); // Default: Everything except Delivered
   const [urgencyFilter, setUrgencyFilter] = useState('All');
   const [testSearchQuery, setTestSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -43,11 +44,19 @@ const Bookings = () => {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    fetchBookings();
+    const params = new URLSearchParams(location.search);
+    const isEditMode = params.get('edit');
+    
+    // Only fetch the full list if we are NOT in immediate edit mode (to avoid flicker)
+    // or if the modal is NOT shown.
+    if (!isEditMode) {
+      fetchBookings();
+    }
+    
     if (showAddModal) {
       fetchCreationData();
     }
-  }, [userData, activeLabId, showAddModal]);
+  }, [userData, activeLabId, showAddModal, location.search]);
 
   // Handle URL Param for Editing
   useEffect(() => {
@@ -58,13 +67,32 @@ const Bookings = () => {
     }
   }, [location.search, activeLabId]);
 
+  // Handle URL Param for Auto-Opening New Booking with Patient
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const shouldAutoOpen = params.get('autoOpen');
+    const pid = params.get('patientId');
+    
+    if (shouldAutoOpen === 'true' && pid && activeLabId) {
+      setNewBooking(prev => ({ ...prev, patientId: pid }));
+      setIsEditing(false);
+      setShowAddModal(true);
+      // Clean URL
+      navigate('/bookings', { replace: true });
+    }
+  }, [location.search, activeLabId]);
+
   const handleOpenEditFromUrl = async (bId) => {
+    const params = new URLSearchParams(location.search);
+    const fromParam = params.get('from');
+    if (fromParam) setSourcePage(fromParam);
+
     try {
       const bSnap = await getDoc(doc(db, 'bookings', bId));
       if (bSnap.exists()) {
         const bData = { id: bSnap.id, ...bSnap.data() };
         handleEditBooking(bData);
-        // Clear param after opening
+        // Clear param after opening so URL stays clean, but state preserves context
         navigate('/bookings', { replace: true });
       }
     } catch (e) {
@@ -91,6 +119,17 @@ const Bookings = () => {
     setOriginalTestIds(booking.testIds || []);
     setIsEditing(true);
     setShowAddModal(true);
+  };
+
+  const exitModal = () => {
+    setShowAddModal(false);
+    setIsEditing(false);
+    setEditingBookingId(null);
+    if (sourcePage === 'reports') {
+      navigate('/reports');
+    } else {
+      fetchBookings();
+    }
   };
 
   const confirmDeleteBooking = async () => {
@@ -120,12 +159,41 @@ const Bookings = () => {
       
       setBookings(prev => prev.filter(r => r.id !== bId));
       toast.success('Booking deleted permanently');
+      if (sourcePage === 'reports') {
+        navigate('/reports');
+      }
     } catch (error) {
       toast.error('Failed to delete booking: ' + error.message);
     } finally {
       setBookingToDelete(null);
     }
   };
+
+  // ─── Filters & Counts ──────────────────────────────────────────────────
+  const filteredBookings = React.useMemo(() => {
+    return bookings.filter(b => {
+      const nameMatch = b.patientName?.toLowerCase().includes(searchTerm.toLowerCase());
+      const idMatch = b.billId?.toLowerCase().includes(searchTerm.toLowerCase()) || b.id?.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!nameMatch && !idMatch) return false;
+
+      if (urgencyFilter !== 'All' && b.urgency !== urgencyFilter) return false;
+
+      if (statusFilter === 'All') return true;
+      if (statusFilter === 'Active') return b.status !== 'Delivered';
+      return b.status === statusFilter;
+    });
+  }, [bookings, searchTerm, statusFilter, urgencyFilter]);
+
+  const statusCounts = React.useMemo(() => {
+    const counts = { Pending: 0, 'Processing': 0, 'Final': 0, 'Delivered': 0, Total: bookings.length };
+    bookings.forEach(b => {
+      if (b.status === 'Pending') counts.Pending++;
+      else if (b.status === 'Processing' || b.status === 'In Progress' || b.status === 'Sample Collected') counts.Processing++;
+      else if (b.status === 'Final' || b.status === 'Completed') counts.Final++;
+      else if (b.status === 'Delivered') counts.Delivered++;
+    });
+    return counts;
+  }, [bookings]);
 
   const fetchBookings = async () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
@@ -302,6 +370,7 @@ const Bookings = () => {
           patientGender: selectedPatient?.gender || 'Any',
           testName: test.testName,
           status: 'Pending',
+          paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
           labId: activeLabId,
           reportLayout: test.reportLayout || 'Standard',
           results: [],
@@ -414,6 +483,7 @@ const Bookings = () => {
           patientGender: selectedPatient?.gender || 'Any',
           testName: test.testName,
           status: 'Pending',
+          paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
           labId: activeLabId,
           reportLayout: test.reportLayout || 'Standard',
           results: [],
@@ -445,13 +515,26 @@ const Bookings = () => {
         updatedAt: serverTimestamp()
       });
 
+      // Sync Payment Status to all existing reports for this booking
+      const newPayStatus = (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid';
+      const qSync = query(collection(db, 'reports'), 
+                          where('labId', '==', activeLabId), 
+                          where('bookingNo', '==', bookingNo));
+      try {
+        const syncSnap = await getDocs(qSync);
+        syncSnap.forEach(rDoc => {
+          batch.update(rDoc.ref, { 
+            paymentStatus: newPayStatus, 
+            updatedAt: serverTimestamp() 
+          });
+        });
+      } catch (err) {
+        console.warn("Report payment sync failed:", err);
+      }
+
       await batch.commit();
       toast.success('🎉 Booking updated successfully!');
-      
-      setShowAddModal(false);
-      setIsEditing(false);
-      setEditingBookingId(null);
-      fetchBookings();
+      exitModal();
     } catch (error) {
       console.error("Error updating booking:", error);
       toast.error("Failed to update booking: " + error.message);
@@ -460,34 +543,6 @@ const Bookings = () => {
     }
   };
 
-  const filteredBookings = bookings.filter(b => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = 
-      b.patientName?.toLowerCase().includes(term) || 
-      b.bookingId?.toLowerCase().includes(term) ||
-      b.testNames?.toLowerCase().includes(term) ||
-      b.testName?.toLowerCase().includes(term);
-      
-    const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
-    const matchesUrgency = urgencyFilter === 'All' || b.urgency === urgencyFilter;
-
-    // Date Filtering
-    let matchesDate = true;
-    if (b.createdAt) {
-      let d = null;
-      if (b.createdAt.toDate) d = b.createdAt.toDate();
-      else if (b.createdAt.seconds) d = new Date(b.createdAt.seconds * 1000);
-      else if (b.createdAt instanceof Date) d = b.createdAt;
-      else d = new Date(b.createdAt);
-
-      if (d && !isNaN(d.getTime())) {
-        const bookingDateStr = d.toISOString().split('T')[0];
-        matchesDate = bookingDateStr >= startDate && bookingDateStr <= endDate;
-      }
-    }
-
-    return matchesSearch && matchesStatus && matchesUrgency && matchesDate;
-  });
 
   const getUrgencyStyles = (urgency) => {
     switch (urgency) {
@@ -510,7 +565,8 @@ const Bookings = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow animate-in fade-in duration-500">
+    <>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
@@ -544,85 +600,97 @@ const Bookings = () => {
         </button>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white p-6 sm:p-7 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10">
-        <div className="flex flex-col xl:flex-row gap-6 sm:gap-8 items-center">
-          {/* Search Area */}
-          <div className="relative flex-grow w-full max-w-3xl group">
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+      {/* Sticky Filters Header */}
+      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+          
+          {/* Left Side: Search & Dates Below */}
+          <div className="flex flex-col gap-3.5 w-full lg:max-w-xl xl:max-w-2xl">
+            {/* Search Bar */}
+            <div className="relative w-full group">
+              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+              </div>
+              <input type="text"
+                className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
+                placeholder="Search by patient or booking ID..." value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <input
-              type="text"
-              className="block w-full pl-14 pr-6 py-4.5 border border-slate-200 bg-slate-50/30 rounded-[28px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white text-sm font-black text-brand-dark outline-none transition-all placeholder:text-slate-400 placeholder:font-bold"
-              placeholder="Search by patient or ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+
+            {/* Date Filters - Moved under search bar */}
+            <div className="flex items-center gap-4 bg-white/50 px-5 py-2.5 rounded-[20px] border border-slate-200 w-fit">
+               <div className="flex items-center gap-2.5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">From</span>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-transparent border-none text-[12px] font-black text-brand-dark focus:ring-0 outline-none cursor-pointer" />
+               </div>
+               <div className="text-slate-200 font-bold">/</div>
+               <div className="flex items-center gap-2.5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">To</span>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-transparent border-none text-[12px] font-black text-brand-dark focus:ring-0 outline-none cursor-pointer" />
+               </div>
+            </div>
           </div>
 
-          {/* Filters Area */}
-          <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 sm:gap-5 w-full xl:w-auto">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest hidden lg:block">Status</span>
-              <select 
-                className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 text-[12px] font-black text-brand-dark outline-none focus:border-brand-primary/40 focus:ring-4 focus:ring-brand-primary/5 shadow-sm appearance-none cursor-pointer w-full sm:min-w-[140px]"
-                value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="All">All Status</option>
-                {["Pending", "Sample Collected", "Processing", "In Progress", "Final", "Completed", "Delivered"].map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest hidden lg:block">Urgency</span>
-              <select 
-                className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 text-[12px] font-black text-brand-dark outline-none focus:border-brand-primary/40 focus:ring-4 focus:ring-brand-primary/5 shadow-sm appearance-none cursor-pointer w-full sm:min-w-[140px]"
-                value={urgencyFilter} onChange={(e) => setUrgencyFilter(e.target.value)}
-              >
-                <option value="All">All Priority</option>
-                {["Routine", "Urgent", "STAT"].map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-
-            {/* Date Filters Area */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 bg-brand-light/20 p-4 sm:p-2 sm:px-6 rounded-[28px] border border-brand-primary/10 w-full sm:w-auto">
-              <div className="flex items-center justify-between sm:justify-start gap-3">
-                <span className="text-[10px] font-black text-brand-dark/40 uppercase tracking-widest">From</span>
-                <input 
-                  type="date" 
-                  className="bg-white border border-brand-primary/10 rounded-xl px-4 py-2 text-[12px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/20 cursor-pointer shadow-sm tabular-nums"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="hidden sm:block h-4 w-px bg-brand-primary/20"></div>
-              <div className="flex items-center justify-between sm:justify-start gap-3">
-                <span className="text-[10px] font-black text-brand-dark/40 uppercase tracking-widest">To</span>
-                <input 
-                  type="date" 
-                  className="bg-white border border-brand-primary/10 rounded-xl px-4 py-2 text-[12px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/20 cursor-pointer shadow-sm tabular-nums"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+          {/* Quick Filter Buttons & Urgency */}
+          <div className="flex flex-col md:flex-row xl:flex-row flex-wrap items-center gap-4 flex-grow lg:justify-end w-full lg:w-auto">
+            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm overflow-x-auto no-scrollbar">
+              {[
+                { id: 'Active', label: 'Active', color: 'bg-brand-primary', count: (statusCounts.Total || 0) - (statusCounts.Delivered || 0) },
+                { id: 'Pending', label: 'Pending', color: 'bg-amber-500', count: statusCounts.Pending },
+                { id: 'Processing', label: 'In Progress', color: 'bg-indigo-500', count: statusCounts.Processing },
+                { id: 'Final', label: 'Finalized', color: 'bg-emerald-500', count: statusCounts.Final },
+                { id: 'Delivered', label: 'Delivered', color: 'bg-sky-500', count: statusCounts.Delivered },
+                { id: 'All', label: 'All', color: 'bg-slate-400', count: statusCounts.Total }
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => setStatusFilter(btn.id)}
+                  className={`flex items-center gap-2.5 px-4 py-2 rounded-[18px] transition-all whitespace-nowrap group/btn ${
+                    statusFilter === btn.id 
+                      ? 'bg-brand-dark text-white shadow-lg scale-[1.05]' 
+                      : 'text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${statusFilter === btn.id ? 'bg-white' : btn.color}`}></div>
+                  <span className="text-[11px] font-black uppercase tracking-wider">{btn.label}</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg tabular-nums ${
+                    statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    {btn.count}
+                  </span>
+                </button>
+              ))}
+              
+              <div className="w-[1px] h-6 bg-slate-100 mx-1 hidden xl:block"></div>
+              
+              <div className="flex items-center gap-2 px-3">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Priority</span>
+                <select className="bg-transparent border-none py-1 text-[11px] font-bold text-brand-dark outline-none cursor-pointer"
+                  value={urgencyFilter} onChange={(e) => setUrgencyFilter(e.target.value)}>
+                  <option value="All">All Priority</option>
+                  <option value="Routine">Routine</option>
+                  <option value="Urgent">Urgent</option>
+                  <option value="STAT">STAT</option>
+                </select>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[40px] shadow-[0_20px_60px_rgb(0,0,0,0.02)] border border-slate-100 overflow-hidden relative">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-brand-light/40">
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 360px)' }}>
+        <table className="min-w-full divide-y divide-slate-100">
+          <thead className="bg-[#f1f5f9] sticky top-0 z-[50] border-b border-slate-200">
               <tr>
-                <th className="px-8 py-6 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Booking ID</th>
-                <th className="px-8 py-6 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Patient / Doctor</th>
-                <th className="px-8 py-6 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Tests</th>
-                <th className="px-8 py-6 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Status</th>
-                <th className="px-8 py-6 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Total Amount</th>
-                <th className="px-8 py-6 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Date</th>
-                <th className="px-8 py-6 text-right text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Actions</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Booking ID</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Patient / Doctor</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Tests</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Status</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Amount</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Date</th>
+                <th className="px-8 py-5 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-50">
@@ -758,14 +826,14 @@ const Bookings = () => {
               )}
             </tbody>
           </table>
-        </div>
       </div>
+    </div>
 
       {/* Modern Booking Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-3xl animate-in fade-in duration-300">
           <div className="bg-white rounded-[32px] sm:rounded-[48px] shadow-3xl max-w-6xl w-full p-4 sm:p-10 overflow-hidden relative border border-white/20 flex flex-col max-h-[96vh]">
-            <button onClick={() => setShowAddModal(false)} className="absolute top-3 sm:top-8 right-3 sm:right-8 p-2 sm:p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
+            <button onClick={exitModal} className="absolute top-3 sm:top-8 right-3 sm:right-8 p-2 sm:p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
               <X className="w-5 h-5 sm:w-7 sm:h-7" />
             </button>
             
@@ -944,7 +1012,7 @@ const Bookings = () => {
                         </>
                       )}
                     </button>
-                    <button type="button" onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingBookingId(null); }} className="w-full py-2.5 sm:py-3.5 bg-slate-50 text-slate-400 rounded-[14px] sm:rounded-[18px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
+                    <button type="button" onClick={exitModal} className="w-full py-2.5 sm:py-3.5 bg-slate-50 text-slate-400 rounded-[14px] sm:rounded-[18px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
                 </div>
               </div>
             </form>
@@ -1029,7 +1097,7 @@ const Bookings = () => {
            </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

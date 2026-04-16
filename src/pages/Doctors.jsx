@@ -712,62 +712,66 @@ const Doctors = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-black text-brand-dark tracking-tighter flex items-center">
-            <div className="p-2 bg-brand-light rounded-xl mr-4 shadow-sm border border-brand-primary/10">
-              <Stethoscope className="w-8 h-8 text-brand-primary" />
+          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center text-left leading-none">
+            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+              <Stethoscope className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
             </div>
             Doctors
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Manage your referring doctors here.</p>
+          <p className="text-slate-500 mt-2 sm:mt-3 font-medium text-sm sm:text-base italic">Management of referring practitioners & medical networks.</p>
         </div>
         
         <button 
           onClick={() => setShowAddModal(true)}
-          className="flex items-center px-6 py-3 bg-brand-dark text-white rounded-2xl font-black hover:shadow-2xl hover:shadow-brand-dark/20 hover:-translate-y-1 transition-all duration-300 group active:scale-95 shadow-lg tracking-widest text-[11px] uppercase"
+          className="w-full md:w-auto flex items-center justify-center px-8 py-4 bg-brand-dark text-white rounded-[22px] font-black hover:shadow-2xl hover:shadow-brand-dark/20 hover:-translate-y-1 transition-all duration-300 group active:scale-95 shadow-lg tracking-[0.2em] text-[11px] uppercase whitespace-nowrap"
         >
-          <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300 text-brand-primary" />
-          Add Doctor
+          <Plus className="w-5 h-5 mr-3 group-hover:rotate-90 transition-transform duration-300 text-brand-primary" />
+          Add New Practitioner
         </button>
       </div>
 
-      {/* Search & Statistics */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-grow group">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+      {/* Sticky Filters Header */}
+      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+          
+          {/* Left Side: Search Bar */}
+          <div className="relative flex-grow w-full lg:max-w-2xl group">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+            </div>
+            <input type="text"
+              className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
+              placeholder="Search by practitioner name or medical facility..." value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 transition-all text-sm font-bold placeholder:text-slate-400 placeholder:font-medium shadow-sm hover:border-slate-300"
-            placeholder="Search by doctor name or clinic..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center px-6 bg-white rounded-[22px] border border-slate-100 shadow-sm whitespace-nowrap">
-          <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest mr-3">Total Doctors:</span>
-          <span className="text-lg font-black text-brand-dark tabular-nums">{doctors.length}</span>
+
+          {/* Right Side: Total Stats */}
+          <div className="flex items-center gap-3 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto">
+             <div className="px-6 py-2.5 bg-slate-50 border border-slate-100 rounded-[18px] flex items-center gap-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Network Size</span>
+                <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-sm font-black text-brand-dark tabular-nums shadow-sm">{doctors.length}</span>
+             </div>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 overflow-hidden relative">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-brand-light/30">
-              <tr>
-                <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Doctor Name</th>
-                <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Clinic / Hospital</th>
-                <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Commission</th>
-                <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Status</th>
-                <th scope="col" className="px-8 py-5 text-right text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-50">
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100" style={{ maxHeight: 'calc(100vh - 360px)' }}>
+        <table className="min-w-full divide-y divide-slate-100">
+          <thead className="bg-[#f1f5f9] sticky top-0 z-[20] border-b border-slate-200">
+            <tr>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Practitioner</th>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Medical Facility</th>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Structure</th>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Status</th>
+              <th scope="col" className="px-8 py-5 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Operational Controls</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-50">
               {loading ? (
                 <tr>
                   <td colSpan="5" className="px-8 py-20 text-center">
@@ -862,8 +866,7 @@ const Doctors = () => {
                 ))
               )}
             </tbody>
-          </table>
-        </div>
+        </table>
       </div>
 
       {showAddModal && (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { Loader, Printer, X, Download, ShieldCheck, Mail, Phone, MapPin, Building, IndianRupee, Save, CheckCircle2, Activity } from 'lucide-react';
 import QRCode from "react-qr-code";
 import { toast } from 'react-toastify';
@@ -832,7 +832,12 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patient</p>
-                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight">{reportData.patientName}</p>
+                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight leading-none">{reportData.patientName}</p>
+                    <div className="mt-1.5 flex justify-end">
+                      <span className="text-[10px] font-black text-brand-primary bg-brand-light px-2.5 py-1 rounded-xl border border-brand-primary/10 uppercase tracking-widest tabular-nums">
+                        ID: {bookingData.billId || bookingData.id}
+                      </span>
+                    </div>
                   </div>
                </div>
 
@@ -900,13 +905,49 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                           date: new Date()
                         };
 
-                        await updateDoc(doc(db, 'bookings', bookingData.id), {
+                        const batch = writeBatch(db);
+                        const newPayStatus = newBalance <= 0 ? 'Paid' : 'Unpaid';
+
+                        // 1. Update Booking
+                        batch.update(doc(db, 'bookings', bookingData.id), {
                           paidAmount: newPaid,
                           balance: newBalance,
-                          paymentStatus: newBalance <= 0 ? 'Paid' : 'Unpaid',
+                          paymentStatus: newPayStatus,
                           paymentHistory: bookingData.paymentHistory ? [...bookingData.paymentHistory, paymentRecord] : [paymentRecord],
                           updatedAt: serverTimestamp()
                         });
+
+                        // 2. Sync to Reports
+                        try {
+                          const qSync = query(collection(db, 'reports'), 
+                                              where('labId', '==', bookingData.labId), 
+                                              where('bookingNo', '==', bookingData.bookingNo));
+                          const sSnap = await getDocs(qSync);
+                          sSnap.forEach(rDoc => {
+                            batch.update(rDoc.ref, { paymentStatus: newPayStatus, updatedAt: serverTimestamp() });
+                          });
+                        } catch (e) {
+                          console.warn("Reports paymentStatus sync failed:", e);
+                        }
+
+                        await batch.commit();
+
+                        // Clear the pending payment state from localStorage or synchronize the FAB state
+                        if (newBalance <= 0) {
+                          localStorage.removeItem('pending_payment_booking');
+                        } else {
+                          const stored = localStorage.getItem('pending_payment_booking');
+                          if (stored) {
+                            const data = JSON.parse(stored);
+                            if (data.id === bookingData.id) {
+                              localStorage.setItem('pending_payment_booking', JSON.stringify({
+                                ...data,
+                                balance: newBalance,
+                                paidAmount: newPaid
+                              }));
+                            }
+                          }
+                        }
                         
                         toast.success(`🎉 Success! Received ₹${amount} via ${method}`);
                         // Refresh local state

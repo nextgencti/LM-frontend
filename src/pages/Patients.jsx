@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +8,7 @@ import { generateLabId } from '../utils/idGenerator';
 
 const Patients = () => {
   const { userData, activeLabId } = useAuth();
+  const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +24,7 @@ const Patients = () => {
   const [newPatient, setNewPatient] = useState({
     name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: ''
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
@@ -90,8 +93,8 @@ const Patients = () => {
     }
   };
 
-  const handleAddPatient = async (e) => {
-    e.preventDefault();
+  const handleAddPatient = async (e, shouldRedirect = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     const targetLabId = activeLabId || newPatient.labId;
     if (!targetLabId) {
       alert("Please select a laboratory first.");
@@ -115,6 +118,7 @@ const Patients = () => {
     }
 
     try {
+      setIsSaving(true);
       let docId;
       let finalPid;
       
@@ -147,9 +151,15 @@ const Patients = () => {
       await setDoc(doc(db, 'patients', docId), saveData, { merge: true });
       
       closeModal();
+      
+      if (shouldRedirect) {
+        navigate(`/bookings?autoOpen=true&patientId=${docId}`);
+      }
     } catch (error) {
       console.error("Error saving patient:", error);
       alert("Failed to save patient.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -166,18 +176,19 @@ const Patients = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow animate-in fade-in duration-500">
+    <>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center">
-            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10">
+          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center text-left leading-none">
+            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
               <Users className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
             </div>
             Patients
           </h1>
-          <p className="text-slate-500 mt-2 font-medium text-sm sm:text-base">Comprehensive medical record directory.</p>
+          <p className="text-slate-500 mt-2 sm:mt-3 font-medium text-sm sm:text-base italic">Comprehensive medical record directory.</p>
         </div>
         
         <button
@@ -189,41 +200,45 @@ const Patients = () => {
         </button>
       </div>
 
-      {/* Search & Statistics */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-grow group">
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+      {/* Sticky Filters Header */}
+      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+          
+          {/* Left Side: Search Bar */}
+          <div className="relative flex-grow w-full lg:max-w-2xl group">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+            </div>
+            <input type="text"
+              className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
+              placeholder="Search by name, phone or patient ID..." value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-14 pr-4 py-4.5 bg-white border border-slate-200 rounded-[24px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 transition-all text-sm font-bold placeholder:text-slate-400 placeholder:font-medium shadow-sm hover:border-slate-300 overflow-hidden text-ellipsis"
-            placeholder="Search by name, phone or ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center justify-between px-6 py-4 bg-white rounded-[24px] border border-slate-100 shadow-sm sm:w-auto">
-          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mr-4">Total Registry:</span>
-          <span className="text-xl font-black text-brand-dark tabular-nums">{patients.length}</span>
+
+          {/* Right Side: Total Stats */}
+          <div className="flex items-center gap-3 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto">
+             <div className="px-6 py-2.5 bg-slate-50 border border-slate-100 rounded-[18px] flex items-center gap-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Registry</span>
+                <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-sm font-black text-brand-dark tabular-nums shadow-sm">{patients.length}</span>
+             </div>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 overflow-hidden relative">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-brand-light/30">
-              <tr>
-                <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Name</th>
-                <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Age / Gender</th>
-                <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Contact Info</th>
-                {isSuperAdmin && !activeLabId && (
-                  <th scope="col" className="px-8 py-5 text-left text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Lab</th>
-                )}
-                <th scope="col" className="px-8 py-5 text-right text-[12px] font-black text-brand-dark uppercase tracking-[0.2em]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-50">
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100" style={{ maxHeight: 'calc(100vh - 360px)' }}>
+        <table className="min-w-full divide-y divide-slate-100">
+          <thead className="bg-[#f1f5f9] sticky top-0 z-[20] border-b border-slate-200">
+            <tr>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Patient Profile</th>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Demographics</th>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Contact Registry</th>
+              {isSuperAdmin && !activeLabId && (
+                <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Hosting Lab</th>
+              )}
+              <th scope="col" className="px-8 py-5 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Control Panel</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-50">
               {loading ? (
                 <tr>
                   <td colSpan={isSuperAdmin && !activeLabId ? 5 : 4} className="px-8 py-20 text-center">
@@ -298,9 +313,9 @@ const Patients = () => {
                 ))
               )}
             </tbody>
-          </table>
-        </div>
+        </table>
       </div>
+    </div>
 
       {showAddModal && (
         <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-3xl flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
@@ -431,9 +446,20 @@ const Patients = () => {
                   Cancel
                 </button>
                 <button 
-                  type="submit" 
-                  className="px-6 py-3 bg-brand-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-[0.98]"
+                  type="button" 
+                  disabled={isSaving}
+                  onClick={(e) => handleAddPatient(e, true)}
+                  className="px-6 py-3 bg-brand-dark text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-dark/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
+                  {isSaving ? <Loader className="w-4 h-4 animate-spin" /> : null}
+                  Save & Create Booking
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSaving}
+                  className="px-6 py-3 bg-brand-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSaving ? <Loader className="w-4 h-4 animate-spin" /> : null}
                   {editingId ? 'Update Record' : 'Save Patient'}
                 </button>
               </div>
@@ -468,7 +494,7 @@ const Patients = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

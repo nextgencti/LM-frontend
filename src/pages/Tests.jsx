@@ -133,11 +133,24 @@ const Tests = () => {
     finally { setLoading(false); }
   };
   
-  const filteredTests = tests.filter(t => 
-    t.testName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.testCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ─── Filters & Counts ──────────────────────────────────────────────────
+  const statusCounts = React.useMemo(() => {
+    const counts = { All: tests.length, Active: 0, Inactive: 0 };
+    tests.forEach(t => {
+      if (t.status === 'inactive') counts.Inactive++;
+      else counts.Active++;
+    });
+    return counts;
+  }, [tests]);
+
+  const filteredTests = React.useMemo(() => {
+    return tests.filter(t => {
+      const nameMatch = t.testName?.toLowerCase().includes(searchTerm.toLowerCase());
+      const codeMatch = t.testCode?.toLowerCase().includes(searchTerm.toLowerCase());
+      const categoryMatch = t.category?.toLowerCase().includes(searchTerm.toLowerCase());
+      return nameMatch || codeMatch || categoryMatch;
+    });
+  }, [tests, searchTerm]);
 
   const getParamCount = (test) =>
     test.groups?.length
@@ -507,95 +520,102 @@ const Tests = () => {
 
   /* ─── RENDER ──────────────────────────────────────────────────────────── */
   return (
-    <div className="space-y-10 text-left animate-in fade-in duration-500 min-h-screen bg-white p-8 w-full max-w-7xl mx-auto">
-
-      {/* ── PAGE HEADER ── */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 bg-white p-6 sm:p-8 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10">
+    <>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
+      
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div className="flex items-center gap-5">
-          <div className="p-3 sm:p-4 bg-brand-light rounded-2xl sm:rounded-[22px] shadow-sm border border-brand-primary/10 transition-transform hover:rotate-6">
-            <FlaskConical className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
+          <div className="p-3 bg-brand-light rounded-2xl shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+            <FlaskConical className="w-8 h-8 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-brand-dark tracking-tighter uppercase leading-none">Catalog</h1>
-            <p className="text-[9px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 leading-relaxed">Diagnostic Architecture & Protocol Schema</p>
+            <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">Catalog</h1>
+            <p className="text-slate-500 mt-2 font-medium text-sm sm:text-base italic">Diagnostic Architecture & Protocol Schema</p>
           </div>
         </div>
         {isSuperAdmin && (
-          <div className="flex flex-wrap justify-start md:justify-end items-center gap-3 sm:shrink-0 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-            <button onClick={handleDownloadSampleCSV}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-100 text-slate-500 rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest hover:border-brand-primary/30 hover:bg-brand-light/20 transition-all active:scale-95 shadow-sm">
-              <Download className="w-4 h-4" /> <span className="hidden sm:inline">Sample CSV</span><span className="sm:hidden">Sample</span>
+            <button onClick={handleDownloadSampleCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-100 text-slate-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:border-brand-primary/30 transition-all shadow-sm">
+              <Download className="w-4 h-4" /> <span>Sample</span>
             </button>
-            <button onClick={() => csvInputRef.current?.click()} disabled={csvImporting}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-brand-secondary/10 border border-brand-secondary/20 text-brand-secondary rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest hover:bg-brand-secondary/20 transition-all disabled:opacity-50 active:scale-95 shadow-sm">
-              {csvImporting ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
-              <span>{csvImporting ? 'Syncing...' : 'Import'}</span>
+            <button onClick={() => csvInputRef.current?.click()} disabled={csvImporting} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-brand-secondary/10 border border-brand-secondary/20 text-brand-secondary rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-brand-secondary/20 transition-all shadow-sm">
+              {csvImporting ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>} <span>Import</span>
             </button>
-            <button onClick={() => { resetForm(); setShowModal(true); }}
-              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-brand-dark text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-brand-secondary transition-all shadow-xl shadow-brand-dark/10 active:scale-95 border border-white/10 group">
-              <Plus className="w-4 h-4 text-brand-primary group-hover:rotate-90 transition-transform" /> Create New Test
+            <button onClick={() => { resetForm(); setShowModal(true); }} className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-brand-dark text-white rounded-[22px] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-brand-secondary transition-all shadow-xl shadow-brand-dark/10 active:scale-95 group">
+              <Plus className="w-4 h-4 text-brand-primary group-hover:rotate-90 transition-transform" /> New Test
             </button>
           </div>
         )}
       </div>
 
-      {/* ── SEARCH BAR ── */}
-      <div className="bg-white p-6 rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100 mb-10 flex flex-col md:flex-row gap-8 items-center">
-        <div className="relative flex-grow w-full max-w-2xl group">
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+      {/* Sticky Filters Header */}
+      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+          
+          {/* Left Side: Search Bar */}
+          <div className="relative flex-grow w-full lg:max-w-2xl group">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+            </div>
+            <input type="text"
+              className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-[12px] font-black text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
+              placeholder="Search by test name, code or category..." value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-14 pr-6 py-4.5 bg-slate-50/50 border border-slate-100 rounded-[28px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white text-[12px] font-black text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-inner"
-            placeholder="Search by test name, code or category..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+
+          {/* Right Side: Quick Stats / Status Filters */}
+          <div className="flex flex-wrap items-center gap-2.5 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto overflow-x-auto no-scrollbar">
+            {[
+              { id: 'active', label: 'Active', color: 'bg-emerald-500', count: statusCounts.Active },
+              { id: 'inactive', label: 'Inactive', color: 'bg-rose-500', count: statusCounts.Inactive },
+              { id: 'All', label: 'All Tests', color: 'bg-slate-400', count: statusCounts.All }
+            ].map((btn) => (
+              <div key={btn.id} className="flex items-center gap-2.5 px-4 py-2 bg-slate-50 border border-slate-100 rounded-[18px] transition-all whitespace-nowrap">
+                <div className={`w-1.5 h-1.5 rounded-full ${btn.color} shadow-sm`}></div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{btn.label}</span>
+                <span className="text-[10px] font-black px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-brand-dark tabular-nums shadow-sm">{btn.count}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── TESTS TABLE ── */}
-      <div className="bg-white rounded-[40px] shadow-[0_20px_60px_rgb(0,0,0,0.02)] border border-slate-100 overflow-hidden relative">
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100" style={{ maxHeight: 'calc(100vh - 360px)' }}>
         {loading ? (
-          <div className="py-40 flex flex-col items-center justify-center text-center">
-            <div className="relative text-brand-primary">
-               <Loader className="w-16 h-16 animate-spin mb-6" />
-               <div className="absolute inset-0 flex items-center justify-center">
-                  <FlaskConical className="w-6 h-6 animate-pulse" />
-               </div>
-            </div>
-            <p className="text-brand-dark/40 font-black uppercase text-[12px] tracking-[0.3em]">Calibrating Diagnostic Catalog...</p>
+          <div className="py-20 flex flex-col items-center justify-center text-center">
+            <Loader className="w-12 h-12 animate-spin text-brand-primary mb-4" />
+            <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Hydrating Catalog...</p>
           </div>
         ) : tests.length === 0 ? (
-          <div className="py-40 text-center">
-            <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mx-auto mb-8 border border-slate-100 shadow-inner">
-              <Beaker className="w-10 h-10 text-slate-200" />
-            </div>
-            <p className="text-xl font-black text-brand-dark/30 uppercase tracking-[0.3em]">Empty Catalog</p>
-            <p className="text-slate-400 text-[12px] mt-4 font-black uppercase tracking-widest">Import CSV or define lab-specific protocols above.</p>
+          <div className="py-20 text-center">
+            <Beaker className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-[12px]">Catalog Empty</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-brand-dark">
-                <tr>
-                  <th className="px-10 py-6 text-[12px] font-black text-white/40 uppercase tracking-[0.3em]">Test Name</th>
-                  <th className="px-10 py-6 text-[12px] font-black text-white/40 uppercase tracking-[0.3em] text-center">Category</th>
-                  <th className="px-10 py-6 text-[12px] font-black text-white/40 uppercase tracking-[0.3em] text-center">Price</th>
-                  <th className="px-10 py-6 text-[12px] font-black text-white/40 uppercase tracking-[0.3em] text-center">Status</th>
-                  <th className="px-10 py-6 text-right text-[12px] font-black text-white/40 uppercase tracking-[0.3em]">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredTests.map(test => (
+          <table className="min-w-full divide-y divide-slate-100">
+            <thead className="bg-[#f1f5f9] sticky top-0 z-[20] border-b border-slate-200">
+              <tr>
+                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Test Name / ID</th>
+                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Category</th>
+                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Base Price</th>
+                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Status</th>
+                <th className="px-10 py-6 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Action Control</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-50">
+                {filteredTests.map((test) => (
                   <tr key={test.id} className="hover:bg-brand-light/10 transition-colors group/row">
                     <td className="px-10 py-6">
-                      <div className="font-black text-brand-dark text-base tracking-tight uppercase">{test.testName}</div>
-                      <div className="text-[12px] text-slate-300 font-black uppercase tracking-widest mt-1.5 flex items-center gap-2">
-                         <div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div>
-                         Test ID: {test.testCode}
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-brand-light/40 rounded-xl border border-brand-primary/10">
+                          <Zap className="w-4 h-4 text-brand-primary" />
+                        </div>
+                        <div>
+                          <div className="text-[14px] font-black text-brand-dark tracking-tight leading-none mb-1.5 uppercase">{test.testName}</div>
+                          <div className="text-[11px] font-black text-brand-secondary uppercase tracking-[0.1em]">CODE: {test.testCode}</div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-10 py-6 text-center text-[12px] font-black text-slate-500 uppercase tracking-wide">{test.category}</td>
@@ -636,9 +656,9 @@ const Tests = () => {
                 ))}
               </tbody>
             </table>
-          </div>
         )}
       </div>
+    </div>
 
       {/* ══════════════════════════════ MODAL ══════════════════════════════ */}
       {showModal && (
@@ -911,7 +931,7 @@ const Tests = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
