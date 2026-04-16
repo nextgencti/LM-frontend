@@ -682,7 +682,7 @@ const Bookings = () => {
 
       <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 360px)' }}>
         <table className="min-w-full divide-y divide-slate-100">
-          <thead className="bg-[#f1f5f9] sticky top-0 z-[50] border-b border-slate-200">
+          <thead className="bg-[#f1f5f9] sticky top-0 z-[10] border-b border-slate-200">
               <tr>
                 <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Booking ID</th>
                 <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Patient / Doctor</th>

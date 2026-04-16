@@ -94,14 +94,14 @@ const Layout = ({ children }) => {
       {/* Mobile Menu Backdrop */}
       {isMobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-brand-dark/40 backdrop-blur-sm z-40 transition-opacity"
+          className="md:hidden fixed inset-0 bg-brand-dark/60 backdrop-blur-md z-[60] transition-opacity animate-in fade-in duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar navigation */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl flex flex-col border-r border-slate-100 transition-transform duration-300 transform 
+        fixed inset-y-0 left-0 z-[70] w-72 bg-white shadow-2xl flex flex-col border-r border-slate-100 transition-transform duration-300 transform 
         md:relative md:translate-x-0 md:w-64 md:shadow-xl md:h-full md:shrink-0
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>

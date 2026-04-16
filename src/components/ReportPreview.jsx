@@ -501,7 +501,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
               <p className="font-bold tracking-widest uppercase text-xs">Fetching All Test Data...</p>
            </div>
         ) : (
-        <div className="!bg-white !text-[#111827] w-full sm:max-w-[210mm] min-h-screen sm:min-h-[297mm] shadow-2xl relative print:shadow-none printable-page flex flex-col mx-auto transition-all">
+        <div className="!bg-white !text-[#111827] w-full sm:max-w-[210mm] min-h-screen sm:min-h-0 print:min-h-0 print:h-auto shadow-2xl relative print:shadow-none printable-page flex flex-col mx-auto transition-all">
           <div className="absolute inset-0 !bg-white pointer-events-none z-[-1]"></div>
             
             {/* Watermark Overlay (Text or Image) */}
@@ -534,7 +534,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
               </div>
             )}
 
-            <div className="relative z-10 flex-grow flex flex-col pb-20">
+            <div className="relative z-10 flex-grow flex flex-col pb-20 print:pb-0">
             <header className="border-b-[3px] border-emerald-900 pb-6 mb-6 px-6 pt-10 !bg-white relative">
               {/* Lab Mitra App Branding */}
               <div className="absolute top-2 right-6 flex items-center gap-1.5 opacity-60 print:opacity-50 select-none">
@@ -732,13 +732,13 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                 );
               })()}
 
-              <div className="mt-16 mb-10 flex flex-col items-center !bg-white">
+              <div className="mt-10 mb-6 flex flex-col items-center !bg-white">
                  <div className="flex items-center gap-4 mb-2">
                     <div className="h-px w-20 bg-gray-200"></div>
                     <p className="text-[13px] font-black text-gray-900 tracking-[0.3em] uppercase">End of Report</p>
                     <div className="h-px w-20 bg-gray-200"></div>
                  </div>
-                 <div className="w-full mt-12 pt-6 border-t border-gray-100 text-center">
+                 <div className="w-full mt-6 pt-4 border-t border-gray-100 text-center">
                     <p className="text-[10px] text-gray-400 italic font-medium">This is an electronically generated report. Clinical correlation is recommended.</p>
                     <p className="text-[10px] text-gray-400 mt-1 font-bold uppercase tracking-wider">Printed On: {new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
                  </div>

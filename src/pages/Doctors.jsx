@@ -736,7 +736,7 @@ const Doctors = () => {
       </div>
 
       {/* Sticky Filters Header */}
-      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
+      <div className="sticky top-0 z-[20] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
         <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
           
           {/* Left Side: Search Bar */}
@@ -762,7 +762,7 @@ const Doctors = () => {
 
       <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100" style={{ maxHeight: 'calc(100vh - 360px)' }}>
         <table className="min-w-full divide-y divide-slate-100">
-          <thead className="bg-[#f1f5f9] sticky top-0 z-[20] border-b border-slate-200">
+          <thead className="bg-[#f1f5f9] sticky top-0 z-[10] border-b border-slate-200">
             <tr>
               <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Practitioner</th>
               <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Medical Facility</th>
