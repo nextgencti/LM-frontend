@@ -559,6 +559,7 @@ const Reports = () => {
 
   const getTestBadge = (status) => {
     switch (status) {
+      case 'Delivered':
       case 'Final': return 'bg-emerald-600 text-white';
       case 'In Progress': return 'bg-indigo-600 text-white';
       default: return 'bg-slate-200 text-slate-600';
@@ -751,9 +752,9 @@ const Reports = () => {
           ) : filteredGroups.map((group) => {
           const isExpanded = expandedGroups.has(group.groupKey);
           const groupStatus = getGroupStatus(group.tests);
-          const allFinal = groupStatus === 'Final';
+          const allFinal = groupStatus === 'Final' || groupStatus === 'Delivered';
           const totalTests = group.tests.length;
-          const finalCount = group.tests.filter(t => t.status === 'Final').length;
+          const finalCount = group.tests.filter(t => t.status === 'Final' || t.status === 'Delivered').length;
 
           return (
             <div key={group.groupKey}
@@ -922,7 +923,15 @@ const Reports = () => {
                               </button>
                             )}
 
-                            {test.status === 'In Progress' && !test.reported_at && (
+                            {test.status === 'In Progress' && !test.reported_at && (test.results?.some(r => r.value && r.value !== '') || test.results?.some(r => {
+                              if (r.dataType === 'Grid' || r.dataType === 'Titer') {
+                                try {
+                                  const g = JSON.parse(r.value || '{}');
+                                  return Object.values(g).some(v => v && v !== '-');
+                                } catch { return false; }
+                              }
+                              return false;
+                            })) && (
                               <button onClick={() => handleFinalizeReport(test.id, group)}
                                 className="flex-1 sm:flex-none bg-brand-primary text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all uppercase tracking-widest active:scale-95 leading-none">
                                 Finalize

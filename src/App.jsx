@@ -101,7 +101,7 @@ const Layout = ({ children }) => {
 
       {/* Sidebar navigation */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[70] w-72 bg-white shadow-2xl flex flex-col border-r border-slate-100 transition-transform duration-300 transform 
+        fixed inset-y-0 left-0 z-[70] w-72 bg-white/90 backdrop-blur-xl shadow-2xl flex flex-col border-r border-slate-100 transition-transform duration-300 transform 
         md:relative md:translate-x-0 md:w-64 md:shadow-xl md:h-full md:shrink-0
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -255,7 +255,7 @@ const Layout = ({ children }) => {
           )}
         </div>
 
-        <div className="p-5 border-t border-gray-100 bg-gray-50/80 mt-auto">
+        <div className="p-5 border-t border-gray-100 bg-white/50 backdrop-blur-sm mt-auto">
           <div className="flex items-center mb-5 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
             <div className="h-10 w-10 min-w-[40px] rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary font-black tracking-tight text-lg shadow-inner mr-3">
               {userData?.name?.charAt(0)?.toUpperCase() || 'U'}

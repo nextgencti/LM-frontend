@@ -466,7 +466,20 @@ const Bookings = () => {
         updatedAt: serverTimestamp()
       });
 
-      // --- B. Create NEW Reports ---
+      // --- B. Inherit Workflow Progress from Existing Reports ---
+      let inheritedColl = null;
+      let inheritedRec = null;
+      const qExist = query(collection(db, 'reports'), 
+                           where('labId', '==', activeLabId), 
+                           where('bookingNo', '==', bookingNo));
+      const existSnap = await getDocs(qExist);
+      existSnap.forEach(rDoc => {
+        const d = rDoc.data();
+        if (d.collected_at && (!inheritedColl || d.collected_at.seconds < inheritedColl.seconds)) inheritedColl = d.collected_at;
+        if (d.received_at && (!inheritedRec || d.received_at.seconds < inheritedRec.seconds)) inheritedRec = d.received_at;
+      });
+
+      // --- C. Create NEW Reports ---
       addedTestIds.forEach((testId, idx) => {
         const test = tests.find(t => t.id === testId);
         if (!test) return;
@@ -482,12 +495,14 @@ const Bookings = () => {
           patientAge: selectedPatient?.age || 0,
           patientGender: selectedPatient?.gender || 'Any',
           testName: test.testName,
-          status: 'Pending',
+          status: inheritedRec ? 'In Progress' : (inheritedColl ? 'Sample Collected' : 'Pending'),
           paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
           labId: activeLabId,
           reportLayout: test.reportLayout || 'Standard',
           results: [],
           registered_at: serverTimestamp(),
+          collected_at: inheritedColl || null,
+          received_at: inheritedRec || null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -515,22 +530,6 @@ const Bookings = () => {
         updatedAt: serverTimestamp()
       });
 
-      // Sync Payment Status to all existing reports for this booking
-      const newPayStatus = (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid';
-      const qSync = query(collection(db, 'reports'), 
-                          where('labId', '==', activeLabId), 
-                          where('bookingNo', '==', bookingNo));
-      try {
-        const syncSnap = await getDocs(qSync);
-        syncSnap.forEach(rDoc => {
-          batch.update(rDoc.ref, { 
-            paymentStatus: newPayStatus, 
-            updatedAt: serverTimestamp() 
-          });
-        });
-      } catch (err) {
-        console.warn("Report payment sync failed:", err);
-      }
 
       await batch.commit();
       toast.success('🎉 Booking updated successfully!');
@@ -831,7 +830,7 @@ const Bookings = () => {
 
       {/* Modern Booking Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-3xl animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-2 sm:p-4 z-[200] backdrop-blur-3xl animate-in fade-in duration-300">
           <div className="bg-white rounded-[32px] sm:rounded-[48px] shadow-3xl max-w-6xl w-full p-4 sm:p-10 overflow-hidden relative border border-white/20 flex flex-col max-h-[96vh]">
             <button onClick={exitModal} className="absolute top-3 sm:top-8 right-3 sm:right-8 p-2 sm:p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
               <X className="w-5 h-5 sm:w-7 sm:h-7" />

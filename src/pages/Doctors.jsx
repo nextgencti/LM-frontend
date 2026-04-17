@@ -870,7 +870,7 @@ const Doctors = () => {
       </div>
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-3xl flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-3xl flex items-center justify-center p-4 z-[200] animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] shadow-[0_32px_128px_rgba(0,0,0,0.3)] max-w-2xl w-full border border-white/20 animate-in zoom-in-95 duration-500 overflow-hidden flex flex-col max-h-[90vh]">
             
             <div className="px-10 py-8 bg-brand-dark text-white flex justify-between items-center shrink-0 border-b border-white/5 relative overflow-hidden">
@@ -1031,7 +1031,7 @@ const Doctors = () => {
 
       {/* Doctor Ledger Modal - PREMIUM OVERHAUL */}
       {isLedgerOpen && selectedDoc && (
-        <div className="fixed inset-0 bg-brand-dark/40 backdrop-blur-xl flex items-center justify-center z-[60] animate-in fade-in duration-500 p-3 md:p-8">
+        <div className="fixed inset-0 bg-brand-dark/40 backdrop-blur-xl flex items-center justify-center z-[200] animate-in fade-in duration-500 p-3 md:p-8">
           <div className="bg-white h-full w-full max-w-7xl shadow-[0_32px_128px_rgba(0,0,0,0.5)] rounded-[32px] md:rounded-[48px] flex flex-col relative overflow-hidden animate-in zoom-in-95 duration-500 border border-white/20">
             
             {/* Modal Header - Refined Premium */}

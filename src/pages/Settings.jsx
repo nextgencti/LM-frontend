@@ -1139,7 +1139,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-300">
         <div className="px-10 py-8 bg-brand-dark text-white flex justify-between items-center">
           <div>
@@ -1289,7 +1289,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, deletingUser, isD
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-300 text-center p-8 relative">
         {isDeleting && (
           <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-10">
