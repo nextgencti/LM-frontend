@@ -29,7 +29,9 @@ import {
   ArrowRight,
   Crown,
   Check,
-  Send
+  Send,
+  Info,
+  Pencil
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -669,7 +671,7 @@ const Settings = () => {
                           <th className="px-6 py-4">Name / ID</th>
                           <th className="px-6 py-4">Role</th>
                           <th className="px-6 py-4">Permissions Summary</th>
-                          <th className="px-4 py-4"></th>
+                          <th className="px-4 py-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
@@ -696,12 +698,13 @@ const Settings = () => {
                                 {!user.permissions && <span className="text-[8px] font-black text-slate-300 italic">No direct permissions set</span>}
                               </div>
                             </td>
-                            <td className="px-4 py-5 text-right flex justify-end items-center gap-2">                               <button 
+                            <td className="px-4 py-5 text-right flex justify-end items-center gap-2">
+                               <button 
                                  onClick={() => { setSelectedStaff(user); setIsStaffModalOpen(true); }}
                                  className="p-2 text-slate-300 hover:text-brand-primary hover:bg-white rounded-xl transition-all shadow-none hover:shadow-sm"
                                  title="Edit"
                                >
-                                 <ImageIcon className="w-5 h-5" /> {/* Using generic icon for edit for now */}
+                                 <Pencil className="w-5 h-5" />
                                </button>
                                {user.role === 'Staff' && (
                                  <button 
@@ -1044,33 +1047,91 @@ const Settings = () => {
   );
 };
 
+const ROLE_PERMISSIONS = {
+  LabAdmin: {
+    can_add_patients: true,
+    can_manage_doctors: true,
+    can_book_tests: true,
+    can_view_billing: true,
+    can_collect_payment: true,
+    can_enter_results: true,
+    can_approve_reports: true,
+    can_manage_masters: true,
+    can_access_settings: true,
+    can_view_analytics: true,
+    can_delete_records: true,
+    can_apply_discounts: true,
+    can_edit_final_reports: true
+  },
+  Pathologist: {
+    can_add_patients: false,
+    can_manage_doctors: false,
+    can_book_tests: true,
+    can_view_billing: false,
+    can_collect_payment: false,
+    can_enter_results: true,
+    can_approve_reports: true,
+    can_manage_masters: false,
+    can_access_settings: false,
+    can_view_analytics: false,
+    can_delete_records: false,
+    can_apply_discounts: false,
+    can_edit_final_reports: true
+  },
+  Technician: {
+    can_add_patients: false,
+    can_manage_doctors: false,
+    can_book_tests: false,
+    can_view_billing: false,
+    can_collect_payment: false,
+    can_enter_results: true,
+    can_approve_reports: false,
+    can_manage_masters: false,
+    can_access_settings: false,
+    can_view_analytics: false,
+    can_delete_records: false,
+    can_apply_discounts: false,
+    can_edit_final_reports: false
+  },
+  Receptionist: {
+    can_add_patients: true,
+    can_manage_doctors: true,
+    can_book_tests: true,
+    can_view_billing: true,
+    can_collect_payment: true,
+    can_enter_results: false,
+    can_approve_reports: false,
+    can_manage_masters: false,
+    can_access_settings: false,
+    can_view_analytics: false,
+    can_delete_records: false,
+    can_apply_discounts: true,
+    can_edit_final_reports: false
+  },
+  Staff: {
+    can_add_patients: true,
+    can_manage_doctors: false,
+    can_book_tests: true,
+    can_view_billing: false,
+    can_collect_payment: true,
+    can_enter_results: true,
+    can_approve_reports: false,
+    can_manage_masters: false,
+    can_access_settings: false,
+    can_view_analytics: false,
+    can_delete_records: false,
+    can_apply_discounts: false,
+    can_edit_final_reports: false
+  }
+};
+
 const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
   const [formData, setFormData] = useState({
     name: staff?.name || '',
     email: staff?.email || '',
     password: '',
-    role: staff?.role || 'Staff',
-    permissions: staff?.role === 'LabAdmin' ? {
-      can_add_patients: true,
-      can_manage_doctors: true,
-      can_book_tests: true,
-      can_view_billing: true,
-      can_collect_payment: true,
-      can_enter_results: true,
-      can_approve_reports: true,
-      can_manage_masters: true,
-      can_access_settings: true
-    } : (staff?.permissions || {
-      can_add_patients: true,
-      can_manage_doctors: false,
-      can_book_tests: true,
-      can_view_billing: true,
-      can_collect_payment: true,
-      can_enter_results: true,
-      can_approve_reports: false,
-      can_manage_masters: false,
-      can_access_settings: false
-    })
+    role: staff?.role || 'Receptionist',
+    permissions: staff?.permissions || ROLE_PERMISSIONS[staff?.role || 'Receptionist']
   });
   const [saving, setSaving] = useState(false);
 
@@ -1163,32 +1224,22 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Role</label>
-              <select 
-                value={formData.role} 
-                onChange={e => {
-                  const newRole = e.target.value;
-                  const fullPerms = {
-                    can_add_patients: true,
-                    can_manage_doctors: true,
-                    can_book_tests: true,
-                    can_view_billing: true,
-                    can_collect_payment: true,
-                    can_enter_results: true,
-                    can_approve_reports: true,
-                    can_manage_masters: true,
-                    can_access_settings: true
-                  };
-                  setFormData({ 
-                    ...formData, 
-                    role: newRole,
-                    permissions: newRole === 'LabAdmin' ? fullPerms : formData.permissions
-                  });
-                }}
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-brand-primary transition-all shadow-inner"
-              >
-                <option value="Staff">Staff</option>
-                <option value="LabAdmin">Lab Admin</option>
-              </select>
+                <select 
+                  value={formData.role} 
+                  onChange={e => {
+                    const newRole = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      role: newRole,
+                      permissions: ROLE_PERMISSIONS[newRole] || formData.permissions
+                    });
+                  }}
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-brand-primary transition-all shadow-inner"
+                >
+                  <option value="Receptionist">Receptionist</option>
+                  <option value="Technician">Lab Technician</option>
+                  <option value="Pathologist">Pathologist (Doctor)</option>
+                </select>
             </div>
           </div>
 
@@ -1224,32 +1275,46 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
              </div>
              
              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${formData.role === 'LabAdmin' ? 'opacity-60 pointer-events-none' : ''}`}>
-                {[
-                  { key: 'can_add_patients', label: 'Patient Registration', desc: 'Add or Edit patient profiles' },
-                  { key: 'can_manage_doctors', label: 'Doctor Directory', desc: 'Add or Edit referring doctors' },
-                  { key: 'can_book_tests', label: 'Test Bookings', desc: 'Create new lab test bookings' },
-                  { key: 'can_view_billing', label: 'Billing & Invoicing', desc: 'Generate bills and invoices' },
-                  { key: 'can_collect_payment', label: 'Point of Sale', desc: 'Mark invoices as paid and settle dues' },
-                  { key: 'can_enter_results', label: 'Result Entry', desc: 'Input test values in clinical reports' },
-                  { key: 'can_approve_reports', label: 'Report Approval', desc: 'Finalize and sign-off medical reports' },
-                  { key: 'can_manage_masters', label: 'Catalog Management', desc: 'Edit test rates and parameter definitions' },
-                  { key: 'can_access_settings', label: 'System Admin', desc: 'Change lab profile and branding' },
-                ].map(item => (
-                  <label key={item.key} className="flex items-start gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50/30 cursor-pointer hover:bg-white hover:border-brand-primary/20 transition-all group">
-                    <div className="relative inline-flex items-center mt-1">
-                      <input 
-                        type="checkbox" className="sr-only peer" 
-                        checked={formData.permissions?.[item.key]} 
-                        onChange={() => togglePermission(item.key)} 
-                      />
-                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-primary shadow-inner"></div>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-black text-brand-dark uppercase tracking-widest leading-none mb-1 group-hover:text-brand-primary transition-colors">{item.label}</p>
-                      <p className="text-[9px] font-bold text-slate-400 leading-tight">{item.desc}</p>
-                    </div>
-                  </label>
-                ))}
+                 {[
+                   { key: 'can_add_patients', label: 'Patient Registration', desc: 'Add or Edit patient profiles', longDesc: 'Allows staff to register new patients, edit existing profiles, and view patient history.' },
+                   { key: 'can_manage_doctors', label: 'Doctor Directory', desc: 'Add or Edit referring doctors', longDesc: 'Grants access to manage referring doctors and their respective commissions/ledgers.' },
+                   { key: 'can_book_tests', label: 'Test Bookings', desc: 'Create new lab test bookings', longDesc: 'Facilitates creating new test bookings, selecting test categories, and assigning doctors.' },
+                   { key: 'can_view_billing', label: 'Billing & Invoicing', desc: 'Generate bills and invoices', longDesc: 'Allows viewing existing bills, downloading invoices, and tracking financial history.' },
+                   { key: 'can_collect_payment', label: 'Point of Sale', desc: 'Mark invoices as paid and settle dues', longDesc: 'Enables recording payments, settling outstanding dues, and updating payment statuses.' },
+                   { key: 'can_enter_results', label: 'Result Entry', desc: 'Input test values in clinical reports', longDesc: 'Key permission for technicians to enter clinical data and findings into report templates.' },
+                   { key: 'can_approve_reports', label: 'Report Approval', desc: 'Finalize and sign-off medical reports', longDesc: 'Highest clinical permission. Allows doctors to finalize reports for patient delivery.' },
+                   { key: 'can_manage_masters', label: 'Catalog Management', desc: 'Edit test rates and parameter definitions', longDesc: 'Administrative access to edit the Test Masters, pricing, and reference ranges.' },
+                   { key: 'can_access_settings', label: 'System Admin', desc: 'Change lab profile and branding', longDesc: 'Full administrative control over lab name, address, branding, and system setups.' },
+                   { key: 'can_view_analytics', label: 'View Analytics', desc: 'Access business metrics and trends', longDesc: 'Grants access to the Business Analytics dashboard for tracking revenue and performance.' },
+                   { key: 'can_delete_records', label: 'Delete Records', desc: 'Remove patients or bookings', longDesc: 'Critical permission. Allows deleting sensitive data from the system (Patients, Bookings, etc.).' },
+                   { key: 'can_apply_discounts', label: 'Apply Discounts', desc: 'Give discounts during billing', longDesc: 'Allows staff to modify test totals and apply discounts during the booking/billing process.' },
+                   { key: 'can_edit_final_reports', label: 'Edit Signed Reports', desc: 'Modify results after sign-off', longDesc: 'Allows editing clinical results even after a report has been marked as Final/Approved.' },
+                 ].map(item => (
+                   <label key={item.key} className="flex items-start gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50/30 cursor-pointer hover:bg-white hover:border-brand-primary/20 transition-all group relative">
+                     <div className="relative inline-flex items-center mt-1">
+                       <input 
+                         type="checkbox" className="sr-only peer" 
+                         checked={formData.permissions?.[item.key]} 
+                         onChange={() => togglePermission(item.key)} 
+                       />
+                       <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-primary shadow-inner"></div>
+                     </div>
+                     <div className="flex-grow">
+                       <div className="flex items-center justify-between mb-1">
+                          <p className="text-[11px] font-black text-brand-dark uppercase tracking-widest leading-none group-hover:text-brand-primary transition-colors">{item.label}</p>
+                          <div className="relative group/info">
+                            <Info className="w-3.5 h-3.5 text-slate-300 hover:text-brand-primary cursor-help transition-colors" />
+                            {/* Detailed Tooltip */}
+                            <div className="absolute bottom-full right-0 mb-3 w-48 p-4 bg-brand-dark text-[10px] font-bold text-white leading-relaxed rounded-2xl shadow-2xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all z-[300] border border-white/10 backdrop-blur-md">
+                              <p className="normal-case tracking-normal">{item.longDesc}</p>
+                              <div className="absolute top-full right-2 w-3 h-3 bg-brand-dark rotate-45 -mt-1.5 border-r border-b border-white/10" />
+                            </div>
+                          </div>
+                       </div>
+                       <p className="text-[9px] font-bold text-slate-400 leading-tight">{item.desc}</p>
+                     </div>
+                   </label>
+                 ))}
              </div>
           </div>
 

@@ -134,6 +134,14 @@ const Bookings = () => {
 
   const confirmDeleteBooking = async () => {
     if (!bookingToDelete) return;
+    
+    // GUARD: check for delete_records permission
+    if (!userData?.permissions?.can_delete_records && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') {
+      toast.error("Unauthorized: You do not have permission to delete records.");
+      setBookingToDelete(null);
+      return;
+    }
+
     try {
       const bId = bookingToDelete.id; 
       const bookingNo = bookingToDelete.bookingNo || bookingToDelete.bookingId || bookingToDelete.billId || bId; 
@@ -172,28 +180,58 @@ const Bookings = () => {
   // ─── Filters & Counts ──────────────────────────────────────────────────
   const filteredBookings = React.useMemo(() => {
     return bookings.filter(b => {
+      // 1. Search Match
       const nameMatch = b.patientName?.toLowerCase().includes(searchTerm.toLowerCase());
       const idMatch = b.billId?.toLowerCase().includes(searchTerm.toLowerCase()) || b.id?.toLowerCase().includes(searchTerm.toLowerCase());
       if (!nameMatch && !idMatch) return false;
 
+      // 2. Date Match
+      if (b.createdAt) {
+        const bDate = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        
+        // Start date check (midnight of startDate)
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        
+        // End date check (end of endDate)
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        
+        if (bDate < start || bDate > end) return false;
+      }
+
+      // 3. Urgency Filter
       if (urgencyFilter !== 'All' && b.urgency !== urgencyFilter) return false;
 
+      // 4. Status Filter
       if (statusFilter === 'All') return true;
       if (statusFilter === 'Active') return b.status !== 'Delivered';
       return b.status === statusFilter;
     });
-  }, [bookings, searchTerm, statusFilter, urgencyFilter]);
+  }, [bookings, searchTerm, statusFilter, urgencyFilter, startDate, endDate]);
 
   const statusCounts = React.useMemo(() => {
-    const counts = { Pending: 0, 'Processing': 0, 'Final': 0, 'Delivered': 0, Total: bookings.length };
-    bookings.forEach(b => {
+    // We only filter counts by DATE, but not by SEARCH or STATUS button, 
+    // to show overall stats for the period.
+    const dateFiltered = bookings.filter(b => {
+      if (!b.createdAt) return true;
+      const bDate = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      return bDate >= start && bDate <= end;
+    });
+
+    const counts = { Pending: 0, 'Processing': 0, 'Final': 0, 'Delivered': 0, Total: dateFiltered.length };
+    dateFiltered.forEach(b => {
       if (b.status === 'Pending') counts.Pending++;
       else if (b.status === 'Processing' || b.status === 'In Progress' || b.status === 'Sample Collected') counts.Processing++;
       else if (b.status === 'Final' || b.status === 'Completed') counts.Final++;
       else if (b.status === 'Delivered') counts.Delivered++;
     });
     return counts;
-  }, [bookings]);
+  }, [bookings, startDate, endDate]);
 
   const fetchBookings = async () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
@@ -719,7 +757,7 @@ const Bookings = () => {
                     </td>
                     <td className="px-8 py-7">
                       <div className="text-base font-black text-brand-dark tracking-tight mb-1">{b.patientName}</div>
-                      <div className="text-[12px] font-black text-slate-400 flex items-center uppercase tracking-widest">
+                      <div className="text-[10px] font-bold text-slate-400 flex items-center uppercase tracking-widest">
                         <div className="w-1.5 h-1.5 rounded-full bg-brand-secondary/40 mr-2"></div>
                         {b.doctorName || 'DIRECT VISIT'}
                       </div>
@@ -750,14 +788,14 @@ const Bookings = () => {
                     <td className="px-8 py-7">
                       <div className="flex flex-col gap-2">
                          <span className={`px-4 py-1.5 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] border flex items-center w-fit shadow-sm transition-all ${
-                            b.status === 'Completed' ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/20' : 
+                            ['Completed', 'Final', 'Delivered'].includes(b.status) ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
                             b.status === 'Processing' ? 'bg-brand-secondary/10 text-brand-secondary border-brand-secondary/20' :
                             'bg-amber-50 text-amber-600 border-amber-100'
                          }`}>
-                           <div className={`w-1.5 h-1.5 rounded-full mr-2 ${['Completed', 'Final'].includes(b.status) ? 'bg-brand-primary animate-pulse' : 'bg-current'}`}></div>
+                           <div className={`w-1.5 h-1.5 rounded-full mr-2 ${['Completed', 'Final', 'Delivered'].includes(b.status) ? 'bg-emerald-500 animate-pulse' : 'bg-current'}`}></div>
                            {b.status}
                          </span>
-                         <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-widest border transition-all ${
+                         <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${
                             b.urgency === 'STAT' ? 'bg-rose-50 text-rose-500 border-rose-100' :
                             b.urgency === 'Urgent' ? 'bg-amber-50 text-amber-500 border-amber-100' :
                             'bg-slate-50 text-slate-400 border-slate-100'
@@ -813,11 +851,13 @@ const Bookings = () => {
                         <button className="p-3 bg-brand-light/50 text-brand-dark hover:bg-brand-primary hover:text-white rounded-2xl transition-all shadow-sm border border-brand-primary/10" title="Print Invoice">
                           <FileText className="w-5 h-5" />
                         </button>
-                        <button 
-                          onClick={() => setBookingToDelete(b)}
-                          className="p-3 bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm border border-rose-100" title="Delete Booking">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_delete_records) && (
+                          <button 
+                            onClick={() => setBookingToDelete(b)}
+                            className="p-3 bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm border border-rose-100" title="Delete Booking">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -953,7 +993,10 @@ const Bookings = () => {
                     </div>
                     <div className="space-y-1 mb-3 sm:mb-5">
                       <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">Discount (₹)</label>
-                      <input type="number" className="w-full bg-white/5 border border-white/10 rounded-[12px] sm:rounded-[16px] p-2.5 sm:p-3 text-[13px] sm:text-[14px] font-black text-white outline-none focus:ring-4 focus:ring-brand-primary/30 transition-all tabular-nums"
+                      <input 
+                        type="number" 
+                        disabled={!userData?.permissions?.can_apply_discounts && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin'}
+                        className={`w-full bg-white/5 border border-white/10 rounded-[12px] sm:rounded-[16px] p-2.5 sm:p-3 text-[13px] sm:text-[14px] font-black text-white outline-none focus:ring-4 focus:ring-brand-primary/30 transition-all tabular-nums ${(!userData?.permissions?.can_apply_discounts && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') ? 'opacity-30 cursor-not-allowed' : ''}`}
                         placeholder="0"
                         value={newBooking.discount} onChange={e => handleDiscountChange(e.target.value)}
                       />

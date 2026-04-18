@@ -279,6 +279,13 @@ const Reports = () => {
 
   const handleSaveResults = async () => {
     if (!selectedReport) return;
+    
+    // GUARD: If report is already Final, check for edit_final_reports permission
+    if (selectedReport.status === 'Final' && !userData?.permissions?.can_edit_final_reports && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') {
+      toast.error("Unauthorized: You do not have permission to edit finalized reports.");
+      return;
+    }
+
     setSaving(true);
     try {
       const allFilled = editedResults.filter(r => r.dataType !== 'Grid' && r.dataType !== 'Titer').every(r => r.value && r.value !== '');
@@ -310,6 +317,12 @@ const Reports = () => {
   };
 
   const handleFinalizeReport = async (reportId, group = null) => {
+    // Permission Check
+    if (userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin' && !userData?.permissions?.can_approve_reports) {
+      toast.error("Unauthorized: You do not have permission to finalize reports.");
+      return;
+    }
+
     try {
       const test = group?.tests?.find(t => t.id === reportId);
       const updatePayload = {
@@ -482,6 +495,14 @@ const Reports = () => {
 
   const confirmDeleteReport = async () => {
     if (!reportToDelete) return;
+    
+    // GUARD: check for delete_records permission
+    if (!userData?.permissions?.can_delete_records && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') {
+      toast.error("Unauthorized: You do not have permission to delete records.");
+      setReportToDelete(null);
+      return;
+    }
+
     try {
       await deleteDoc(doc(db, 'reports', reportToDelete.id));
       toast.success('Report deleted!');

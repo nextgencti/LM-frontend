@@ -14,7 +14,7 @@ const Doctors = () => {
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [newDoctor, setNewDoctor] = useState({
-    name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active'
+    name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.'
   });
   const [editingDoc, setEditingDoc] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -92,10 +92,20 @@ const Doctors = () => {
       return;
     }
 
-    // Automatically prefix with "Dr. " if not already present
+    // Prepend honorific if chosen and not already present
+    let honorificPrefix = '';
+    if (newDoctor.honorific && newDoctor.honorific !== 'None') {
+      honorificPrefix = newDoctor.honorific + ' ';
+    }
+    
     let formattedName = newDoctor.name.trim();
-    if (formattedName && !formattedName.toLowerCase().startsWith('dr.') && !formattedName.toLowerCase().startsWith('dr ')) {
-      formattedName = `Dr. ${formattedName}`;
+    if (honorificPrefix && !formattedName.toLowerCase().startsWith(honorificPrefix.toLowerCase())) {
+      formattedName = honorificPrefix + formattedName;
+    }
+
+    if (!newDoctor.commissionValue || parseFloat(newDoctor.commissionValue) <= 0) {
+      toast.error("Please enter a valid commission value greater than 0.");
+      return;
     }
 
     try {
@@ -123,7 +133,7 @@ const Doctors = () => {
       
       setShowAddModal(false);
       setEditingDoc(null);
-      setNewDoctor({ name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active' });
+      setNewDoctor({ name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.' });
       fetchDoctors();
     } catch (error) {
       console.error("Error saving doctor:", error);
@@ -143,12 +153,20 @@ const Doctors = () => {
       specialization: doc.specialization || '',
       commissionType: doc.commissionType || 'Percentage',
       commissionValue: doc.commissionValue || '0',
-      status: doc.status || 'Active'
+      status: doc.status || 'Active',
+      honorific: doc.name?.split(' ')[0] || 'Dr.'
     });
     setShowAddModal(true);
   };
 
   const handleDeleteDoctor = async (id) => {
+    // GUARD: check for delete_records permission
+    if (!userData?.permissions?.can_delete_records && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') {
+      toast.error("Unauthorized: You do not have permission to delete records.");
+      setDeleteConfirm(null);
+      return;
+    }
+
     try {
       await deleteDoc(doc(db, 'doctors', id));
       setDoctors(prev => prev.filter(d => d.id !== id));
@@ -778,7 +796,7 @@ const Doctors = () => {
             </div>
             Doctors
           </h1>
-          <p className="text-slate-500 mt-2 sm:mt-3 font-medium text-sm sm:text-base italic">Management of referring practitioners & medical networks.</p>
+          <p className="text-slate-500 mt-2 sm:mt-3 font-medium text-sm sm:text-base italic">Manage referring Doctors & Clinic networks.</p>
         </div>
         
         <button 
@@ -786,7 +804,7 @@ const Doctors = () => {
           className="w-full md:w-auto flex items-center justify-center px-8 py-4 bg-brand-dark text-white rounded-[22px] font-black hover:shadow-2xl hover:shadow-brand-dark/20 hover:-translate-y-1 transition-all duration-300 group active:scale-95 shadow-lg tracking-[0.2em] text-[11px] uppercase whitespace-nowrap"
         >
           <Plus className="w-5 h-5 mr-3 group-hover:rotate-90 transition-transform duration-300 text-brand-primary" />
-          Add New Practitioner
+          Add New Doctor
         </button>
       </div>
 
@@ -801,14 +819,14 @@ const Doctors = () => {
             </div>
             <input type="text"
               className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
-              placeholder="Search by practitioner name or medical facility..." value={searchTerm}
+              placeholder="Search by doctor name or clinic..." value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
 
           {/* Right Side: Total Stats */}
           <div className="flex items-center gap-3 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto">
              <div className="px-6 py-2.5 bg-slate-50 border border-slate-100 rounded-[18px] flex items-center gap-4">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Network Size</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Doctors</span>
                 <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-sm font-black text-brand-dark tabular-nums shadow-sm">{doctors.length}</span>
              </div>
           </div>
@@ -819,11 +837,11 @@ const Doctors = () => {
         <table className="min-w-full divide-y divide-slate-100">
           <thead className="bg-[#f1f5f9] sticky top-0 z-[10] border-b border-slate-200">
             <tr>
-              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Practitioner</th>
-              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Medical Facility</th>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Doctor</th>
+              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Clinic / Hospital</th>
               <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Structure</th>
               <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Status</th>
-              <th scope="col" className="px-8 py-5 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Operational Controls</th>
+              <th scope="col" className="px-8 py-5 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-50">
@@ -906,7 +924,7 @@ const Doctors = () => {
                         >
                           <Edit2 className="w-5 h-5" />
                         </button>
-                        {isSuperAdmin && (
+                        {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_delete_records) && (
                           <button
                             onClick={() => setDeleteConfirm(doc.id)}
                             className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
@@ -949,14 +967,28 @@ const Doctors = () => {
                 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Doctor Name *</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="Enter doctor's name"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
-                    value={newDoctor.name} 
-                    onChange={e => setNewDoctor({...newDoctor, name: e.target.value})} 
-                  />
+                  <div className="flex gap-2">
+                    <select 
+                      className="w-[100px] shrink-0 px-3 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-sm"
+                      value={newDoctor.honorific}
+                      onChange={e => setNewDoctor({...newDoctor, honorific: e.target.value})}
+                    >
+                      <option value="Dr.">Dr.</option>
+                      <option value="Prof.">Prof.</option>
+                      <option value="Mr.">Mr.</option>
+                      <option value="Ms.">Ms.</option>
+                      <option value="Mrs.">Mrs.</option>
+                      <option value="None">None</option>
+                    </select>
+                    <input 
+                      required 
+                      type="text" 
+                      placeholder="Enter doctor's name"
+                      className="flex-grow px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
+                      value={newDoctor.name} 
+                      onChange={e => setNewDoctor({...newDoctor, name: e.target.value})} 
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1024,7 +1056,7 @@ const Doctors = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Commission Structure</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Commission Structure *</label>
                     <div className="flex gap-2">
                       <select 
                         className="w-1/2 px-4 py-3 bg-slate-50 border border-slate-100 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-sm"
@@ -1035,6 +1067,7 @@ const Doctors = () => {
                         <option>Fixed</option>
                       </select>
                       <input 
+                        required
                         type="number" 
                         placeholder="0"
                         className="w-1/2 px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300"
@@ -1042,6 +1075,7 @@ const Doctors = () => {
                         onChange={e => setNewDoctor({...newDoctor, commissionValue: e.target.value})}
                       />
                     </div>
+                    <p className="text-[9px] font-bold text-brand-primary uppercase tracking-widest pl-1 mt-1 opacity-80 italic">Note: Commission value must be greater than 0.</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Account Status</label>
@@ -1061,24 +1095,25 @@ const Doctors = () => {
               <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 shrink-0">
                 <button 
                   type="button" 
+                  disabled={isSaving}
                   onClick={() => {
                     setShowAddModal(false);
                     setEditingDoc(null);
                     setNewDoctor({
-                      name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active'
+                      name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.'
                     });
                   }}
-                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-brand-dark hover:border-slate-300 transition-all shadow-sm"
+                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-brand-dark hover:border-slate-300 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={isSaving}
-                  className="px-6 py-3 bg-brand-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-3 bg-brand-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSaving && <Loader className="w-4 h-4 animate-spin" />}
-                  {isSaving ? 'Processing...' : (editingDoc ? 'Update Details' : 'Save Doctor')}
+                  {editingDoc ? 'Update Details' : 'Save Doctor'}
                 </button>
               </div>
             </form>
@@ -1541,6 +1576,34 @@ const Doctors = () => {
                </div>
             </div>
 
+          </div>
+        </div>
+      )}
+      {/* Doctor Ledger Modal - PREMIUM OVERHAUL remains as is ... */}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center z-[300] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[28px] shadow-2xl max-w-sm w-full p-8 animate-in underline-in fade-in zoom-in duration-200">
+            <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <Trash2 className="w-7 h-7 text-rose-500" />
+            </div>
+            <h3 className="text-xl font-black text-center text-brand-dark tracking-tight mb-2">Delete Doctor?</h3>
+            <p className="text-sm text-slate-500 font-medium text-center mb-7">This action cannot be undone. All records for this doctor will be permanently removed from the registry.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteDoctor(deleteConfirm)}
+                className="flex-1 px-4 py-3 bg-rose-500 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/30 active:scale-95"
+              >
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

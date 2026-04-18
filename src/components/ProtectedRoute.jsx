@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PreLoader from './PreLoader';
+import { AlertTriangle } from 'lucide-react';
 
 export const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, userData, subscription, loading } = useAuth();

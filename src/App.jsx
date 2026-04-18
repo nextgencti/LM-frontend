@@ -169,7 +169,7 @@ const Layout = ({ children }) => {
             <span>Dashboard</span>
           </Link>
           
-          {(userData?.role !== 'Staff' || userData?.permissions?.can_add_patients) && (
+          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_add_patients) && (
             <Link 
               to="/patients" 
               className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/patients' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
@@ -180,7 +180,7 @@ const Layout = ({ children }) => {
             </Link>
           )}
           
-          {(userData?.role !== 'Staff' || userData?.permissions?.can_manage_masters) && (
+          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_manage_doctors) && (
             <Link 
               to="/doctors" 
               className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/doctors' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
@@ -191,7 +191,7 @@ const Layout = ({ children }) => {
             </Link>
           )}
           
-          {(userData?.role !== 'Staff' || userData?.permissions?.can_manage_masters) && (
+          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_manage_masters) && (
             <Link 
               to="/tests" 
               className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/tests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
@@ -202,7 +202,7 @@ const Layout = ({ children }) => {
             </Link>
           )}
 
-          {(userData?.role !== 'Staff' || userData?.permissions?.can_book_tests) && (
+          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_book_tests) && (
             <Link 
               to="/bookings" 
               className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/bookings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
@@ -213,7 +213,7 @@ const Layout = ({ children }) => {
             </Link>
           )}
 
-          {(userData?.role !== 'Staff' || userData?.permissions?.can_view_billing) && (
+          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_view_billing) && (
             <Link 
               to="/billing" 
               className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/billing' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
@@ -233,7 +233,7 @@ const Layout = ({ children }) => {
             <span>Reports</span>
           </Link>
 
-          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin') && (
+          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_view_analytics) && (
             <Link 
               to="/analytics" 
               className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/analytics' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
@@ -244,7 +244,7 @@ const Layout = ({ children }) => {
             </Link>
           )}
 
-          {(userData?.role !== 'Staff' || userData?.permissions?.can_access_settings) && (
+          {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_access_settings) && (
             <Link 
               to="/settings" 
               className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/settings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
@@ -375,7 +375,7 @@ function App() {
       <Route 
         path="/tests/:testId/parameters" 
         element={
-          <ProtectedRoute allowedRoles={['LabAdmin']}>
+          <ProtectedRoute allowedRoles={['LabAdmin', 'Staff', 'SuperAdmin']}>
             <Layout>
               <ParameterSettings />
             </Layout>
@@ -441,7 +441,7 @@ function App() {
       <Route 
         path="/analytics" 
         element={
-          <ProtectedRoute allowedRoles={['LabAdmin', 'SuperAdmin']}>
+          <ProtectedRoute allowedRoles={['LabAdmin', 'SuperAdmin', 'Staff']}>
             <Layout>
               <BusinessAnalytics />
             </Layout>
@@ -452,7 +452,7 @@ function App() {
       <Route 
         path="/settings" 
         element={
-          <ProtectedRoute allowedRoles={['LabAdmin', 'SuperAdmin']}>
+          <ProtectedRoute allowedRoles={['LabAdmin', 'SuperAdmin', 'Staff']}>
             <Layout>
               <Settings />
             </Layout>

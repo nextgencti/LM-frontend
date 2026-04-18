@@ -14,6 +14,10 @@ import {
 
 const BusinessAnalytics = () => {
   const { userData, subscription, activeLabId } = useAuth();
+  
+  // RBAC check
+  const hasPermission = userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_view_analytics;
+  
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [timeRange, setTimeRange] = useState('30'); // Days
@@ -33,12 +37,17 @@ const BusinessAnalytics = () => {
     setLoading(true);
     try {
       const isSuperAdmin = userData?.role === 'SuperAdmin';
-      const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
+      const effectiveLabId = activeLabId || userData?.labId;
+      const labIdVal = isNaN(effectiveLabId) ? effectiveLabId : String(effectiveLabId);
       
       let q;
       if (isSuperAdmin && !activeLabId) {
         q = query(collection(db, 'bookings'));
       } else {
+        if (!labIdVal) {
+          setLoading(false);
+          return;
+        }
         q = query(
           collection(db, 'bookings'),
           where('labId', '==', labIdVal)
@@ -144,6 +153,20 @@ const BusinessAnalytics = () => {
   }, [filteredBookings]);
 
   const COLORS = ['#9BCF83', '#6B85A8', '#2D3250', '#EEFABD', '#8799b8'];
+
+  if (!hasPermission) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center justify-center text-center animate-in fade-in duration-700">
+        <div className="w-24 h-24 bg-amber-50 rounded-[32px] flex items-center justify-center mb-8 shadow-inner border border-amber-100">
+          <ShieldAlert className="w-12 h-12 text-amber-500" />
+        </div>
+        <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-4">Access <span className="text-amber-500">Denied</span></h1>
+        <p className="text-slate-400 max-w-md font-bold uppercase tracking-widest text-[11px] leading-loose">
+          You do not have the required permissions to view business analytics. Please contact your Laboratory Administrator.
+        </p>
+      </div>
+    );
+  }
 
   if (!isPro) {
     return (

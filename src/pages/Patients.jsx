@@ -104,6 +104,13 @@ const Patients = () => {
   };
 
   const handleDelete = async (id) => {
+    // GUARD: check for delete_records permission
+    if (!userData?.permissions?.can_delete_records && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') {
+      toast.error("Unauthorized: You do not have permission to delete records.");
+      setDeleteConfirm(null);
+      return;
+    }
+
     try {
       await deleteDoc(doc(db, 'patients', id));
       setDeleteConfirm(null);
@@ -335,13 +342,15 @@ const Patients = () => {
                         >
                           <Edit className="w-5 h-5 text-brand-secondary" />
                         </button>
-                        <button 
-                          onClick={() => setDeleteConfirm(patient.id)}
-                          className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-300"
-                          title="Delete Patient"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_delete_records) && (
+                          <button 
+                            onClick={() => setDeleteConfirm(patient.id)}
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-300"
+                            title="Delete Patient"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

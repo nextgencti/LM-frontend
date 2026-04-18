@@ -158,6 +158,12 @@ const Tests = () => {
       : test.parameters?.length || 0;
 
   const handleDeleteTest = async (id) => {
+    // GUARD: Strictly Super Admin only for catalog deletion
+    if (userData?.role !== 'SuperAdmin') {
+      toast.error("Unauthorized: Only Super Admin can delete tests from the catalog.");
+      return;
+    }
+
     const testData = tests.find(t => t.id === id);
     toast(
       ({ closeToast }) => (
@@ -644,8 +650,8 @@ const Tests = () => {
                         <button onClick={() => { setTestForm({...test, groups: test.groups || []}); setShowModal(true); }} className="p-3 bg-brand-light text-brand-dark rounded-xl hover:bg-brand-primary hover:text-white transition-all">
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        {/* Delete — SuperAdmin & LabAdmin */}
-                        {(isSuperAdmin || userData?.role === 'LabAdmin') && (
+                        {/* Delete — STRICTLY SuperAdmin Only */}
+                        {userData?.role === 'SuperAdmin' && (
                           <button onClick={() => handleDeleteTest(test.id)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>
