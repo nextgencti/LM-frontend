@@ -147,7 +147,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
               ...allReports[0],
               testName: mergedTestNames,
               results: mergedResults,
-              status: allReports.every(r => r.status === 'Final') ? 'Final' : 'In Progress'
+              status: allReports.every(r => r.status === 'Delivered') ? 'Delivered' : (allReports.every(r => r.status === 'Final' || r.status === 'Delivered') ? 'Final' : 'In Progress')
             });
           }
         } catch (e) { console.warn("Multi-test fetch failed:", e.message); }
@@ -607,7 +607,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report Date</div> <div className="whitespace-nowrap">: {formatDate(reportData.updatedAt || reportData.createdAt, true)}</div>
                   
                   <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Report ID</div> <div className="uppercase whitespace-nowrap">: {reportData.reportId || reportData.bookingNo || reportData.bookingId || reportData.booking_id || '--'}</div>
-                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase whitespace-nowrap">: {reportData.status || 'Final'}</div>
+                  <div className="text-gray-500 font-medium uppercase tracking-tighter whitespace-nowrap">Status</div> <div className="text-emerald-700 font-bold uppercase whitespace-nowrap">: {(reportData.status === 'Delivered' || reportData.status === 'Final' || (reportData.results && reportData.results.length > 0)) ? 'Final' : 'In Progress'}</div>
                 </div>
                 <div className="flex flex-col items-center justify-center !bg-white pl-4 sm:pl-6 border-l border-gray-200 shrink-0">
                   <QRCodeComponent value={qrUrl} size={50} className="sm:w-[75px] sm:h-[75px]" />

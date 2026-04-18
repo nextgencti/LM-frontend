@@ -26,6 +26,7 @@ import { Activity, Users, FileText, Calendar, LogOut, Stethoscope, IndianRupee, 
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import PreLoader from './components/PreLoader';
+import TokenManager from './components/TokenManager';
 
 const Layout = ({ children }) => {
   const { userData, subscription, activeLabId, setActiveLabId } = useAuth();
@@ -254,6 +255,9 @@ const Layout = ({ children }) => {
             </Link>
           )}
         </div>
+
+        {/* --- TOKEN MANAGEMENT (LabAdmin Only) --- */}
+        {userData?.role === 'LabAdmin' && <TokenManager />}
 
         <div className="p-5 border-t border-gray-100 bg-white/50 backdrop-blur-sm mt-auto">
           <div className="flex items-center mb-5 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">

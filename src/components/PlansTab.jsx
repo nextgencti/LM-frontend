@@ -18,74 +18,135 @@ const PlansTab = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // 1. Initial Seeding Logic (if collection is empty)
+    // 1. Initial Seeding Logic (ensures all hardcoded plans exist)
     const seedPlansIfNotExists = async () => {
-      const querySnapshot = await getDocs(collection(db, 'plans'));
-      if (querySnapshot.empty) {
-        console.log("Seeding initial plans to Firestore...");
-        const batch = writeBatch(db);
-        
-        const initialPlans = [
-          {
-            id: 'basic',
-            name: 'Basic',
-            price: '₹499',
-            period: '/ month',
-            description: 'Perfect for small diagnostic collection centers.',
-            color: 'from-slate-700 to-slate-900',
-            iconName: 'Shield',
-            features: [
-              { text: 'Standard Lab Management', available: true },
-              { text: 'Single Admin User Account', available: true },
-              { text: 'Basic Report Header/Footer', available: true },
-              { text: 'Global Test Catalog Access', available: true },
-              { text: 'Standard Result Templates', available: true },
-              { text: 'Email Support', available: true },
-              { text: 'Premium Watermarking', available: false },
-              { text: 'Multi-Staff Accounts', available: false },
-              { text: 'Business Analytics', available: false },
-              { text: 'Priority WhatsApp Support (Upcoming)', available: false },
-              { text: 'Doctor Ledger Management', available: false },
-            ],
-            cta: 'Plan Details',
-            popular: false,
-            order: 1,
-            maxUsers: 2
+      const initialPlans = [
+        {
+          id: 'basic',
+          name: 'Basic',
+          price: '₹499',
+          period: '/ month',
+          description: 'Perfect for small diagnostic collection centers.',
+          color: 'from-slate-700 to-slate-900',
+          iconName: 'Shield',
+          features: [
+            { text: 'Standard Lab Management', available: true },
+            { text: 'Single Admin User Account', available: true },
+            { text: 'Basic Report Header/Footer', available: true },
+            { text: 'Global Test Catalog Access', available: true },
+            { text: 'Standard Result Templates', available: true },
+            { text: 'Email Support', available: true },
+            { text: 'Premium Watermarking', available: false },
+            { text: 'Multi-Staff Accounts', available: false },
+            { text: 'Business Analytics', available: false },
+            { text: 'Priority WhatsApp Support (Upcoming)', available: false },
+            { text: 'Doctor Ledger Management', available: false },
+          ],
+          cta: 'Plan Details',
+          popular: false,
+          order: 1,
+          maxUsers: 2
+        },
+        {
+          id: 'pro',
+          name: 'Pro',
+          price: '₹1499',
+          period: '/ month',
+          description: 'Advanced features for full-scale pathology laboratories.',
+          color: 'from-brand-dark to-brand-secondary',
+          iconName: 'Crown',
+          features: [
+            { text: 'Advanced Lab Management', available: true },
+            { text: 'Multiple Staff Accounts', available: true },
+            { text: 'Full Premium Branding', available: true },
+            { text: 'Custom Watermarks & Logos', available: true },
+            { text: 'Global Parameter Library', available: true },
+            { text: 'Business Analytics Dashboard', available: true },
+            { text: 'Automatic Sync Backups', available: true },
+            { text: 'Patient Portal Access (Live)', available: true },
+            { text: 'WhatsApp & Call Support (Upcoming)', available: false },
+            { text: 'Customized Letterheads', available: true },
+            { text: 'Doctor Ledger Management', available: true },
+          ],
+          cta: 'Recently Launched',
+          popular: true,
+          order: 2,
+          maxUsers: 10
+        },
+        {
+          id: 'pay_as_you_go',
+          name: 'Pay As You Go',
+          price: '₹10',
+          period: '/ token',
+          description: 'Zero monthly fee. Pay only for what you use. Perfect for startup labs.',
+          color: 'from-amber-400 to-orange-600',
+          iconName: 'Zap',
+          features: [
+            { text: '1 Token per Finalized Report', available: true },
+            { text: '20 Tokens per Staff Account', available: true },
+            { text: '1 Token per Daily Report Email', available: true },
+            { text: '1 Token per Doctor Ledger Print & Email', available: true },
+            { text: 'Full Premium Branding', available: true },
+            { text: 'Business Analytics Dashboard', available: true },
+            { text: 'Pay-per-use Flexibility', available: true },
+          ],
+          tokenConfig: {
+            reportFinalization: 1,
+            staffCreation: 20,
+            dailyReport: 1,
+            ledgerAction: 1
           },
-          {
-            id: 'pro',
-            name: 'Pro',
-            price: '₹999',
-            period: '/ month',
-            description: 'Advanced features for full-scale pathology laboratories.',
-            color: 'from-brand-dark to-brand-secondary',
-            iconName: 'Crown',
-            features: [
-              { text: 'Advanced Lab Management', available: true },
-              { text: 'Unlimited Staff Accounts', available: true },
-              { text: 'Full Premium Branding', available: true },
-              { text: 'Custom Watermarks & Logos', available: true },
-              { text: 'Global Parameter Library', available: true },
-              { text: 'Business Analytics Dashboard', available: true },
-              { text: 'Automatic Sync Backups', available: true },
-              { text: 'Patient Portal Access (Live)', available: true },
-              { text: 'WhatsApp & Call Support (Upcoming)', available: false },
-              { text: 'Customized Letterheads', available: true },
-              { text: 'Doctor Ledger Management', available: true },
-            ],
-            cta: 'Recently Launched',
-            popular: true,
-            order: 2,
-            maxUsers: 10
-          }
-        ];
+          cta: 'Prepaid Tokens',
+          popular: false,
+          order: 3,
+          maxUsers: 5
+        }
+      ];
+
+      try {
+        const querySnapshot = await getDocs(collection(db, 'plans'));
+        const existingPlanIds = querySnapshot.docs.map(doc => doc.id);
+        
+        const batch = writeBatch(db);
+        let needsSync = false;
 
         initialPlans.forEach(plan => {
           const docRef = doc(db, 'plans', plan.id);
-          batch.set(docRef, plan);
+          const existingPlan = querySnapshot.docs.find(d => d.id === plan.id);
+          
+          if (!existingPlan) {
+            console.log(`Seeding missing plan: ${plan.id}`);
+            batch.set(docRef, plan);
+            needsSync = true;
+          } else {
+            // Check if features or basic info changed (simple string comparison for speed)
+            const existingData = existingPlan.data();
+            const hardcodedFeatures = JSON.stringify(plan.features);
+            const savedFeatures = JSON.stringify(existingData.features);
+            
+            if (
+              hardcodedFeatures !== savedFeatures || 
+              plan.maxUsers !== (existingData.maxUsers || 0) ||
+              JSON.stringify(plan.tokenConfig) !== JSON.stringify(existingData.tokenConfig)
+            ) {
+              console.log(`Syncing critical updates for plan: ${plan.id}`);
+              batch.update(docRef, {
+                features: plan.features,
+                maxUsers: plan.maxUsers,
+                tokenConfig: plan.tokenConfig || null,
+                updatedAt: new Date()
+              });
+              needsSync = true;
+            }
+          }
         });
 
-        await batch.commit();
+        if (needsSync) {
+          await batch.commit();
+          console.log("Plans synced successfully.");
+        }
+      } catch (err) {
+        console.error("Error seeding plans:", err);
       }
     };
 
@@ -126,12 +187,13 @@ const PlansTab = () => {
       const planRef = doc(db, 'plans', editData.id);
       await updateDoc(planRef, {
         price: editData.price,
-        period: '/ month', // Enforce monthly
+        period: editData.period || '/ month',
         description: editData.description,
         features: editData.features,
         popular: editData.popular,
         cta: editData.cta,
-        maxUsers: parseInt(editData.maxUsers) || 0
+        maxUsers: parseInt(editData.maxUsers) || 0,
+        tokenConfig: editData.tokenConfig || null
       });
       setIsEditing(null);
       setEditData(null);
@@ -225,7 +287,9 @@ const PlansTab = () => {
                 </div>
 
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black tracking-tighter">{plan.price}</span>
+                  <span className="text-5xl font-black tracking-tighter">
+                    {plan.price?.startsWith('₹') ? plan.price : `₹${plan.price}`}
+                  </span>
                   <span className="text-lg font-bold text-white/40 uppercase tracking-widest">{plan.period}</span>
                 </div>
                 <div className="mt-4 flex items-center gap-2 bg-white/10 w-fit px-4 py-1.5 rounded-full border border-white/10">
@@ -288,12 +352,19 @@ const PlansTab = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Plan Price</label>
-                  <input 
-                    type="text" 
-                    value={editData.price}
-                    onChange={(e) => setEditData({ ...editData, price: e.target.value })}
-                    className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[20px] text-brand-dark font-black focus:ring-4 focus:ring-brand-primary/10 accent-brand-primary outline-none"
-                  />
+                  <div className="relative group/input">
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-brand-primary pointer-events-none group-focus-within/input:scale-110 transition-transform">₹</span>
+                    <input 
+                      type="text" 
+                      value={editData.price?.replace('₹', '')}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, '');
+                        setEditData({ ...editData, price: `₹${val}` });
+                      }}
+                      className="w-full pl-12 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[20px] text-brand-dark font-black focus:ring-4 focus:ring-brand-primary/10 accent-brand-primary outline-none transition-all"
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secondary Price Label (CTA)</label>
@@ -327,6 +398,43 @@ const PlansTab = () => {
                   className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] text-brand-dark font-bold focus:ring-4 focus:ring-brand-primary/10 accent-brand-primary outline-none"
                 />
               </div>
+
+              {/* Token Deduction Config (Only for Pay As You Go) */}
+              {editData.id === 'pay_as_you_go' && editData.tokenConfig && (
+                <div className="bg-amber-50 rounded-[32px] p-8 border border-amber-100/50 space-y-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-amber-400 rounded-lg text-white">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                    <label className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Token Deduction Config</label>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {Object.entries(editData.tokenConfig).map(([key, value]) => (
+                      <div key={key} className="space-y-3">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                          {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                        </label>
+                        <div className="relative">
+                           <input 
+                            type="number" 
+                            value={value}
+                            onChange={(e) => setEditData({
+                              ...editData,
+                              tokenConfig: {
+                                ...editData.tokenConfig,
+                                [key]: parseInt(e.target.value) || 0
+                              }
+                            })}
+                            className="w-full px-6 py-4 bg-white border border-amber-100 rounded-2xl text-brand-dark font-black focus:ring-4 focus:ring-amber-400/10 outline-none text-sm"
+                          />
+                          <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[9px] font-black text-amber-500 uppercase">Tokens</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-6">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">

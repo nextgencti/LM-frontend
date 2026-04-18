@@ -284,7 +284,7 @@ const Reports = () => {
       const allFilled = editedResults.filter(r => r.dataType !== 'Grid' && r.dataType !== 'Titer').every(r => r.value && r.value !== '');
       await updateDoc(doc(db, 'reports', selectedReport.id), {
         results: editedResults,
-        status: allFilled ? 'In Progress' : 'In Progress',
+        status: 'In Progress',
         updatedAt: serverTimestamp(),
       });
       

@@ -3,21 +3,24 @@ import { db } from '../firebase';
 import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2, ChevronRight } from 'lucide-react';
+import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2, ChevronRight, Zap } from 'lucide-react';
 import GlobalTestCatalog from '../components/GlobalTestCatalog';
 import GlobalSettings from '../components/GlobalSettings';
 import MasterParameters from './MasterParameters';
 import PlansTab from '../components/PlansTab';
 
 const SuperAdminDashboard = () => {
-  const { userData, setActiveLabId, activeLabId } = useAuth();
+  const { userData, setActiveLabId, activeLabId, allPlans } = useAuth();
   const [labs, setLabs] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('All');
   const [stats, setStats] = useState({ total: 0, active: 0, expired: 0, pro: 0 });
-  const [activeView, setActiveView] = useState('labs'); // 'labs' or 'tests'
+  const [activeView, setActiveView] = useState('labs'); // 'labs', 'tests', 'requests', 'token_requests'
+  const [tokenRequests, setTokenRequests] = useState([]);
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
+  const [tokenForm, setTokenForm] = useState({ labId: '', amount: '100', labName: '' });
 
   const [isPinVerified, setIsPinVerified] = useState(
     sessionStorage.getItem('superadmin_pin_verified') === 'true'
@@ -86,8 +89,84 @@ const SuperAdminDashboard = () => {
     if (isPinVerified) {
       fetchLabs();
       fetchRequests();
+      fetchTokenRequests();
     }
   }, [isPinVerified]);
+
+  const fetchTokenRequests = async () => {
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`${BACKEND_URL}/api/superadmin/token-requests`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setTokenRequests(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching token requests:", error);
+    }
+  };
+
+  const handleApproveTokenRequest = async (req) => {
+    if (!window.confirm(`Approve ${req.requestedAmount} tokens for ${req.labName}?`)) return;
+    
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`${BACKEND_URL}/api/superadmin/add-tokens`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          labId: req.labId, 
+          amount: req.requestedAmount, 
+          requestId: req.id 
+        })
+      });
+      
+      if (res.ok) {
+        toast.success("Tokens added and request approved!");
+        fetchTokenRequests();
+        fetchLabs();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to approve request");
+      }
+    } catch (error) {
+      toast.error("Network error");
+    }
+  };
+
+  const handleManualAddTokens = async (e) => {
+    e.preventDefault();
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`${BACKEND_URL}/api/superadmin/add-tokens`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          labId: tokenForm.labId, 
+          amount: tokenForm.amount 
+        })
+      });
+      
+      if (res.ok) {
+        toast.success(`Added ${tokenForm.amount} tokens to ${tokenForm.labName}`);
+        setIsTokenModalOpen(false);
+        fetchLabs();
+      } else {
+        toast.error("Failed to add tokens");
+      }
+    } catch (error) {
+      toast.error("Network error");
+    }
+  };
 
   const fetchRequests = async () => {
     try {
@@ -577,6 +656,18 @@ const SuperAdminDashboard = () => {
             <CreditCard className="w-3.5 h-3.5 md:w-4 md:h-4" /> Pricing Plans
           </button>
           <button 
+            onClick={() => setActiveView('token_requests')}
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all relative whitespace-nowrap ${activeView === 'token_requests' ? 'bg-amber-500 text-white shadow-xl shadow-amber-500/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <Zap className="w-3.5 h-3.5 md:w-4 md:h-4" /> 
+            Token Requests
+            {tokenRequests.filter(r => r.status === 'pending').length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-amber-600 text-white text-[7px] md:text-[8px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
+                {tokenRequests.filter(r => r.status === 'pending').length}
+              </span>
+            )}
+          </button>
+          <button 
             onClick={() => setActiveView('requests')}
             className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all relative whitespace-nowrap ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
@@ -740,6 +831,16 @@ const SuperAdminDashboard = () => {
                                 <CreditCard className="w-5 h-5" />
                               </button>
                               <button 
+                                onClick={() => { 
+                                  setTokenForm({ labId: lab.labId, amount: '100', labName: lab.labName });
+                                  setIsTokenModalOpen(true);
+                                }}
+                                className="p-3 rounded-xl transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
+                                title="Add Tokens"
+                              >
+                                <Zap className="w-5 h-5" />
+                              </button>
+                              <button 
                                 onClick={() => handleToggleStatus(lab.id, lab.status)}
                                 className={`p-3 rounded-xl transition-all border ${lab.status === 'active' ? 'text-rose-400 border-rose-50 hover:bg-rose-500 hover:text-white' : 'text-brand-primary border-brand-light hover:bg-brand-primary hover:text-white'} shadow-sm active:scale-95`}
                                 title={lab.status === 'active' ? "Terminate Session" : "Authorize Session"}
@@ -765,7 +866,68 @@ const SuperAdminDashboard = () => {
         <PlansTab />
       ) : activeView === 'settings' ? (
         <GlobalSettings />
-      ) : (
+      ) : activeView === 'token_requests' ? (
+        <div className="animate-in fade-in duration-700">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-3xl md:rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
+            <div>
+              <h1 className="text-2xl md:text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                Token <span className="text-amber-500">Requests</span>
+              </h1>
+              <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mt-1.5">Approve token purchase requests from laboratories.</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-amber-500 text-white">
+                  <tr>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Laboratory</th>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest text-center">Amount</th>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Date</th>
+                    <th className="px-6 py-4 md:px-10 md:py-6 text-right text-[11px] md:text-[13px] font-black uppercase tracking-widest">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {tokenRequests.length === 0 ? (
+                    <tr><td colSpan="4" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No token requests.</td></tr>
+                  ) : tokenRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="px-6 py-4 md:px-10 md:py-6">
+                        <div className="font-black text-brand-dark text-[14px] md:text-base tracking-tight uppercase">{req.labName}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">ID: {req.labId}</div>
+                      </td>
+                      <td className="px-6 py-4 md:px-10 md:py-6 text-center">
+                        <span className="px-5 py-2 bg-amber-100 text-amber-700 rounded-full font-black text-sm shadow-sm ring-1 ring-amber-200">
+                          {req.requestedAmount} <span className="text-[10px] opacity-70">Tokens</span>
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 md:px-10 md:py-6">
+                        <div className="text-sm font-bold text-slate-600">{req.createdAt?.toDate ? req.createdAt.toDate().toLocaleDateString() : '—'}</div>
+                      </td>
+                      <td className="px-6 py-4 md:px-10 md:py-6 text-right">
+                        {req.status === 'pending' ? (
+                          <button 
+                            onClick={() => handleApproveTokenRequest(req)}
+                            className="px-6 py-3 bg-brand-dark text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-xl shadow-brand-dark/10 transition-all border border-white/5 active:scale-95"
+                          >
+                            Approve & Add
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-end gap-2 text-brand-primary">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Approved</span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : activeView === 'requests' ? (
         <div className="animate-in fade-in duration-700">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-3xl md:rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
             <div>
@@ -862,6 +1024,59 @@ const SuperAdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      ) : activeView === 'tests' ? (
+        <GlobalTestCatalog />
+      ) : activeView === 'parameters' ? (
+        <MasterParameters />
+      ) : activeView === 'plans' ? (
+        <PlansTab />
+      ) : (
+        <GlobalSettings />
+      )}
+
+      {/* MANUAL TOKEN ADD MODAL */}
+      {isTokenModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-amber-500 p-8 text-white relative">
+              <Zap className="w-12 h-12 mb-4 opacity-50" />
+              <h2 className="text-2xl font-black uppercase tracking-tighter">Add Tokens</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-1 opacity-80">Manual Laboratory Recharge</p>
+              <button onClick={() => setIsTokenModalOpen(false)} className="absolute top-8 right-8 p-2 hover:bg-white/10 rounded-full">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleManualAddTokens} className="p-10 space-y-6">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Laboratory</label>
+                <div className="font-black text-brand-dark text-lg uppercase">{tokenForm.labName}</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {tokenForm.labId}</div>
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Token Quantity</label>
+                <input 
+                  type="number" 
+                  value={tokenForm.amount}
+                  onChange={(e) => setTokenForm({...tokenForm, amount: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-xl font-black outline-none focus:ring-8 focus:ring-amber-500/5 focus:border-amber-500/30 transition-all font-mono"
+                  placeholder="Enter Amount"
+                  autoFocus
+                />
+              </div>
+
+              <div className="pt-6">
+                <button 
+                  type="submit"
+                  className="w-full py-5 bg-brand-dark text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand-dark/20 hover:bg-black transition-all active:scale-95"
+                >
+                  Confirm Recharge
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1064,19 +1279,23 @@ const SuperAdminDashboard = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">SaaS Plan</label>
-                      <div className="flex gap-4">
-                        {['basic', 'pro'].map((p) => (
+                      <div className="flex flex-wrap gap-4">
+                        {(allPlans?.length > 0 ? allPlans : [
+                          { id: 'basic', name: 'Basic' },
+                          { id: 'pro', name: 'Pro' },
+                          { id: 'pay_as_you_go', name: 'Pay As You Go' }
+                        ]).sort((a,b) => (a.order || 0) - (b.order || 0)).map((p) => (
                           <button
-                            key={p}
+                            key={p.id}
                             type="button"
-                            onClick={() => setNewLabData({...newLabData, plan: p})}
-                            className={`flex-1 py-4 rounded-3xl font-black uppercase tracking-wider transition-all border-2 ${
-                              newLabData.plan === p 
+                            onClick={() => setNewLabData({...newLabData, plan: p.id})}
+                            className={`px-6 py-4 rounded-3xl font-black uppercase tracking-wider transition-all border-2 ${
+                              newLabData.plan === p.id 
                                 ? 'bg-red-600 border-red-600 text-white shadow-lg' 
                                 : 'bg-gray-50 border-transparent text-gray-400 grayscale hover:grayscale-0'
                             }`}
                           >
-                            {p}
+                            {p.name || p.id}
                           </button>
                         ))}
                       </div>
@@ -1199,7 +1418,28 @@ const SuperAdminDashboard = () => {
               )}
               {activeTab === 'saas' && (
                 <div className="grid grid-cols-2 gap-8 text-left">
-                  <div><Label>SaaS Plan</Label><div className="flex gap-4">{['basic', 'pro'].map(p=>(<button key={p} onClick={()=>setEditingLab({...editingLab, plan: p})} className={`flex-1 py-4 rounded-3xl font-black uppercase tracking-wider transition-all border-2 ${editingLab.plan === p ? 'bg-brand-primary border-brand-primary text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>{p}</button>))}</div></div>
+                  <div>
+                    <Label>SaaS Plan</Label>
+                    <div className="flex flex-wrap gap-4">
+                      {(allPlans?.length > 0 ? allPlans : [
+                        { id: 'basic', name: 'Basic' },
+                        { id: 'pro', name: 'Pro' },
+                        { id: 'pay_as_you_go', name: 'Pay As You Go' }
+                      ]).sort((a,b) => (a.order || 0) - (b.order || 0)).map(p => (
+                        <button 
+                          key={p.id} 
+                          onClick={() => setEditingLab({...editingLab, plan: p.id})} 
+                          className={`px-6 py-4 rounded-3xl font-black uppercase tracking-wider transition-all border-2 ${
+                            editingLab.plan === p.id 
+                              ? 'bg-brand-primary border-brand-primary text-white shadow-lg' 
+                              : 'bg-gray-50 border-transparent text-gray-400'
+                          }`}
+                        >
+                          {p.name || p.id}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

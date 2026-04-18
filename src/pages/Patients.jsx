@@ -22,7 +22,7 @@ const Patients = () => {
   const [editingId, setEditingId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // holds patient id to delete
   const [newPatient, setNewPatient] = useState({
-    name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: ''
+    name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '', honorific: 'Mr.', isAuto: true
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -57,6 +57,25 @@ const Patients = () => {
     return () => unsubscribe();
   }, [userData, activeLabId]);
 
+  // Real-time Honorific logic
+  useEffect(() => {
+    if (newPatient.isAuto) {
+      const ageVal = parseInt(newPatient.age) || 0;
+      const isAdult = newPatient.ageUnit === 'Years' ? ageVal >= 15 : false;
+      let calculatedPrefix = '';
+      
+      if (newPatient.gender === 'Male') {
+        calculatedPrefix = isAdult ? 'Mr.' : 'Master';
+      } else if (newPatient.gender === 'Female') {
+        calculatedPrefix = isAdult ? 'Ms.' : 'Baby';
+      }
+      
+      if (calculatedPrefix && newPatient.honorific !== calculatedPrefix) {
+        setNewPatient(prev => ({ ...prev, honorific: calculatedPrefix }));
+      }
+    }
+  }, [newPatient.age, newPatient.ageUnit, newPatient.gender, newPatient.isAuto]);
+
   const fetchLabs = async () => {
     try {
       const q = query(collection(db, 'labs'));
@@ -77,7 +96,9 @@ const Patients = () => {
       phone: pt.phone || '',
       email: pt.email || '',
       address: pt.address || '',
-      labId: pt.labId || activeLabId || ''
+      labId: pt.labId || activeLabId || '',
+      honorific: 'Auto', // We can set to Auto on edit to re-trigger if needed, or stick to what was there.
+      isAuto: true
     });
     setShowAddModal(true);
   };
@@ -117,6 +138,20 @@ const Patients = () => {
       }
     }
 
+    let honorificPrefix = '';
+    if (newPatient.honorific && newPatient.honorific !== 'None' && newPatient.honorific !== 'Auto') {
+      honorificPrefix = newPatient.honorific + ' ';
+    }
+
+    let finalName = newPatient.name.trim();
+
+    if (honorificPrefix) {
+      // Prepend the chosen/calculated honorific if not already there
+      if (!finalName.toLowerCase().startsWith(honorificPrefix.toLowerCase())) {
+        finalName = honorificPrefix + finalName;
+      }
+    }
+
     try {
       setIsSaving(true);
       let docId;
@@ -132,7 +167,7 @@ const Patients = () => {
         docId = `${targetLabId}_${finalPid}`;
       }
       const saveData = {
-        name: newPatient.name,
+        name: finalName,
         age: newPatient.age,
         ageUnit: newPatient.ageUnit,
         gender: newPatient.gender,
@@ -166,7 +201,7 @@ const Patients = () => {
   const closeModal = () => {
     setShowAddModal(false);
     setEditingId(null);
-    setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '' });
+    setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '', honorific: 'Mr.', isAuto: true });
   };
 
   const filteredPatients = patients.filter(p => 
@@ -192,7 +227,7 @@ const Patients = () => {
         </div>
         
         <button
-          onClick={() => { setEditingId(null); setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '' }); setShowAddModal(true); }}
+          onClick={() => { setEditingId(null); setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '', honorific: 'Mr.', isAuto: true }); setShowAddModal(true); }}
           className="w-full md:w-auto flex items-center justify-center px-8 py-4 bg-brand-dark text-white rounded-2xl font-black hover:shadow-2xl hover:shadow-brand-dark/20 hover:-translate-y-1 transition-all duration-300 group active:scale-95 shadow-lg tracking-widest text-[11px] uppercase whitespace-nowrap"
         >
           <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300 text-brand-primary" />
@@ -359,14 +394,45 @@ const Patients = () => {
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Full Name *</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="Enter patient's name"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
-                    value={newPatient.name} 
-                    onChange={e => setNewPatient({...newPatient, name: e.target.value})} 
-                  />
+                  <div className="flex gap-2">
+                    <div className="relative w-[130px] shrink-0">
+                      <select 
+                        className={`w-full px-3 py-3 border-2 rounded-xl transition-all font-bold text-sm outline-none cursor-pointer appearance-none ${
+                          newPatient.isAuto ? 'bg-brand-primary/5 border-brand-primary/30 text-brand-primary' : 'bg-slate-50 border-transparent text-brand-dark focus:border-brand-primary/50 focus:bg-white'
+                        }`}
+                        value={newPatient.isAuto ? 'Auto' : newPatient.honorific}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === 'Auto') {
+                            setNewPatient({...newPatient, isAuto: true});
+                          } else {
+                            setNewPatient({...newPatient, honorific: val, isAuto: false});
+                          }
+                        }}
+                      >
+                        <option value="Auto">✨ Auto ({newPatient.honorific})</option>
+                        <option value="None">None</option>
+                        <option value="Mr.">Mr.</option>
+                        <option value="Ms.">Ms.</option>
+                        <option value="Mrs.">Mrs.</option>
+                        <option value="Master">Master</option>
+                        <option value="Baby">Baby</option>
+                        <option value="Miss">Miss</option>
+                        <option value="Dr.">Dr.</option>
+                        <option value="Prof.">Prof.</option>
+                        <option value="Shri">Shri</option>
+                        <option value="Smt.">Smt.</option>
+                      </select>
+                    </div>
+                    <input 
+                      required 
+                      type="text" 
+                      placeholder="Enter patient's name"
+                      className="flex-grow px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
+                      value={newPatient.name} 
+                      onChange={e => setNewPatient({...newPatient, name: e.target.value})} 
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

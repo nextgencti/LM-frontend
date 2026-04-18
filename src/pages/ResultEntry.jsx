@@ -132,6 +132,7 @@ const ResultEntry = () => {
       const updatePayload = {
         results: results,
         status: 'Final',
+        reported_at: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       
@@ -163,6 +164,7 @@ const ResultEntry = () => {
       const updatePayload = {
         results: results,
         status: 'Final',
+        reported_at: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       

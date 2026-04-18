@@ -35,8 +35,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    let subUnsub = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && !userData) setLoading(true); // Prevent UI flash during initial fetch
+      if (user && !userData) setLoading(true);
       setCurrentUser(user);
       
       if (user) {
@@ -46,67 +48,51 @@ export const AuthProvider = ({ children }) => {
           
           if (userDoc.exists()) {
             const data = userDoc.data();
-            console.log("Found user document:", data);
-            
             const tokenResult = await user.getIdTokenResult();
             const { role, labId } = tokenResult.claims;
-            console.log("Token claims:", { role, labId });
             
             const finalUserData = { ...data, role: role || data.role, labId: labId || data.labId };
             setUserData(finalUserData);
 
-            // Determine which lab context to load
             const currentLabId = labId || data.labId || selectedLabId;
-            console.log("Loading metadata for labId:", currentLabId);
             
             if (currentLabId) {
-              try {
-                // Fetch Lab Name globally to avoid UI flicker
-                const labSnap = await getDoc(doc(db, 'labs', currentLabId));
-                if (labSnap.exists()) {
-                  setLabFullName(labSnap.data().labName);
+              // Cleanup previous listener if any
+              if (subUnsub) subUnsub();
+              
+              // New Real-time subscription listener
+              subUnsub = onSnapshot(doc(db, 'subscriptions', currentLabId), (docSnap) => {
+                if (docSnap.exists()) {
+                  setSubscription({ id: docSnap.id, ...docSnap.data() });
                 }
+              });
 
-                const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
-                const token = await user.getIdToken();
-                
-                const subRes = await fetch(`${BACKEND_URL}/api/subscription/${currentLabId}`, {
-                  headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (subRes.ok) {
-                  const subData = await subRes.json();
-                  console.log("Subscription found (via Backend):", subData);
-                  setSubscription(subData);
-                } else {
-                  console.warn("Backend failed to fetch subscription for:", currentLabId);
-                }
-              } catch (subErr) {
-                console.error("Error fetching subscription via backend:", subErr);
+              const labSnap = await getDoc(doc(db, 'labs', currentLabId));
+              if (labSnap.exists()) {
+                setLabFullName(labSnap.data().labName);
               }
-            } else {
-              console.warn("No currentLabId found for user.");
             }
 
             localStorage.setItem('jwt_token', tokenResult.token);
             localStorage.setItem('user_role', role || data.role);
-            if (labId || data.labId) localStorage.setItem('labId', labId || data.labId);
-          } else {
-            console.warn("No user document found for uid:", user.uid);
           }
         } catch (error) {
-          console.error("Error fetching user data/subscription:", error);
+          console.error("Error in Auth State Transition:", error);
         }
       } else {
         setUserData(null);
         setSubscription(null);
         setSelectedLabId(null);
         localStorage.clear();
+        if (subUnsub) subUnsub();
       }
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (subUnsub) subUnsub();
+    };
   }, [selectedLabId]);
 
   const checkFeature = (featureName) => {

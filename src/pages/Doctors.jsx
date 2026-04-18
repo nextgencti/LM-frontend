@@ -18,6 +18,7 @@ const Doctors = () => {
   });
   const [editingDoc, setEditingDoc] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // --- LEDGER STATES ---
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
@@ -91,18 +92,28 @@ const Doctors = () => {
       return;
     }
 
+    // Automatically prefix with "Dr. " if not already present
+    let formattedName = newDoctor.name.trim();
+    if (formattedName && !formattedName.toLowerCase().startsWith('dr.') && !formattedName.toLowerCase().startsWith('dr ')) {
+      formattedName = `Dr. ${formattedName}`;
+    }
+
     try {
+      setIsSaving(true);
+      const doctorDataToSave = {
+        ...newDoctor,
+        name: formattedName,
+        updatedAt: serverTimestamp()
+      };
+
       if (editingDoc) {
         // Update logic
-        await updateDoc(doc(db, 'doctors', editingDoc.id), {
-          ...newDoctor,
-          updatedAt: serverTimestamp()
-        });
+        await updateDoc(doc(db, 'doctors', editingDoc.id), doctorDataToSave);
         toast.success('Doctor details updated');
       } else {
         // Add logic
         await addDoc(collection(db, 'doctors'), {
-          ...newDoctor,
+          ...doctorDataToSave,
           doctorId: `DOC-${Date.now()}`,
           labId: activeLabId,
           createdAt: serverTimestamp()
@@ -117,6 +128,8 @@ const Doctors = () => {
     } catch (error) {
       console.error("Error saving doctor:", error);
       toast.error("Failed to save doctor details");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -144,6 +157,36 @@ const Doctors = () => {
       console.error("Error deleting doctor:", error);
       alert('Failed to delete doctor: ' + error.message);
       setDeleteConfirm(null);
+    }
+  };
+
+  // Helper to deduct 1 token for an action
+  const deductTokenAction = async (actionName) => {
+    if (subscription?.plan !== 'pay_as_you_go') return true;
+    
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const token = await currentUser.getIdToken();
+      
+      const response = await fetch(`${BACKEND_URL}/api/tokens/deduct-action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: actionName, labId: activeLabId })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || `Failed to deduct token for ${actionName}`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Token deduction failed:", error);
+      toast.error("Network error during token validation");
+      return false;
     }
   };
 
@@ -299,8 +342,12 @@ const Doctors = () => {
      return d.toLocaleDateString('en-GB').replace(/\//g, '-'); // en-GB gives DD/MM/YYYY
   };
 
-  const handlePrintLedger = () => {
+  const handlePrintLedger = async () => {
     if (!selectedDoc) return;
+
+    // Deduct Token if on Pay As You Go
+    const success = await deductTokenAction(`Print Ledger: ${selectedDoc.name}`);
+    if (!success) return;
     
     const filteredReferrals = ledgerData.referrals.filter(b => {
       if (!b.createdAt) return true;
@@ -532,6 +579,14 @@ const Doctors = () => {
     }
 
     setIsEmailing(true);
+    
+    // Deduct Token if on Pay As You Go
+    const tokenSuccess = await deductTokenAction(`Email Ledger: ${selectedDoc.name}`);
+    if (!tokenSuccess) {
+      setIsEmailing(false);
+      return;
+    }
+
     const toastId = toast.loading(`Preparing to send report to ${targetEmail}...`);
     try {
       let openingEarned = 0;
@@ -1019,9 +1074,11 @@ const Doctors = () => {
                 </button>
                 <button 
                   type="submit" 
-                  className="px-6 py-3 bg-brand-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={isSaving}
+                  className="px-6 py-3 bg-brand-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {editingDoc ? 'Update Details' : 'Save Doctor'}
+                  {isSaving && <Loader className="w-4 h-4 animate-spin" />}
+                  {isSaving ? 'Processing...' : (editingDoc ? 'Update Details' : 'Save Doctor')}
                 </button>
               </div>
             </form>

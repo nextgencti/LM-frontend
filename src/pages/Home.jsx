@@ -309,69 +309,105 @@ const Home = () => {
                         <p className="text-lg text-slate-500 font-bold leading-relaxed">Choose a subscription that matches your laboratory's scale and ambition.</p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto">
                         {loadingPlans ? (
-                            <div className="col-span-2 py-20 flex flex-col items-center justify-center bg-white rounded-[50px] shadow-sm border border-slate-100">
+                            <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white rounded-[50px] shadow-sm border border-slate-100">
                                 <Loader className="w-10 h-10 animate-spin text-brand-primary mb-4" />
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accessing Real-time pricing...</p>
                             </div>
                         ) : (
-                            <>
-                                {/* Basic Plan */}
-                                {plans.basic && (
-                                    <div className="bg-white p-12 rounded-[50px] shadow-2xl border border-slate-100 flex flex-col transition-all hover:translate-y-[-10px] duration-500 relative overflow-hidden group">
-                                        <div className="absolute top-0 left-0 w-full h-2 bg-slate-200"></div>
-                                        <div className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6 bg-slate-100 px-4 py-1.5 rounded-full inline-block w-fit ring-1 ring-slate-200">Essential</div>
-                                        <h5 className="text-3xl font-black text-brand-dark mb-2 tracking-tight">{plans.basic.name} Plan</h5>
-                                        <p className="text-slate-500 font-bold text-sm mb-8">{plans.basic.description}</p>
-                                        <div className="flex flex-col mb-10 p-6 bg-slate-50 rounded-3xl border border-slate-100 shadow-inner">
-                                            <div className="text-5xl font-black text-brand-dark">{formatPrice(plans.basic.price)}<span className="text-lg text-slate-400 font-bold uppercase tracking-widest ml-1">/mo</span></div>
-                                        </div>
-                                        
-                                        <div className="space-y-5 mb-12 flex-grow">
-                                            {plans.basic.features.filter(f => f.available).map((feature, i) => (
-                                                <div key={i} className="flex items-center gap-4 text-sm font-bold text-slate-600">
-                                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shadow-inner">
-                                                        <CheckCircle2 className="w-4 h-4" />
-                                                    </div>
-                                                    <span>{feature.text}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        
-                                        <Link to="/signup" className="block w-full text-center py-5 bg-brand-dark text-white font-black rounded-3xl hover:bg-black transition-all shadow-xl shadow-brand-dark/20 uppercase text-[10px] tracking-widest">Get Basic</Link>
-                                    </div>
-                                )}
+                            Object.values(plans)
+                                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                .map((plan) => {
+                                    const isPro = plan.id === 'pro';
+                                    const isPayAsYouGo = plan.id === 'pay_as_you_go';
+                                    const isDark = isPro || isPayAsYouGo;
 
-                                {/* Pro Plan */}
-                                {plans.pro && (
-                                    <div className="bg-brand-dark p-12 rounded-[50px] shadow-[0_40px_100px_-20px_rgba(45,50,80,0.4)] border border-white/5 flex flex-col transition-all hover:translate-y-[-10px] duration-500 relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/20 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-brand-primary/30 transition-all duration-700"></div>
-                                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-brand-secondary/10 blur-[60px] rounded-full translate-y-1/2 -translate-x-1/2"></div>
-                                        
-                                        <div className="text-[11px] font-black text-brand-primary uppercase tracking-widest mb-6 bg-brand-primary/10 px-4 py-1.5 rounded-full inline-block w-fit ring-1 ring-brand-primary/20">Most Popular</div>
-                                        <h5 className="text-3xl font-black text-white mb-2 tracking-tight">{plans.pro.name} Plan</h5>
-                                        <p className="text-slate-400 font-bold text-sm mb-8">{plans.pro.description}</p>
-                                        
-                                        <div className="flex flex-col mb-10 p-6 bg-white/5 rounded-3xl border border-white/5 shadow-inner backdrop-blur-sm">
-                                            <div className="text-5xl font-black text-brand-primary">{formatPrice(plans.pro.price)}<span className="text-lg text-brand-light font-bold uppercase tracking-widest ml-1">/mo</span></div>
-                                        </div>
-                                        
-                                        <div className="space-y-5 mb-12 flex-grow">
-                                            {plans.pro.features.filter(f => f.available).map((feature, i) => (
-                                                <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-100">
-                                                    <div className="w-6 h-6 rounded-full bg-brand-primary/20 flex items-center justify-center text-brand-primary shadow-sm group-hover:scale-110 transition-transform">
-                                                        <CheckCircle2 className="w-4 h-4" />
-                                                    </div>
-                                                    <span>{feature.text}</span>
+                                    return (
+                                        <div 
+                                            key={plan.id || plan.name}
+                                            className={`p-10 rounded-[50px] flex flex-col transition-all duration-500 relative overflow-hidden group border ${
+                                                isPro 
+                                                ? 'bg-brand-dark border-white/5 hover:translate-y-[-12px] hover:shadow-[0_40px_80px_-15px_rgba(151,250,11,0.25)]' 
+                                                : isPayAsYouGo
+                                                ? 'bg-gradient-to-br from-amber-400 to-orange-600 border-white/10 hover:translate-y-[-12px] hover:shadow-[0_40px_80px_-15px_rgba(251,191,36,0.4)]'
+                                                : 'bg-gradient-to-br from-emerald-200/50 via-white to-white border-emerald-100/50 hover:translate-y-[-12px] hover:shadow-[0_40px_80px_-15px_rgba(16,185,129,0.15)] shadow-2xl shadow-emerald-900/5'
+                                            }`}
+                                        >
+                                            {/* Background Accents */}
+                                            {isDark ? (
+                                                <>
+                                                    <div className={`absolute top-0 right-0 w-64 h-64 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2 transition-all duration-700 ${isPro ? 'bg-brand-primary/20 group-hover:bg-brand-primary/30' : 'bg-white/20 group-hover:bg-white/30'}`}></div>
+                                                    <div className={`absolute bottom-0 left-0 w-48 h-48 blur-[60px] rounded-full translate-y-1/2 -translate-x-1/2 ${isPro ? 'bg-brand-secondary/10' : 'bg-white/10'}`}></div>
+                                                </>
+                                            ) : (
+                                                <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-300/20 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                                            )}
+                                            
+                                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-6 px-4 py-1.5 rounded-full inline-block w-fit ring-1 ${
+                                                isPro 
+                                                ? 'bg-brand-primary/10 text-brand-primary ring-brand-primary/20' 
+                                                : isPayAsYouGo
+                                                ? 'bg-white/20 text-white ring-white/30'
+                                                : 'bg-emerald-100/50 text-emerald-600 ring-emerald-200/50'
+                                            }`}>
+                                                {plan.popular ? 'Most Popular' : (isPayAsYouGo ? 'Maximum Flexibility' : 'Essential')}
+                                            </div>
+
+                                            <h5 className={`text-3xl font-black mb-2 tracking-tight ${isDark ? 'text-white' : 'text-brand-dark'}`}>
+                                                {plan.name}
+                                            </h5>
+                                            <p className={`font-bold text-xs mb-8 ${isPro ? 'text-slate-400' : isPayAsYouGo ? 'text-white/70' : 'text-slate-500'}`}>
+                                                {plan.description}
+                                            </p>
+                                            
+                                            <div className={`flex flex-col mb-10 p-6 rounded-3xl border shadow-inner ${
+                                                isPro 
+                                                ? 'bg-white/5 border-white/5 backdrop-blur-sm' 
+                                                : isPayAsYouGo
+                                                ? 'bg-white/10 border-white/10 backdrop-blur-sm'
+                                                : 'bg-white/90 border-emerald-50/50'
+                                            }`}>
+                                                <div className={`text-5xl font-black ${isPro ? 'text-brand-primary' : isPayAsYouGo ? 'text-white' : 'text-brand-dark'}`}>
+                                                    {formatPrice(plan.price)}
+                                                    <span className={`text-lg font-bold uppercase tracking-widest ml-1 ${isPro ? 'text-brand-light' : isPayAsYouGo ? 'text-white/60' : 'text-emerald-400'}`}>
+                                                        {plan.period}
+                                                    </span>
                                                 </div>
-                                            ))}
+                                            </div>
+                                            
+                                            <div className="space-y-4 mb-12 flex-grow">
+                                                {plan.features?.filter(f => f.available).map((feature, i) => (
+                                                    <div key={i} className={`flex items-center gap-4 text-xs font-bold ${isDark ? 'text-slate-100' : 'text-slate-600'}`}>
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-inner ${
+                                                            isPro 
+                                                            ? 'bg-brand-primary/20 text-brand-primary' 
+                                                            : isPayAsYouGo
+                                                            ? 'bg-white/20 text-white'
+                                                            : 'bg-emerald-50 text-emerald-400'
+                                                        }`}>
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                        </div>
+                                                        <span>{feature.text}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <Link 
+                                                to="/signup" 
+                                                className={`block w-full text-center py-5 font-black rounded-3xl transition-all shadow-xl uppercase text-[10px] tracking-widest ${
+                                                    isPro
+                                                    ? 'bg-brand-primary text-brand-dark shadow-brand-primary/20 hover:scale-105'
+                                                    : isPayAsYouGo
+                                                    ? 'bg-white text-orange-600 shadow-orange-900/20 hover:bg-slate-50'
+                                                    : 'bg-brand-dark text-white shadow-brand-dark/20 hover:bg-black'
+                                                }`}
+                                            >
+                                                {plan.cta || 'Get Started'}
+                                            </Link>
                                         </div>
-                                        
-                                        <Link to="/signup" className="block w-full text-center py-5 bg-brand-primary text-brand-dark font-black rounded-3xl shadow-2xl shadow-brand-primary/20 hover:scale-105 transition-all text-[10px] tracking-widest uppercase">Start Pro Trial</Link>
-                                    </div>
-                                )}
-                            </>
+                                    );
+                                })
                         )}
                     </div>
                 </div>
