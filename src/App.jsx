@@ -102,17 +102,17 @@ const Layout = ({ children }) => {
 
       {/* Sidebar navigation */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[70] w-72 bg-white/90 backdrop-blur-xl shadow-2xl flex flex-col border-r border-slate-100 transition-transform duration-300 transform 
-        md:relative md:translate-x-0 md:w-64 md:shadow-xl md:h-full md:shrink-0
+        fixed inset-y-0 left-0 z-[70] w-72 bg-gradient-to-b from-white/95 via-white/80 to-slate-50/90 backdrop-blur-2xl shadow-2xl flex flex-col border-r border-white/20 transition-transform duration-500 transform 
+        md:relative md:translate-x-0 md:w-64 md:shadow-[10px_0_40px_-15px_rgba(0,0,0,0.1)] md:h-full md:shrink-0
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1 transition-transform group-hover:scale-110">
+        <div className="p-4 border-b border-slate-50 flex items-center justify-between">
+          <div className="flex items-center space-x-3 group cursor-pointer">
+            <div className="w-10 h-10 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden flex items-center justify-center p-1.5 transition-all duration-500 group-hover:shadow-brand-primary/20 group-hover:scale-105 group-hover:rotate-3">
               <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl font-black text-brand-dark tracking-tighter uppercase">
-              Lab <span className="text-brand-primary">Mitra</span>
+            <h1 className="text-2xl font-black text-brand-dark tracking-tighter uppercase transition-colors group-hover:text-brand-primary">
+              Lab <span className="text-brand-primary group-hover:text-brand-dark transition-colors">Mitra</span>
             </h1>
           </div>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-brand-dark">
@@ -120,7 +120,7 @@ const Layout = ({ children }) => {
           </button>
         </div>
         
-        <div className="p-4 flex flex-col gap-1.5 flex-grow overflow-y-auto custom-scrollbar">
+        <div className="p-3 flex flex-col gap-1 flex-grow overflow-y-auto custom-scrollbar">
           {userData?.role === 'SuperAdmin' && (
             <div className="mb-6 px-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block flex items-center gap-2">
@@ -162,96 +162,96 @@ const Layout = ({ children }) => {
           
           <Link 
             to={userData?.role === 'SuperAdmin' ? (activeLabId ? '/dashboard' : '/superadmin') : '/dashboard'} 
-            className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/dashboard' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+            className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/dashboard' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
           >
-            {location.pathname === '/dashboard' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-            <Activity className={`h-5 w-5 ${location.pathname === '/dashboard' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-            <span>Dashboard</span>
+            {location.pathname === '/dashboard' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+            <Activity className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/dashboard' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+            <span className="relative z-10">Dashboard</span>
           </Link>
           
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_add_patients) && (
             <Link 
               to="/patients" 
-              className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/patients' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/patients' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
             >
-              {location.pathname === '/patients' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-              <Users className={`h-5 w-5 ${location.pathname === '/patients' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-              <span>Patients</span>
+              {location.pathname === '/patients' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+              <Users className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/patients' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+              <span className="relative z-10">Patients</span>
             </Link>
           )}
           
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_manage_doctors) && (
             <Link 
               to="/doctors" 
-              className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/doctors' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/doctors' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
             >
-              {location.pathname === '/doctors' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-              <Stethoscope className={`h-5 w-5 ${location.pathname === '/doctors' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-              <span>Doctors</span>
+              {location.pathname === '/doctors' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+              <Stethoscope className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/doctors' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+              <span className="relative z-10">Doctors</span>
             </Link>
           )}
           
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_manage_masters) && (
             <Link 
               to="/tests" 
-              className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/tests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/tests' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
             >
-              {location.pathname === '/tests' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-              <FileText className={`h-5 w-5 ${location.pathname === '/tests' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-              <span>Tests</span>
+              {location.pathname === '/tests' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+              <FileText className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/tests' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+              <span className="relative z-10">Tests</span>
             </Link>
           )}
 
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_book_tests) && (
             <Link 
               to="/bookings" 
-              className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/bookings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/bookings' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
             >
-              {location.pathname === '/bookings' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-              <Calendar className={`h-5 w-5 ${location.pathname === '/bookings' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-              <span>Bookings</span>
+              {location.pathname === '/bookings' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+              <Calendar className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/bookings' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+              <span className="relative z-10">Bookings</span>
             </Link>
           )}
 
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_view_billing) && (
             <Link 
               to="/billing" 
-              className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/billing' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/billing' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
             >
-              {location.pathname === '/billing' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-              <IndianRupee className={`h-5 w-5 ${location.pathname === '/billing' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-              <span>Bills</span>
+              {location.pathname === '/billing' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+              <IndianRupee className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/billing' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+              <span className="relative z-10">Bills</span>
             </Link>
           )}
           
           <Link 
             to="/reports" 
-            className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/reports' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+            className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/reports' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
           >
-            {location.pathname === '/reports' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-            <FileText className={`h-5 w-5 ${location.pathname === '/reports' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-            <span>Reports</span>
+            {location.pathname === '/reports' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+            <FileText className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/reports' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+            <span className="relative z-10">Reports</span>
           </Link>
 
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_view_analytics) && (
             <Link 
               to="/analytics" 
-              className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/analytics' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/analytics' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
             >
-              {location.pathname === '/analytics' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-              <BarChart3 className={`h-5 w-5 ${location.pathname === '/analytics' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-              <span>Analytics</span>
+              {location.pathname === '/analytics' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+              <BarChart3 className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/analytics' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+              <span className="relative z-10">Analytics</span>
             </Link>
           )}
 
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_access_settings) && (
             <Link 
               to="/settings" 
-              className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl font-black text-sm transition-all relative overflow-hidden group ${location.pathname === '/settings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:bg-brand-light/50 hover:text-brand-dark'}`}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-2xl font-black text-sm transition-all duration-300 relative overflow-hidden group ${location.pathname === '/settings' ? 'bg-gradient-to-r from-brand-dark to-slate-800 text-white shadow-[0_10px_20px_-5px_rgba(45,50,80,0.3)]' : 'text-slate-400 hover:bg-white hover:text-brand-dark hover:shadow-sm'}`}
             >
-              {location.pathname === '/settings' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-primary rounded-r-full" />}
-              <SettingsIcon className={`h-5 w-5 ${location.pathname === '/settings' ? 'text-brand-light' : 'group-hover:text-brand-primary transition-colors'}`} />
-              <span>Lab Settings</span>
+              {location.pathname === '/settings' && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-brand-primary rounded-r-full shadow-[2px_0_10px_rgba(155,207,131,0.5)]" />}
+              <SettingsIcon className={`h-5 w-5 transition-all duration-300 ${location.pathname === '/settings' ? 'text-brand-primary scale-110' : 'group-hover:text-brand-primary group-hover:scale-110'}`} />
+              <span className="relative z-10">Lab Settings</span>
             </Link>
           )}
         </div>
@@ -259,36 +259,25 @@ const Layout = ({ children }) => {
         {/* --- TOKEN MANAGEMENT (LabAdmin Only) --- */}
         {userData?.role === 'LabAdmin' && <TokenManager />}
 
-        <div className="p-5 border-t border-gray-100 bg-white/50 backdrop-blur-sm mt-auto">
-          <div className="flex items-center mb-5 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
-            <div className="h-10 w-10 min-w-[40px] rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary font-black tracking-tight text-lg shadow-inner mr-3">
+        <div className="p-3 border-t border-white/10 bg-white/30 backdrop-blur-sm mt-auto">
+          <div className="flex items-center mb-2.5 bg-white/60 backdrop-blur-md p-2.5 rounded-2xl shadow-sm border border-white/40 group cursor-pointer hover:bg-white hover:shadow-md transition-all duration-300">
+            <div className="h-8 w-8 min-w-[32px] rounded-xl bg-gradient-to-br from-brand-primary to-green-600 flex items-center justify-center text-white font-black tracking-tight text-base shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform duration-300 mr-3">
               {userData?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-black text-gray-900 truncate tracking-tight">{userData?.name || 'User'}</p>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{userData?.role || 'Staff'}</p>
+              <p className="text-sm font-black text-brand-dark truncate tracking-tight group-hover:text-brand-primary transition-colors">{userData?.name || 'User'}</p>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest truncate">{userData?.role || 'Staff'}</p>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-2">
-            <button 
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="flex flex-col items-center justify-center py-2 px-1 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all focus:ring-2 focus:ring-gray-200"
-              title="Toggle Theme"
-            >
-              <span className="text-lg mb-1">{isDarkMode ? '☀️' : '🌙'}</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Theme</span>
-            </button>
-            
             <button 
               onClick={handleLogout}
-              className="flex flex-col items-center justify-center py-2 px-1 bg-white border border-rose-100 text-rose-600 rounded-xl hover:bg-rose-50 hover:border-rose-200 hover:shadow-sm transition-all pointer-events-auto focus:ring-2 focus:ring-rose-200"
+              className="w-full flex items-center justify-center space-x-3 py-2 px-4 bg-white/60 border border-rose-100 text-rose-600 rounded-xl hover:bg-rose-500 hover:text-white hover:shadow-xl hover:shadow-rose-500/20 transition-all duration-300 group focus:ring-2 focus:ring-rose-200"
               title="Logout from Lab Mitra"
             >
-              <LogOut className="h-5 w-5 mb-1 opacity-80" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Logout</span>
+              <LogOut className="h-4 w-4 opacity-80 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs font-black uppercase tracking-widest">Logout</span>
             </button>
-          </div>
         </div>
       </aside>
 

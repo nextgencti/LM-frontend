@@ -22,16 +22,16 @@ const BusinessAnalytics = () => {
   const [bookings, setBookings] = useState([]);
   const [timeRange, setTimeRange] = useState('30'); // Days
   
-  // Pro Plan check
-  const isPro = subscription?.plan?.toLowerCase() === 'pro' || userData?.role === 'SuperAdmin';
+  // Premium Feature check
+  const isPremiumPlan = ['pro', 'enterprise', 'pay_as_you_go'].includes(subscription?.plan?.toLowerCase()) || userData?.role === 'SuperAdmin';
 
   useEffect(() => {
-    if (isPro) {
+    if (isPremiumPlan) {
       fetchAnalyticsData();
     } else {
        setLoading(false);
     }
-  }, [activeLabId, timeRange, isPro]);
+  }, [activeLabId, timeRange, isPremiumPlan]);
 
   const fetchAnalyticsData = async () => {
     setLoading(true);
@@ -168,18 +168,18 @@ const BusinessAnalytics = () => {
     );
   }
 
-  if (!isPro) {
+  if (!isPremiumPlan) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center justify-center text-center animate-in fade-in duration-700">
         <div className="w-24 h-24 bg-rose-50 rounded-[32px] flex items-center justify-center mb-8 shadow-inner border border-rose-100">
           <ShieldAlert className="w-12 h-12 text-rose-500" />
         </div>
-        <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-4">Pro Feature <span className="text-rose-500">Locked</span></h1>
+        <h1 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-4">Premium Feature <span className="text-rose-500">Locked</span></h1>
         <p className="text-slate-400 max-w-md font-bold uppercase tracking-widest text-[11px] leading-loose">
-          Business Analytics is only available for Laboratories on the <span className="text-brand-dark">Premium Pro Plan</span>. Upgrade today to unlock financial insights, growth trends, and operation metrics.
+          Business Analytics is only available for Laboratories on a <span className="text-brand-dark">Premium or Flexible Plan</span>. Upgrade today to unlock financial insights, growth trends, and operation metrics.
         </p>
         <button className="mt-10 px-10 py-5 bg-brand-dark text-white rounded-[24px] text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-brand-secondary transition-all active:scale-95">
-          Upgrade to Pro
+          Upgrade Plan
         </button>
       </div>
     );

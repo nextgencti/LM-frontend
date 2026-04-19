@@ -83,12 +83,18 @@ const PlansTab = () => {
           iconName: 'Zap',
           features: [
             { text: '1 Token per Finalized Report', available: true },
-            { text: '20 Tokens per Staff Account', available: true },
             { text: '1 Token per Daily Report Email', available: true },
             { text: '1 Token per Doctor Ledger Print & Email', available: true },
+            { text: 'Advanced Lab Management', available: true },
+            { text: 'Multiple Staff Accounts', available: true },
             { text: 'Full Premium Branding', available: true },
+            { text: 'Custom Watermarks & Logos', available: true },
+            { text: 'Global Parameter Library', available: true },
             { text: 'Business Analytics Dashboard', available: true },
-            { text: 'Pay-per-use Flexibility', available: true },
+            { text: 'Automatic Sync Backups', available: true },
+            { text: 'Patient Portal Access (Live)', available: true },
+            { text: 'Customized Letterheads', available: true },
+            { text: 'Doctor Ledger Management', available: true },
           ],
           tokenConfig: {
             reportFinalization: 1,
@@ -99,7 +105,7 @@ const PlansTab = () => {
           cta: 'Prepaid Tokens',
           popular: false,
           order: 3,
-          maxUsers: 5
+          maxUsers: 10
         }
       ];
 

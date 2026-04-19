@@ -262,6 +262,10 @@ const Doctors = () => {
       return;
     }
 
+    // --- PAY AS YOU GO ENFORCEMENT ---
+    const success = await deductTokenAction(`New Payout: ${selectedDoc.name}`);
+    if (!success) return;
+
     try {
       const clearedIds = Array.from(selectedBillIds);
       const payAmount = parseFloat(newPayment.amount);

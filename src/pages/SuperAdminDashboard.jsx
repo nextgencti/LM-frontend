@@ -10,12 +10,12 @@ import MasterParameters from './MasterParameters';
 import PlansTab from '../components/PlansTab';
 
 const SuperAdminDashboard = () => {
-  const { userData, setActiveLabId, activeLabId, allPlans } = useAuth();
+  const { currentUser, userData, setActiveLabId, activeLabId, allPlans } = useAuth();
   const [labs, setLabs] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('All');
+  const [filter, setFilter] = useState('Active');
   const [stats, setStats] = useState({ total: 0, active: 0, expired: 0, pro: 0 });
   const [activeView, setActiveView] = useState('labs'); // 'labs', 'tests', 'requests', 'token_requests'
   const [tokenRequests, setTokenRequests] = useState([]);
@@ -50,11 +50,25 @@ const SuperAdminDashboard = () => {
   });
   const [registrationSuccess, setRegistrationSuccess] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLab, setEditingLab] = useState(null);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [extendingMonths, setExtendingMonths] = useState(12);
+  const [trFilter, setTrFilter] = useState('pending');
   const [processingRequestId, setProcessingRequestId] = useState(null);
+
+  const trCounts = {
+    all: tokenRequests.length,
+    pending: tokenRequests.filter(r => r.status === 'pending').length,
+    approved: tokenRequests.filter(r => r.status === 'approved').length,
+    rejected: tokenRequests.filter(r => r.status === 'rejected').length
+  };
+
+  const filteredTokenRequests = trFilter === 'all' 
+    ? tokenRequests 
+    : tokenRequests.filter(r => r.status === trFilter);
 
   const isExpired = (dateStr) => {
     if (!dateStr || dateStr === 'N/A') return true;
@@ -85,6 +99,35 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  // Real-time validation for Lab Creation
+  useEffect(() => {
+    const newErrors = {};
+    
+    // Email Validation
+    if (newLabData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newLabData.email)) {
+        newErrors.email = 'Please enter a valid business email';
+    }
+
+    // Phone Validation (10 digits)
+    if (newLabData.phone && !/^\d{10}$/.test(newLabData.phone.replace(/[^0-9]/g, ''))) {
+        newErrors.phone = 'Please enter a valid 10-digit mobile number';
+    }
+
+    // Required fields check for current tab
+    if (activeTab === 'basic') {
+        if (!newLabData.labName) newErrors.labName = 'Short name is required';
+        if (!newLabData.labFullName) newErrors.labFullName = 'Full laboratory name is required';
+        if (!newLabData.email) newErrors.email = 'Admin email is required';
+        if (!newLabData.phone) newErrors.phone = 'Mobile number is required';
+    }
+
+    setErrors(newErrors);
+  }, [newLabData, activeTab]);
+
+  const handleBlur = (field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
   useEffect(() => {
     if (isPinVerified) {
       fetchLabs();
@@ -104,15 +147,19 @@ const SuperAdminDashboard = () => {
       setTokenRequests(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching token requests:", error);
+      toast.error("Failed to sync token requests");
     }
   };
 
   const handleApproveTokenRequest = async (req) => {
-    if (!window.confirm(`Approve ${req.requestedAmount} tokens for ${req.labName}?`)) return;
+    setProcessingRequestId(req.id);
+    console.log("[TokenApprove] Starting approval for:", req.id);
     
     try {
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
       const token = await currentUser.getIdToken();
+      console.log("[TokenApprove] Token fetched, sending request...");
+      
       const res = await fetch(`${BACKEND_URL}/api/superadmin/add-tokens`, {
         method: 'POST',
         headers: { 
@@ -126,16 +173,50 @@ const SuperAdminDashboard = () => {
         })
       });
       
+      console.log("[TokenApprove] Response status:", res.status);
+      
       if (res.ok) {
         toast.success("Tokens added and request approved!");
-        fetchTokenRequests();
-        fetchLabs();
+        await fetchTokenRequests();
+        await fetchLabs();
       } else {
         const data = await res.json();
+        console.error("[TokenApprove] Backend error:", data);
         toast.error(data.error || "Failed to approve request");
       }
     } catch (error) {
-      toast.error("Network error");
+      console.error("[TokenApprove] Network/Logic error:", error);
+      toast.error("Network error: " + error.message);
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectTokenRequest = async (reqId) => {
+    setProcessingRequestId(reqId);
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`${BACKEND_URL}/api/superadmin/reject-token-request`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ requestId: reqId })
+      });
+      
+      if (res.ok) {
+        toast.success("Request rejected successfully");
+        await fetchTokenRequests();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to reject request");
+      }
+    } catch (error) {
+      toast.error("Network error: " + error.message);
+    } finally {
+      setProcessingRequestId(null);
     }
   };
 
@@ -268,8 +349,8 @@ const SuperAdminDashboard = () => {
         const sub = subsMap[doc.id] || {};
         return {
           id: doc.id,
-          ...data,
-          ...sub,
+          ...sub,     // subscriptions data first
+          ...data,    // labs profile data second (wins on duplicates like labName)
           expiryDate: sub.expiryDate || 'N/A',
           plan: sub.plan || 'basic',
           status: sub.status || 'inactive'
@@ -325,10 +406,10 @@ const SuperAdminDashboard = () => {
           status: 'approved',
           updatedAt: serverTimestamp()
         });
-        toast.success("Registration request approved!");
+        toast.success("Registration request approved! Welcome email sent.");
         fetchRequests();
       } else {
-        toast.success("New laboratory registered successfully!");
+        toast.success("New laboratory registered successfully! Welcome email sent.");
       }
 
       setShowRegisterModal(false);
@@ -342,7 +423,7 @@ const SuperAdminDashboard = () => {
       fetchLabs();
     } catch (err) {
       console.error("Registration Error:", err);
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setRegistering(false);
     }
@@ -379,10 +460,10 @@ const SuperAdminDashboard = () => {
       setShowEditModal(false);
       setEditingLab(null);
       fetchLabs();
-      alert("Lab details updated successfully!");
+      toast.success("Lab details updated successfully!");
     } catch (err) {
       console.error("Update Error:", err);
-      alert("Update failed: " + err.message);
+      toast.error("Update failed: " + err.message);
     } finally {
       setRegistering(false);
     }
@@ -415,9 +496,9 @@ const SuperAdminDashboard = () => {
 
       setShowExtendModal(false);
       fetchLabs();
-      alert(`Subscription extended until ${newExpiryStr}`);
+      toast.success(`Subscription extended until ${newExpiryStr}`);
     } catch (err) {
-      alert("Extension failed: " + err.message);
+      toast.error("Extension failed: " + err.message);
     } finally {
       setRegistering(false);
     }
@@ -431,8 +512,9 @@ const SuperAdminDashboard = () => {
         updatedAt: serverTimestamp()
       });
       fetchLabs();
+      toast.success(`Lab ${newStatus === 'active' ? 'activated' : 'suspended'} successfully!`);
     } catch (error) {
-      alert("Error updating lab status: " + error.message);
+      toast.error("Error updating lab status: " + error.message);
     }
   };
 
@@ -518,8 +600,8 @@ const SuperAdminDashboard = () => {
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-brand-primary/10 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-brand-secondary/10 rounded-full blur-[120px] animate-pulse delay-1000"></div>
         
-        {/* Subtle Noise Texture Overlay */}
-        <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }}></div>
+        {/* Subtle Texture Overlay */}
+        <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-slate-900/10"></div>
 
         <div className="max-w-2xl w-full relative z-10 p-6">
           <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[3rem] md:rounded-[4rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.6)] p-8 md:p-16 text-center ring-1 ring-inset ring-white/10 overflow-hidden group animate-in fade-in zoom-in duration-700">
@@ -621,60 +703,60 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 w-full animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto px-6 py-4 md:py-6 w-full animate-in fade-in duration-500">
       {/* Navigation Tabs */}
-      <div className="flex overflow-x-auto no-scrollbar bg-slate-50 p-1.5 rounded-full md:rounded-[2rem] w-full md:w-fit mb-8 md:mb-12 border border-slate-100 shadow-inner">
-        <div className="flex gap-1.5 shrink-0">
+      <div className="flex overflow-x-auto no-scrollbar bg-slate-50 p-1 rounded-full md:rounded-[1.5rem] w-full md:w-fit mb-4 md:mb-5 border border-slate-100 shadow-inner">
+        <div className="flex gap-1 shrink-0">
           <button 
             onClick={() => setActiveView('labs')}
-            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'labs' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'labs' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
-            <Users className="w-3.5 h-3.5 md:w-4 md:h-4" /> Labs
+            <Users className="w-3 h-3 md:w-3.5 md:h-3.5" /> Labs
           </button>
           <button 
             onClick={() => setActiveView('tests')}
-            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'tests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'tests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
-            <FlaskConical className="w-3.5 h-3.5 md:w-4 md:h-4" /> Global Tests
+            <FlaskConical className="w-3 h-3 md:w-3.5 md:h-3.5" /> Global Tests
           </button>
           <button 
             onClick={() => setActiveView('settings')}
-            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'settings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'settings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
-            <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" /> Global Settings
+            <Settings className="w-3 h-3 md:w-3.5 md:h-3.5" /> Global Settings
           </button>
           <button 
             onClick={() => setActiveView('parameters')}
-            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'parameters' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'parameters' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
-            <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" /> Parameters
+            <BookOpen className="w-3 h-3 md:w-3.5 md:h-3.5" /> Parameters
           </button>
           <button 
             onClick={() => setActiveView('plans')}
-            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all whitespace-nowrap ${activeView === 'plans' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'plans' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
-            <CreditCard className="w-3.5 h-3.5 md:w-4 md:h-4" /> Pricing Plans
+            <CreditCard className="w-3 h-3 md:w-3.5 md:h-3.5" /> Pricing Plans
           </button>
           <button 
             onClick={() => setActiveView('token_requests')}
-            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all relative whitespace-nowrap ${activeView === 'token_requests' ? 'bg-amber-500 text-white shadow-xl shadow-amber-500/20' : 'text-slate-400 hover:text-brand-dark'}`}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all relative whitespace-nowrap ${activeView === 'token_requests' ? 'bg-amber-500 text-white shadow-xl shadow-amber-500/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
-            <Zap className="w-3.5 h-3.5 md:w-4 md:h-4" /> 
-            Token Requests
+            <Zap className="w-3 h-3 md:w-3.5 md:h-3.5" /> 
+            Tokens
             {tokenRequests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-amber-600 text-white text-[7px] md:text-[8px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-amber-600 text-white text-[7px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
                 {tokenRequests.filter(r => r.status === 'pending').length}
               </span>
             )}
           </button>
           <button 
             onClick={() => setActiveView('requests')}
-            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3.5 md:py-4 rounded-full md:rounded-[1.8rem] font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all relative whitespace-nowrap ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all relative whitespace-nowrap ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
-            <User className="w-3.5 h-3.5 md:w-4 md:h-4" /> 
-            Signup Requests
+            <User className="w-3 h-3 md:w-3.5 md:h-3.5" /> 
+            Requests
             {requests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-rose-500 text-white text-[7px] md:text-[8px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-rose-500 text-white text-[7px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
                 {requests.filter(r => r.status === 'pending').length}
               </span>
             )}
@@ -684,39 +766,39 @@ const SuperAdminDashboard = () => {
 
       {activeView === 'labs' ? (
         <>
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-3xl md:rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-4 md:mb-5 bg-white p-3 md:p-5 rounded-2xl md:rounded-[28px] shadow-[0_15px_40px_rgb(0,0,0,0.01)] border border-slate-100">
             <div className="w-full lg:w-auto">
-              <div className="flex items-center gap-4">
-                <div className="p-3 md:p-4 bg-brand-light rounded-xl md:rounded-[22px] border border-brand-primary/10 transition-transform rotate-3 hover:rotate-6">
-                  <Shield className="w-6 h-6 md:w-8 md:h-8 text-brand-primary" />
+              <div className="flex items-center gap-3">
+                <div className="p-2 md:p-3 bg-brand-light rounded-xl md:rounded-[18px] border border-brand-primary/10 transition-transform rotate-3">
+                  <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-primary" />
                 </div>
                 <div>
-                  <h1 className="text-2xl md:text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                  <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
                     Admin <span className="text-brand-primary/80">Dashboard</span>
                   </h1>
-                  <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mt-1.5">Manage all labs and their licenses here.</p>
+                  <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1 line-clamp-1">Manage all labs and their subscriptions here.</p>
                 </div>
               </div>
               {activeLabId && (
-                <div className="mt-4 md:mt-6 flex items-center gap-3 opacity-0 animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-forwards" style={{ animationDelay: '0.2s' }}>
-                   <div className="px-4 md:px-5 py-2 md:py-2.5 bg-brand-light/40 text-brand-dark rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-brand-primary/10 flex items-center gap-3 shadow-sm">
-                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-brand-primary rounded-full animate-pulse"></div>
-                      <span className="truncate max-w-[150px] md:max-w-none">Managing: {activeLabId}</span>
-                      <button onClick={() => setActiveLabId(null)} className="ml-2 w-5 h-5 bg-white rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm">&times;</button>
+                <div className="mt-3 md:mt-4 flex items-center gap-2.5 opacity-0 animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-forwards" style={{ animationDelay: '0.2s' }}>
+                   <div className="px-3.5 md:px-4 py-1.5 md:py-2 bg-brand-light/40 text-brand-dark rounded-full text-[8px] md:text-[9.5px] font-black uppercase tracking-widest border border-brand-primary/10 flex items-center gap-2.5 shadow-sm">
+                      <div className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse"></div>
+                      <span className="truncate max-w-[120px] md:max-w-none">Managing: {activeLabId}</span>
+                      <button onClick={() => setActiveLabId(null)} className="ml-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm">&times;</button>
                    </div>
                 </div>
               )}
             </div>
             <button 
               onClick={() => setShowRegisterModal(true)}
-              className="w-full lg:w-auto flex items-center justify-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-brand-dark text-white rounded-2xl md:rounded-[24px] text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] transition-all shadow-2xl shadow-brand-dark/20 hover:bg-brand-secondary active:scale-[0.98] border border-white/10 group"
+              className="w-full lg:w-auto flex items-center justify-center gap-2.5 px-6 md:px-8 py-3 md:py-4 bg-brand-dark text-white rounded-2xl md:rounded-[20px] text-[9.5px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-brand-dark/20 hover:bg-brand-secondary active:scale-[0.98] border border-white/10 group"
             >
-              <Plus className="w-4 h-4 md:w-5 md:h-5 text-brand-primary group-hover:rotate-90 transition-transform" /> Add Lab
+              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-primary group-hover:rotate-90 transition-transform" /> Add Lab
             </button>
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 mb-8 md:mb-12">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 mb-5 md:mb-8">
             <StatCard icon={<Users className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Total Labs" value={stats.total} color="from-brand-dark to-brand-secondary" gradient />
             <StatCard icon={<CheckCircle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Active Labs" value={stats.active} color="from-brand-primary to-lime-600" gradient />
             <StatCard icon={<AlertTriangle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Expired Labs" value={stats.expired} color="from-rose-500 to-rose-700" gradient />
@@ -724,24 +806,24 @@ const SuperAdminDashboard = () => {
           </div>
 
           {/* Lab Management Table */}
-          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden mb-12">
-            <div className="p-5 md:p-8 border-b border-slate-50 flex flex-col md:flex-row gap-4 md:gap-6 items-center bg-slate-50/50">
+          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden mb-8 flex flex-col max-h-[60vh]">
+            <div className="p-3 md:p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 md:gap-4 items-center bg-slate-50 sticky top-0 z-20">
               <div className="relative flex-grow group w-full md:w-auto">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5 group-focus-within:text-brand-primary transition-colors" />
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-brand-primary transition-colors" />
                 <input 
                   type="text" 
-                  placeholder="Search by lab name or ID..."
-                  className="w-full pl-14 pr-8 py-5 bg-white border border-slate-100 rounded-[24px] text-sm font-black text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 focus:border-brand-primary/30 transition-all shadow-inner placeholder:text-slate-300"
+                  placeholder="Search labs..."
+                  className="w-full pl-12 pr-6 py-2.5 bg-white border border-slate-200 rounded-[14px] text-[11px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary/30 transition-all shadow-sm placeholder:text-slate-300"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex bg-white p-1.5 rounded-[22px] border border-slate-100 shadow-sm">
+              <div className="flex bg-white p-1 rounded-[16px] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
                 {['All', 'Active', 'Expired', 'Pro'].map(f => (
                   <button 
                     key={f}
                     onClick={() => setFilter(f)}
-                    className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-brand-dark text-white shadow-lg' : 'text-slate-400 hover:text-brand-dark'}`}
+                    className={`px-4.5 py-2.5 rounded-[14px] text-[9.5px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === f ? 'bg-brand-dark text-white shadow-lg' : 'text-slate-400 hover:text-brand-dark'}`}
                   >
                     {f}
                   </button>
@@ -749,9 +831,10 @@ const SuperAdminDashboard = () => {
               </div>
             </div>
 
-            {loading ? (
-              <div className="p-24 flex justify-center"><Loader className="w-12 h-12 animate-spin text-brand-primary" /></div>
-            ) : filteredLabs.length === 0 ? (
+            <div className="overflow-auto custom-scrollbar flex-grow relative">
+              {loading ? (
+                <div className="p-24 flex justify-center"><Loader className="w-12 h-12 animate-spin text-brand-primary" /></div>
+              ) : filteredLabs.length === 0 ? (
               <div className="p-32 text-center">
                  <div className="w-24 h-24 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-8 border border-slate-100">
                     <Shield className="w-10 h-10 text-slate-200" />
@@ -760,15 +843,14 @@ const SuperAdminDashboard = () => {
                  <button onClick={() => setShowRegisterModal(true)} className="mt-6 text-brand-primary font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-8">Add your first lab here</button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-brand-dark">
-                    <tr>
-                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Lab Name</th>
-                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em] text-center">Plan</th>
-                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Status</th>
-                      <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">License</th>
-                      <th className="px-6 py-4 md:px-10 md:py-6 text-right text-[11px] md:text-[13px] font-black text-white/70 uppercase tracking-[0.2em]">Actions</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-brand-dark sticky top-0 z-10 shadow-sm">
+                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Lab Name</th>
+                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] text-center bg-brand-dark sticky top-0">Plan</th>
+                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Status</th>
+                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">License</th>
+                      <th className="px-5 py-3 md:px-8 md:py-4 text-right text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 bg-white">
@@ -777,75 +859,87 @@ const SuperAdminDashboard = () => {
                       const isExp = lab.expiryDate < today;
                       
                       return (
-                        <tr key={lab.id} className="hover:bg-brand-light/10 transition-colors group/row">
-                          <td className="px-6 py-4 md:px-10 md:py-6 whitespace-nowrap">
-                            <div className="font-black text-brand-dark text-[14px] md:text-base tracking-tight uppercase">{lab.labName}</div>
-                            <div className="text-[10px] md:text-[12px] text-slate-300 font-bold uppercase tracking-widest mt-1 md:mt-1.5 flex items-center gap-2">
-                               <div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div>
-                               ID: {lab.labId}
+                        <tr key={lab.id} className="hover:bg-brand-light/10 transition-colors group/row border-b border-slate-50 last:border-0">
+                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 whitespace-nowrap">
+                            <div className="font-black text-brand-dark text-[12px] md:text-sm tracking-tight uppercase leading-tight">{lab.labName}</div>
+                            <div className="flex flex-col gap-0.5 mt-1">
+                               <div className="text-[9px] md:text-[10px] text-slate-300 font-bold uppercase tracking-widest flex items-center gap-2">
+                                  <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
+                                  ID: {lab.labId}
+                               </div>
+                               <div className="text-[9px] md:text-[10px] text-brand-primary font-black uppercase tracking-widest flex items-center gap-2">
+                                  <div className="w-1 h-1 bg-brand-primary/30 rounded-full"></div>
+                                  Admin: {lab.ownerName || 'Admin'}
+                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 md:px-10 md:py-6 text-center">
-                            <span className={`px-3 py-1 md:px-4 md:py-1.5 rounded-full text-[10px] md:text-[12px] font-black uppercase tracking-widest border transition-all ${lab.plan === 'pro' ? 'bg-brand-dark text-white border-brand-dark shadow-lg shadow-brand-dark/10' : 'bg-brand-light/50 text-brand-dark border-brand-primary/10'}`}>
-                              {lab.plan || 'basic'}
+                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-center">
+                            <span className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest border transition-all ${
+                              lab.plan === 'pro' 
+                                ? 'bg-brand-dark text-white border-brand-dark shadow-lg shadow-brand-dark/10' 
+                                : lab.plan === 'pay_as_you_go'
+                                  ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/10'
+                                  : 'bg-brand-light/50 text-brand-dark border-brand-primary/10'
+                            }`}>
+                              {lab.plan?.replace(/_/g, ' ') || 'basic'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 md:px-10 md:py-6 whitespace-nowrap">
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-2 h-2 rounded-full shadow-sm ${lab.status === 'active' && !isExp ? 'bg-brand-primary animate-pulse shadow-brand-primary/50' : 'bg-rose-500 shadow-rose-500/50'}`} />
-                              <span className="text-[11px] md:text-[13px] font-black text-brand-dark uppercase tracking-wide">
+                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 whitespace-nowrap">
+                            <div className="flex items-center space-x-2.5">
+                              <div className={`w-1.5 h-1.5 rounded-full shadow-sm ${lab.status === 'active' && !isExp ? 'bg-brand-primary animate-pulse shadow-brand-primary/50' : 'bg-rose-500 shadow-rose-500/50'}`} />
+                              <span className="text-[10px] md:text-[11px] font-black text-brand-dark uppercase tracking-wide">
                                 {lab.status === 'active' && !isExp ? 'Active' : isExp ? 'Expired' : 'Suspended'}
                               </span>
                             </div>
-                            <div className="flex flex-col mt-1 md:mt-1.5 ml-5">
-                              <span className="text-[9px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">Expiry: {formatDisplayDate(lab.expiryDate)}</span>
-                              <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-0.5 ${isExp ? 'text-rose-500' : getRemainingDays(lab.expiryDate) < 7 ? 'text-amber-500' : 'text-brand-primary'}`}>
-                                {isExp ? 'EXPIRED' : `${getRemainingDays(lab.expiryDate)} Days Remaining`}
+                            <div className="flex flex-col mt-1 ml-4 shadow-inner">
+                              <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest scale-95 origin-left">Exp: {formatDisplayDate(lab.expiryDate)}</span>
+                              <span className={`text-[7.5px] md:text-[8.5px] font-black uppercase tracking-[0.1em] mt-0.5 ${isExp ? 'text-rose-500' : getRemainingDays(lab.expiryDate) < 7 ? 'text-amber-500' : 'text-brand-primary'}`}>
+                                {isExp ? 'EXPIRED' : `${getRemainingDays(lab.expiryDate)}d Left`}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 md:px-10 md:py-6">
-                            <code className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[10px] md:text-[12px] font-bold font-mono text-brand-secondary shadow-inner">{lab.license_key}</code>
+                          <td className="px-5 py-3.5 md:px-8 md:py-4.5">
+                            <code className="bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg text-[9px] md:text-[11px] font-bold font-mono text-brand-secondary shadow-inner">{lab.license_key}</code>
                           </td>
-                          <td className="px-6 py-4 md:px-10 md:py-6 text-right">
-                            <div className="flex justify-end gap-2 md:gap-4">
+                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-right">
+                            <div className="flex justify-end gap-1.5 md:gap-2.5">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setActiveLabId(lab.labId); }}
-                                className={`flex items-center gap-2 px-4 py-2 md:px-6 md:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] md:text-[12px] transition-all ${activeLabId === lab.labId ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-white border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95'}`}
+                                className={`flex items-center gap-2 px-3.5 py-2 md:px-5 md:py-2.5 rounded-lg font-black uppercase tracking-widest text-[9.5px] md:text-[10px] transition-all ${activeLabId === lab.labId ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-white border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95'}`}
                               >
-                                <ExternalLink className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                                <span className="hidden sm:inline">{activeLabId === lab.labId ? 'Managing' : 'Enter Lab'}</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">{activeLabId === lab.labId ? 'Managing' : 'Enter'}</span>
                               </button>
                               <button 
                                 onClick={() => { setEditingLab({...lab}); setShowEditModal(true); setActiveTab('basic'); }}
-                                className="p-3 rounded-xl transition-all border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95"
+                                className="p-2 rounded-lg transition-all border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95"
                                 title="Edit Lab Details"
                               >
-                                <Settings className="w-5 h-5" />
+                                <Settings className="w-4 h-4" />
                               </button>
                               <button 
                                 onClick={() => { setEditingLab({...lab}); setShowExtendModal(true); }}
-                                className="p-3 rounded-xl transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
+                                className="p-2 rounded-lg transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
                                 title="Extend Subscription"
                               >
-                                <CreditCard className="w-5 h-5" />
+                                <CreditCard className="w-4 h-4" />
                               </button>
                               <button 
                                 onClick={() => { 
                                   setTokenForm({ labId: lab.labId, amount: '100', labName: lab.labName });
                                   setIsTokenModalOpen(true);
                                 }}
-                                className="p-3 rounded-xl transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
+                                className="p-2 rounded-lg transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
                                 title="Add Tokens"
                               >
-                                <Zap className="w-5 h-5" />
+                                <Zap className="w-4 h-4" />
                               </button>
                               <button 
                                 onClick={() => handleToggleStatus(lab.id, lab.status)}
-                                className={`p-3 rounded-xl transition-all border ${lab.status === 'active' ? 'text-rose-400 border-rose-50 hover:bg-rose-500 hover:text-white' : 'text-brand-primary border-brand-light hover:bg-brand-primary hover:text-white'} shadow-sm active:scale-95`}
-                                title={lab.status === 'active' ? "Terminate Session" : "Authorize Session"}
+                                className={`p-2 rounded-lg transition-all border ${lab.status === 'active' ? 'text-rose-400 border-rose-50 hover:bg-rose-500 hover:text-white' : 'text-brand-primary border-brand-light hover:bg-brand-primary hover:text-white'} shadow-sm active:scale-95`}
+                                title={lab.status === 'active' ? "Terminate" : "Authorize"}
                               >
-                                <Shield className="w-5 h-5" />
+                                <Shield className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -854,8 +948,8 @@ const SuperAdminDashboard = () => {
                     })}
                   </tbody>
                 </table>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </>
       ) : activeView === 'tests' ? (
@@ -868,12 +962,36 @@ const SuperAdminDashboard = () => {
         <GlobalSettings />
       ) : activeView === 'token_requests' ? (
         <div className="animate-in fade-in duration-700">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-3xl md:rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-8 md:mb-10 bg-white p-5 md:p-8 rounded-2xl md:rounded-[28px] shadow-sm border border-slate-100">
             <div>
-              <h1 className="text-2xl md:text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+              <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
                 Token <span className="text-amber-500">Requests</span>
               </h1>
-              <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mt-1.5">Approve token purchase requests from laboratories.</p>
+              <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1">Manage token purchase requests from laboratories.</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+              {[
+                { id: 'all', label: 'All', count: trCounts.all, color: 'slate' },
+                { id: 'pending', label: 'Pending', count: trCounts.pending, color: 'amber' },
+                { id: 'approved', label: 'Approved', count: trCounts.approved, color: 'emerald' },
+                { id: 'rejected', label: 'Rejected', count: trCounts.rejected, color: 'rose' }
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setTrFilter(f.id)}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                    trFilter === f.id 
+                    ? `bg-${f.color === 'emerald' ? 'emerald-500' : f.color === 'rose' ? 'rose-500' : f.color === 'amber' ? 'amber-500' : 'brand-dark'} text-white shadow-xl scale-105` 
+                    : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-white active:scale-95'
+                  }`}
+                >
+                  {f.label}
+                  <span className={`px-1.5 py-0.5 rounded-lg text-[9px] ${trFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                    {f.count}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -882,41 +1000,76 @@ const SuperAdminDashboard = () => {
               <table className="w-full text-left">
                 <thead className="bg-amber-500 text-white">
                   <tr>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Laboratory</th>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest text-center">Amount</th>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Date</th>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-right text-[11px] md:text-[13px] font-black uppercase tracking-widest">Actions</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Laboratory</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Admin Details</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest text-center">Amount</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Date</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-right text-[10px] md:text-[11px] font-black uppercase tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {tokenRequests.length === 0 ? (
-                    <tr><td colSpan="4" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No token requests.</td></tr>
-                  ) : tokenRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-amber-50/30 transition-colors">
-                      <td className="px-6 py-4 md:px-10 md:py-6">
-                        <div className="font-black text-brand-dark text-[14px] md:text-base tracking-tight uppercase">{req.labName}</div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">ID: {req.labId}</div>
+                  {filteredTokenRequests.length === 0 ? (
+                    <tr><td colSpan="5" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No {trFilter} requests found.</td></tr>
+                  ) : filteredTokenRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-amber-50/30 transition-colors border-b border-slate-50 last:border-0 font-sans">
+                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
+                        <div className="font-black text-brand-dark text-[12px] md:text-sm tracking-tight uppercase leading-tight">{req.labName}</div>
+                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">ID: {req.labId}</div>
                       </td>
-                      <td className="px-6 py-4 md:px-10 md:py-6 text-center">
-                        <span className="px-5 py-2 bg-amber-100 text-amber-700 rounded-full font-black text-sm shadow-sm ring-1 ring-amber-200">
-                          {req.requestedAmount} <span className="text-[10px] opacity-70">Tokens</span>
+                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
+                        <div className="font-bold text-slate-700 uppercase text-[11px] leading-tight">{req.adminName || 'Admin'}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">{req.adminEmail || 'N/A'}</div>
+                        {req.adminPhone && <div className="text-[10px] text-brand-primary font-bold mt-1 tracking-wider">{req.adminPhone}</div>}
+                      </td>
+                      <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-center">
+                        <span className="px-4 py-1.5 bg-amber-100 text-amber-700 rounded-lg font-black text-xs shadow-sm ring-1 ring-amber-200">
+                          {req.requestedAmount} <span className="text-[9px] opacity-70">TKNS</span>
                         </span>
                       </td>
-                      <td className="px-6 py-4 md:px-10 md:py-6">
-                        <div className="text-sm font-bold text-slate-600">{req.createdAt?.toDate ? req.createdAt.toDate().toLocaleDateString() : '—'}</div>
+                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
+                        <div className="text-[11px] font-bold text-slate-600">
+                          {(() => {
+                            const dateObj = req.createdAt;
+                            if (!dateObj) return '—';
+                            const date = dateObj.toDate ? dateObj.toDate() : (dateObj._seconds ? new Date(dateObj._seconds * 1000) : new Date(dateObj));
+                            return (
+                              <div className="flex flex-col leading-tight">
+                                <span>{date.toLocaleDateString('en-GB')}</span>
+                                <span className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">{date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 md:px-10 md:py-6 text-right">
+                      <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-right">
                         {req.status === 'pending' ? (
-                          <button 
-                            onClick={() => handleApproveTokenRequest(req)}
-                            className="px-6 py-3 bg-brand-dark text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-xl shadow-brand-dark/10 transition-all border border-white/5 active:scale-95"
-                          >
-                            Approve & Add
-                          </button>
-                        ) : (
-                          <div className="flex items-center justify-end gap-2 text-brand-primary">
+                          <div className="flex items-center justify-end gap-2.5">
+                            <button 
+                              disabled={processingRequestId === req.id}
+                              onClick={() => handleRejectTokenRequest(req.id)}
+                              className="px-4 py-2 bg-white text-rose-500 border border-rose-100 rounded-xl text-[9.5px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                            <button 
+                              disabled={processingRequestId === req.id}
+                              onClick={() => handleApproveTokenRequest(req)}
+                              className="px-4 py-2 bg-brand-dark text-white rounded-xl text-[9.5px] font-black uppercase tracking-widest hover:bg-black shadow-xl shadow-brand-dark/10 transition-all border border-white/5 disabled:opacity-50 active:scale-95 flex items-center gap-2"
+                            >
+                              {processingRequestId === req.id ? (
+                                <Loader className="w-3 h-3 animate-spin" />
+                              ) : 'Approve'}
+                            </button>
+                          </div>
+                        ) : req.status === 'approved' ? (
+                          <div className="flex items-center justify-end gap-2 text-emerald-500">
                             <CheckCircle className="w-5 h-5" />
                             <span className="text-[10px] font-black uppercase tracking-widest">Approved</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-2 text-rose-500">
+                            <X className="w-5 h-5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Rejected</span>
                           </div>
                         )}
                       </td>
@@ -929,12 +1082,12 @@ const SuperAdminDashboard = () => {
         </div>
       ) : activeView === 'requests' ? (
         <div className="animate-in fade-in duration-700">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-3xl md:rounded-[32px] shadow-[0_20px_50px_rgb(0,0,0,0.02)] border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-8 md:mb-10 bg-white p-5 md:p-8 rounded-2xl md:rounded-[28px] shadow-sm border border-slate-100">
             <div>
-              <h1 className="text-2xl md:text-4xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+              <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
                 Registration <span className="text-brand-primary">Requests</span>
               </h1>
-              <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mt-1.5">Verify and approve new laboratory signups.</p>
+              <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1">Verify and approve new laboratory signups.</p>
             </div>
           </div>
 
@@ -943,20 +1096,20 @@ const SuperAdminDashboard = () => {
               <table className="w-full text-left">
                 <thead className="bg-brand-dark text-white/70">
                   <tr>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Lab Details</th>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Admin Details</th>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-[11px] md:text-[13px] font-black uppercase tracking-widest">Status</th>
-                    <th className="px-6 py-4 md:px-10 md:py-6 text-right text-[11px] md:text-[13px] font-black uppercase tracking-widest">Actions</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Lab Details</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Admin Details</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Status</th>
+                    <th className="px-5 py-3 md:px-8 md:py-4 text-right text-[10px] md:text-[11px] font-black uppercase tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {requests.length === 0 ? (
                     <tr><td colSpan="4" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No requests yet.</td></tr>
                   ) : requests.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 md:px-10 md:py-6">
-                        <div className="font-black text-brand-dark text-[14px] md:text-base tracking-tight uppercase">{req.labFullName || req.labName}</div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{req.labType} // {req.city}, {req.state}</div>
+                    <tr key={req.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0 font-sans">
+                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
+                        <div className="font-black text-brand-dark text-[12px] md:text-sm tracking-tight uppercase leading-tight">{req.labFullName || req.labName}</div>
+                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">{req.labType} // {req.city}, {req.state}</div>
                       </td>
                       <td className="px-6 py-4 md:px-10 md:py-6">
                         <div className="font-bold text-slate-700">{req.ownerName}</div>
@@ -1083,267 +1236,374 @@ const SuperAdminDashboard = () => {
 
       {/* Register Lab Modal */}
       {showRegisterModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-brand-dark/80 backdrop-blur-3xl animate-in fade-in duration-300">
-          <div className="bg-white rounded-[48px] shadow-[0_32px_128px_rgba(0,0,0,0.3)] max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/20 animate-in zoom-in duration-500">
-            {/* Modal Header */}
-            <div className="px-12 py-10 bg-brand-dark text-white flex justify-between items-center shrink-0 border-b border-white/5">
-              <div className="flex items-center gap-6">
-                <div className="p-4 bg-brand-primary rounded-[22px] transition-transform rotate-6 hover:rotate-0">
-                   <Plus className="w-8 h-8 text-white" />
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-white rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.4)] max-w-6xl w-full max-h-[92vh] overflow-hidden flex border border-white/10 animate-in zoom-in-95 duration-500">
+            
+            {/* Left Side: Premium Branding (Mirroring Signup Sidebar) */}
+            <div className="hidden lg:flex w-[380px] bg-brand-dark relative flex-col p-10 overflow-hidden shrink-0">
+                {/* Background Glows */}
+                <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%] opacity-20 pointer-events-none">
+                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-primary blur-[120px] rounded-full animate-pulse"></div>
+                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-secondary blur-[120px] rounded-full animate-pulse delay-700"></div>
                 </div>
-                <div>
-                  <h2 className="text-3xl font-black tracking-tighter uppercase leading-none">
-                    {newLabData.requestId ? 'Review & Approve Request' : 'Add New Lab'}
-                  </h2>
-                  <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] mt-2">
-                    {newLabData.requestId ? `Reviewing signup from: ${newLabData.email}` : 'Create a new lab account manualy'}
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowRegisterModal(false)}
-                className="p-4 bg-white/5 hover:bg-white/10 rounded-[22px] transition-all text-white/40 border border-white/5"
-              >
-                <X className="w-8 h-8" />
-              </button>
-            </div>
 
-            {/* Modal Tabs */}
-            <div className="flex bg-slate-50 border-b border-slate-100 px-10 shrink-0 overflow-x-auto no-scrollbar scroll-smooth">
-              {[
-                { id: 'basic', label: 'Details', icon: Search },
-                { id: 'location', label: 'Location', icon: Globe },
-                { id: 'report', label: 'Reports', icon: FileText },
-                { id: 'saas', label: 'Plan', icon: CreditCard }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-8 py-6 font-black text-[10px] uppercase tracking-[0.2em] transition-all relative whitespace-nowrap ${
-                    activeTab === tab.id ? 'text-brand-dark' : 'text-slate-400 hover:text-brand-dark'
-                  }`}
-                >
-                  <tab.icon className={`w-4 h-4 transition-colors ${activeTab === tab.id ? 'text-brand-primary' : 'text-slate-300'}`} />
-                  {tab.label}
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-8 right-8 h-1 bg-brand-primary rounded-t-full shadow-[0_-4px_12px_rgba(163,230,53,0.5)]" />
-                  )}
-                </button>
-              ))}
-            </div>
+                <div className="relative z-10 flex flex-col h-full">
+                    {/* Logo */}
+                    <div className="flex items-center gap-4 mb-12">
+                        <div className="w-12 h-12 bg-white rounded-2xl shadow-2xl flex items-center justify-center p-2 group hover:rotate-12 transition-transform">
+                            <img src="/favicon.png" alt="LabMitra" className="w-full h-full object-contain" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white tracking-widest uppercase mb-0.5 leading-none">Lab <span className="text-brand-primary">Mitra</span></h3>
+                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em]">Enterprise Cloud</p>
+                        </div>
+                    </div>
 
-            {/* Modal Body */}
-            <div className="overflow-y-auto p-12 flex-grow custom-scrollbar bg-white">
-              {activeTab === 'basic' && (
-                <div className="space-y-10 animate-in slide-in-from-bottom-6 duration-500 text-left">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div>
-                      <Label>Lab Short Name *</Label>
-                      <Input 
-                        value={newLabData.labName} 
-                        onChange={(e) => setNewLabData({...newLabData, labName: e.target.value})}
-                        placeholder="e.g. NG"
-                      />
+                    {/* Portrait Hero Card */}
+                    <div className="relative group/photo mb-12">
+                        <div className="absolute -inset-4 bg-gradient-to-tr from-brand-primary/20 to-transparent blur-2xl opacity-0 group-hover/photo:opacity-100 transition-opacity duration-700"></div>
+                        <div className="relative rounded-[40px] overflow-hidden aspect-[4/5] shadow-2xl border border-white/10 glass-card-dark animate-float">
+                            <img 
+                                src="/signup-portrait.png" 
+                                alt="Laboratory Scientist" 
+                                className="w-full h-full object-cover grayscale-[0.2] group-hover/photo:grayscale-0 group-hover/photo:scale-105 transition-all duration-1000"
+                            />
+                            {/* Inner Glass Cards */}
+                            <div className="absolute bottom-6 left-6 right-6">
+                                <div className="glass-card-dark p-4 rounded-3xl border border-white/20 backdrop-blur-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-brand-primary animate-ping"></div>
+                                        <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em]">Administrative View</span>
+                                    </div>
+                                    <p className="text-[11px] font-bold text-white/90 leading-tight mt-1">Real-time oversight for pathology branch networks.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                      <Label>Full Laboratory Name *</Label>
-                      <Input 
-                        value={newLabData.labFullName} 
-                        onChange={(e) => setNewLabData({...newLabData, labFullName: e.target.value})}
-                        placeholder="e.g. NextGen Diagnostic Centre"
-                      />
-                    </div>
-                    <div>
-                      <Label>Lab Type</Label>
-                      <Select 
-                        value={newLabData.labType} 
-                        onChange={(e) => setNewLabData({...newLabData, labType: e.target.value})}
-                      >
-                        <option>Standalone</option>
-                        <option>Hospital-Based</option>
-                        <option>Collection Center</option>
-                        <option>Reference Lab</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Owner Name</Label>
-                      <Input 
-                        value={newLabData.ownerName} 
-                        onChange={(e) => setNewLabData({...newLabData, ownerName: e.target.value})}
-                        placeholder="Lab owner / admin"
-                      />
-                    </div>
-                    <div>
-                      <Label>Reg / License No.</Label>
-                      <Input 
-                        value={newLabData.licenseNo} 
-                        onChange={(e) => setNewLabData({...newLabData, licenseNo: e.target.value})}
-                        placeholder="License number"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {activeTab === 'location' && (
-                <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 text-left">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Full Address</label>
-                    <textarea 
-                      rows={2}
-                      value={newLabData.address} 
-                      onChange={(e) => setNewLabData({...newLabData, address: e.target.value})}
-                      className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                      placeholder="Street, Landmark..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">City</label>
-                      <input 
-                        type="text"
-                        value={newLabData.city} 
-                        onChange={(e) => setNewLabData({...newLabData, city: e.target.value})}
-                        className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">State</label>
-                      <input 
-                        type="text"
-                        value={newLabData.state} 
-                        onChange={(e) => setNewLabData({...newLabData, state: e.target.value})}
-                        className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Pincode</label>
-                      <input 
-                        type="text"
-                        value={newLabData.pincode} 
-                        onChange={(e) => setNewLabData({...newLabData, pincode: e.target.value})}
-                        className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Contact Phone</label>
-                    <input 
-                      type="tel"
-                      value={newLabData.phone} 
-                      onChange={(e) => setNewLabData({...newLabData, phone: e.target.value})}
-                      className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'report' && (
-                <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 text-left">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Watermark Text</label>
-                    <input 
-                      type="text"
-                      value={newLabData.watermarkText} 
-                      onChange={(e) => setNewLabData({...newLabData, watermarkText: e.target.value})}
-                      className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                      placeholder="e.g. DRAFT or Confidential"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Report Footer Text</label>
-                    <textarea 
-                      rows={3}
-                      value={newLabData.footerText} 
-                      onChange={(e) => setNewLabData({...newLabData, footerText: e.target.value})}
-                      className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                      placeholder="Default footer note for reports"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'saas' && (
-                <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 text-left">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Admin Email *</label>
-                      <input 
-                        type="email" required
-                        value={newLabData.email} 
-                        onChange={(e) => setNewLabData({...newLabData, email: e.target.value})}
-                        className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                        placeholder="admin@lab.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">SaaS Plan</label>
-                      <div className="flex flex-wrap gap-4">
-                        {(allPlans?.length > 0 ? allPlans : [
-                          { id: 'basic', name: 'Basic' },
-                          { id: 'pro', name: 'Pro' },
-                          { id: 'pay_as_you_go', name: 'Pay As You Go' }
-                        ]).sort((a,b) => (a.order || 0) - (b.order || 0)).map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => setNewLabData({...newLabData, plan: p.id})}
-                            className={`px-6 py-4 rounded-3xl font-black uppercase tracking-wider transition-all border-2 ${
-                              newLabData.plan === p.id 
-                                ? 'bg-red-600 border-red-600 text-white shadow-lg' 
-                                : 'bg-gray-50 border-transparent text-gray-400 grayscale hover:grayscale-0'
-                            }`}
-                          >
-                            {p.name || p.id}
-                          </button>
+                    {/* Features List */}
+                    <div className="flex flex-col gap-4 mt-auto">
+                        {[
+                            { icon: Zap, text: "Rapid Deployment", sub: "Turnkey lab setup" },
+                            { icon: Shield, text: "Centralized Governance", sub: "Policy & Audit control" }
+                        ].map((item, i) => (
+                            <div key={i} className="flex items-center gap-5 p-4 rounded-3xl hover:bg-white/5 transition-all group/item">
+                                <div className={`w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover/item:scale-110 transition-all text-brand-primary`}>
+                                    <item.icon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black text-white uppercase tracking-tight">{item.text}</h4>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{item.sub}</p>
+                                </div>
+                            </div>
                         ))}
-                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Subscription Period (Months)</label>
-                      <input 
-                        type="number" min="1" max="60"
-                        value={newLabData.months} 
-                        onChange={(e) => setNewLabData({...newLabData, months: parseInt(e.target.value)})}
-                        className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-red-600 focus:bg-white rounded-3xl transition-all font-bold outline-none"
-                      />
+
+                    {/* Footer Logo/Join */}
+                    <div className="mt-8 pt-8 border-t border-white/5 flex items-center justify-between">
+                         <div className="flex items-center gap-4 border border-white/10 p-4 rounded-2xl bg-white/5 backdrop-blur-sm">
+                            <div className="flex -space-x-3">
+                                {[1,2,3].map(i => <div key={i} className="w-8 h-8 rounded-full border-2 border-brand-dark bg-slate-500 flex items-center justify-center overflow-hidden italic text-[8px] font-black text-white uppercase tracking-tighter">LM</div>)}
+                            </div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Joined by <br/><span className="text-white">500+ Labs</span></span>
+                         </div>
                     </div>
-                  </div>
                 </div>
-              )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-10 bg-slate-50 border-t border-slate-100 flex gap-6 shrink-0">
-              <button 
-                type="button"
-                onClick={() => {
-                  const tabs = ['basic', 'location', 'report', 'saas'];
-                  if (activeTab === 'saas') {
-                    handleRegisterLab({ preventDefault: () => {} });
-                  } else {
-                    setActiveTab(tabs[tabs.indexOf(activeTab) + 1]);
-                  }
-                }}
-                disabled={registering}
-                className={`flex-grow py-6 rounded-[24px] text-[11px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl flex items-center justify-center gap-4 disabled:opacity-50 active:scale-[0.98] border border-white/10 ${
-                  activeTab === 'saas' 
-                  ? 'bg-brand-primary text-white shadow-brand-primary/20 hover:bg-lime-500' 
-                  : 'bg-brand-dark text-white shadow-brand-dark/20 hover:bg-brand-secondary'
-                }`}
-              >
-                {registering ? (
-                  <Loader className="w-6 h-6 animate-spin" />
-                ) : activeTab === 'saas' ? (
-                  <>
-                    <Shield className="w-6 h-6 text-white" />
-                    Save & Activate
-                  </>
-                ) : (
-                  <>Next <ChevronRight className="w-5 h-5 text-brand-primary" /></>
-                )}
-              </button>
+            {/* Right Side: Form Content */}
+            <div className="flex-1 flex flex-col min-w-0 bg-slate-50 relative overflow-hidden">
+                {/* FIXED HEADER SECTION */}
+                <div className="px-12 py-10 pb-0 relative z-20 bg-slate-50/80 backdrop-blur-md shrink-0">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 className="text-3xl font-black text-brand-dark tracking-tighter uppercase leading-none">
+                                {newLabData.requestId ? 'Review & Approve Request' : 'Add New Lab'}
+                            </h2>
+                            <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.4em] mt-2">
+                                {newLabData.requestId ? `Source: ${newLabData.email}` : 'Laboratory Onboarding workflow'}
+                            </p>
+                        </div>
+                        <button 
+                            onClick={() => setShowRegisterModal(false)}
+                            className="p-4 bg-white/50 hover:bg-white rounded-[22px] transition-all text-slate-400 border border-slate-100 shadow-sm"
+                        >
+                            <X className="w-8 h-8" />
+                        </button>
+                    </div>
+
+                    {/* Modal Tabs Tracker */}
+                    <div className="flex justify-between items-center mb-6 relative">
+                         {/* Progress Line */}
+                         <div className="absolute top-6 left-0 right-0 h-[2px] bg-slate-100 -z-10">
+                            <div className={`h-full bg-brand-primary transition-all duration-700 shadow-[0_0_15px_rgba(155,207,131,0.5)]`} style={{
+                                width: activeTab === 'basic' ? '0%' : activeTab === 'location' ? '33.33%' : activeTab === 'report' ? '66.66%' : '100%'
+                            }}></div>
+                         </div>
+                         {[
+                            { id: 'basic', label: 'Details', icon: Search },
+                            { id: 'location', label: 'Location', icon: Globe },
+                            { id: 'report', label: 'Reports', icon: FileText },
+                            { id: 'saas', label: 'Plan', icon: CreditCard }
+                         ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className="flex flex-col items-center group relative z-10"
+                            >
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 ${
+                                    activeTab === tab.id 
+                                    ? 'bg-brand-dark border-brand-dark text-brand-primary scale-110 shadow-xl shadow-brand-dark/20' 
+                                    : 'bg-white border-slate-100 text-slate-300 group-hover:border-brand-primary group-hover:text-brand-primary bg-white backdrop-blur-sm'
+                                }`}>
+                                    <tab.icon className="w-6 h-6" />
+                                </div>
+                                <span className={`text-[9px] font-black uppercase tracking-widest mt-2 transition-colors ${
+                                    activeTab === tab.id ? 'text-brand-dark' : 'text-slate-400'
+                                }`}>
+                                    {tab.label}
+                                </span>
+                            </button>
+                         ))}
+                    </div>
+                    {/* Visual Boundary */}
+                    <div className="h-px bg-slate-200 mt-4 max-w-xl mx-auto opacity-50"></div>
+                </div>
+
+                {/* SCROLLABLE BODY SECTION */}
+                <div className="flex-1 p-12 pt-8 overflow-y-auto custom-scrollbar relative z-10">
+                    <div className="max-w-xl mx-auto">
+                        {activeTab === 'basic' && (
+                          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-500 text-left">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                              <div>
+                                <Label>Lab Short Name *</Label>
+                                <Input 
+                                  value={newLabData.labName} 
+                                  onChange={(e) => setNewLabData({...newLabData, labName: e.target.value})}
+                                  onBlur={() => handleBlur('labName')}
+                                  error={touched.labName && errors.labName}
+                                  placeholder="e.g. NG"
+                                />
+                              </div>
+                              <div>
+                                <Label>Full Laboratory Name *</Label>
+                                <Input 
+                                  value={newLabData.labFullName} 
+                                  onChange={(e) => setNewLabData({...newLabData, labFullName: e.target.value})}
+                                  onBlur={() => handleBlur('labFullName')}
+                                  error={touched.labFullName && errors.labFullName}
+                                  placeholder="e.g. NextGen Diagnostic Centre"
+                                />
+                              </div>
+                              <div>
+                                <Label>Lab Type</Label>
+                                <Select 
+                                  value={newLabData.labType} 
+                                  onChange={(e) => setNewLabData({...newLabData, labType: e.target.value})}
+                                >
+                                  <option>Standalone</option>
+                                  <option>Hospital-Based</option>
+                                  <option>Collection Center</option>
+                                  <option>Reference Lab</option>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Owner Name</Label>
+                                <Input 
+                                  value={newLabData.ownerName} 
+                                  onChange={(e) => setNewLabData({...newLabData, ownerName: e.target.value})}
+                                  placeholder="Lab owner / admin"
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <Label>Reg / License No.</Label>
+                                <Input 
+                                  value={newLabData.licenseNo} 
+                                  onChange={(e) => setNewLabData({...newLabData, licenseNo: e.target.value})}
+                                  placeholder="License number"
+                                />
+                              </div>
+
+                              <div>
+                                <Label>Admin Email *</Label>
+                                <Input 
+                                  type="email" required
+                                  value={newLabData.email} 
+                                  onChange={(e) => setNewLabData({...newLabData, email: e.target.value})}
+                                  onBlur={() => handleBlur('email')}
+                                  error={touched.email && errors.email}
+                                  placeholder="admin@lab.com"
+                                />
+                              </div>
+                              <div>
+                                <Label>Contact Phone *</Label>
+                                <Input 
+                                  type="tel"
+                                  value={newLabData.phone} 
+                                  onChange={(e) => setNewLabData({...newLabData, phone: e.target.value})}
+                                  onBlur={() => handleBlur('phone')}
+                                  error={touched.phone && errors.phone}
+                                  placeholder="+91 99999 99999"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {activeTab === 'location' && (
+                          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-500 text-left">
+                            <div className="space-y-4">
+                              <Label>Full Address</Label>
+                              <textarea 
+                                rows={3}
+                                value={newLabData.address} 
+                                onChange={(e) => setNewLabData({...newLabData, address: e.target.value})}
+                                className="w-full px-6 py-4 bg-white border border-slate-200 focus:border-brand-primary rounded-[24px] transition-all font-bold outline-none shadow-sm focus:ring-4 focus:ring-brand-primary/10 text-xs"
+                                placeholder="Street, Landmark..."
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                              <div>
+                                <Label>City</Label>
+                                <Input 
+                                  value={newLabData.city} 
+                                  onChange={(e) => setNewLabData({...newLabData, city: e.target.value})}
+                                  placeholder="City"
+                                />
+                              </div>
+                              <div>
+                                <Label>State</Label>
+                                <Input 
+                                  value={newLabData.state} 
+                                  onChange={(e) => setNewLabData({...newLabData, state: e.target.value})}
+                                  placeholder="State"
+                                />
+                              </div>
+                              <div>
+                                <Label>Pincode</Label>
+                                <Input 
+                                  value={newLabData.pincode} 
+                                  onChange={(e) => setNewLabData({...newLabData, pincode: e.target.value})}
+                                  placeholder="110001"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {activeTab === 'report' && (
+                          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-500 text-left">
+                            <div>
+                              <Label>Watermark Text</Label>
+                              <Input 
+                                value={newLabData.watermarkText} 
+                                onChange={(e) => setNewLabData({...newLabData, watermarkText: e.target.value})}
+                                placeholder="e.g. DRAFT"
+                              />
+                            </div>
+                            <div>
+                              <Label>Report Footer Text</Label>
+                              <textarea 
+                                rows={4}
+                                value={newLabData.footerText} 
+                                onChange={(e) => setNewLabData({...newLabData, footerText: e.target.value})}
+                                className="w-full px-6 py-4 bg-white border border-slate-200 focus:border-brand-primary rounded-[24px] transition-all font-bold outline-none shadow-sm focus:ring-4 focus:ring-brand-primary/10 text-xs"
+                                placeholder="Default footer note for reports"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {activeTab === 'saas' && (
+                          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-500 text-left">
+                            <div>
+                                <Label>SaaS Plan</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {(allPlans?.length > 0 ? allPlans : [
+                                    { id: 'basic', name: 'Basic' },
+                                    { id: 'pro', name: 'Pro' },
+                                    { id: 'pay_as_you_go', name: 'Pay As You Go' }
+                                  ]).sort((a,b) => (a.order || 0) - (b.order || 0)).map((p) => (
+                                    <button
+                                      key={p.id}
+                                      type="button"
+                                      onClick={() => setNewLabData({...newLabData, plan: p.id})}
+                                      className={`p-6 rounded-3xl font-black uppercase text-left transition-all border-2 flex flex-col gap-1 ${
+                                        newLabData.plan === p.id 
+                                          ? 'bg-brand-dark border-brand-dark text-white shadow-xl' 
+                                          : 'bg-white border-slate-100 text-slate-400 grayscale hover:grayscale-0'
+                                      }`}
+                                    >
+                                      <span className="text-[12px] tracking-tight">{p.name || p.id}</span>
+                                      <span className="text-[10px] opacity-40">Full Enterprise Features</span>
+                                    </button>
+                                  ))}
+                                </div>
+                            </div>
+                            {newLabData.plan !== 'pay_as_you_go' && (
+                              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <Label>Subscription Period (Months)</Label>
+                                <Input 
+                                  type="number" min="1" max="60"
+                                  value={newLabData.months} 
+                                  onChange={(e) => setNewLabData({...newLabData, months: parseInt(e.target.value)})}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+
+                    </div>
+                </div>
+
+                {/* MODAL FOOTER */}
+                <div className="px-12 py-10 bg-white border-t border-slate-100 flex gap-6 shrink-0 relative z-20">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const tabs = ['basic', 'location', 'report', 'saas'];
+                      const nextI = tabs.indexOf(activeTab) + 1;
+                      if (activeTab === 'saas') {
+                        if (Object.keys(errors).length > 0) {
+                            toast.error("Please fix the validation errors first");
+                            return;
+                        }
+                        handleRegisterLab({ preventDefault: () => {} });
+                      } else {
+                        // Mark current fields as touched on 'Next'
+                        const currentFields = activeTab === 'basic' ? ['labName', 'labFullName', 'email', 'phone'] : [];
+                        const newTouched = {...touched};
+                        currentFields.forEach(f => newTouched[f] = true);
+                        setTouched(newTouched);
+
+                        if (Object.keys(errors).filter(k => currentFields.includes(k)).length > 0) {
+                            return;
+                        }
+
+                        setActiveTab(tabs[nextI]);
+                      }
+                    }}
+                    disabled={registering}
+                    className={`flex-grow py-6 rounded-[32px] text-[11px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl flex items-center justify-center gap-4 disabled:opacity-50 active:scale-[0.98] border border-white/5 ${
+                      activeTab === 'saas' 
+                      ? 'bg-brand-primary text-brand-dark shadow-brand-primary/20 hover:scale-[1.02]' 
+                      : 'bg-brand-dark text-white shadow-brand-dark/20 hover:bg-black'
+                    }`}
+                  >
+                    {registering ? (
+                      <Loader className="w-6 h-6 animate-spin" />
+                    ) : activeTab === 'saas' ? (
+                      <>
+                        <Shield className="w-6 h-6" />
+                        Save & Activate Laboratory
+                      </>
+                    ) : (
+                      <>Next Step <ChevronRight className="w-5 h-5 text-brand-primary" /></>
+                    )}
+                  </button>
+                </div>
             </div>
           </div>
         </div>
@@ -1539,7 +1799,7 @@ const SuperAdminDashboard = () => {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(`Email: ${registrationSuccess.email}\nPassword: ${registrationSuccess.tempPassword}\nLab ID: ${registrationSuccess.labId}`);
-                  alert("Credentials copied to clipboard!");
+                  toast.info("Credentials copied to clipboard!");
                 }}
                 className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-black transition shadow-lg"
               >
@@ -1565,13 +1825,13 @@ const SuperAdminDashboard = () => {
 
 /* ─── Tiny Reusable Stat Cards ───────────────────────────────────────────── */
 const StatCard = ({ icon, label, value, color, gradient }) => (
-  <div className={`p-8 rounded-[32px] border border-slate-100 transition-all hover:scale-[1.02] shadow-[0_20px_50px_rgb(0,0,0,0.02)] flex items-center gap-6 ${gradient ? `bg-gradient-to-br ${color} text-white border-transparent` : 'bg-white'}`}>
-    <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-sm border ${gradient ? 'bg-white/20 border-white/20' : `${color} border-transparent`}`}>
-      {icon}
+  <div className={`p-4 md:p-5 rounded-[24px] border border-slate-100 transition-all hover:scale-[1.02] shadow-[0_10px_30px_rgb(0,0,0,0.01)] flex items-center gap-4 ${gradient ? `bg-gradient-to-br ${color} text-white border-transparent` : 'bg-white'}`}>
+    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-[16px] flex items-center justify-center shadow-sm border ${gradient ? 'bg-white/20 border-white/20' : `${color} border-transparent`}`}>
+      {React.cloneElement(icon, { className: 'w-5 h-5 md:w-6 md:h-6' })}
     </div>
     <div>
-      <div className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1.5 ${gradient ? 'text-white/60' : 'text-slate-400'}`}>{label}</div>
-      <div className="text-3xl font-black tracking-tighter tabular-nums">{value}</div>
+      <div className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 ${gradient ? 'text-white/60' : 'text-slate-400'}`}>{label}</div>
+      <div className="text-xl md:text-2xl font-black tracking-tighter tabular-nums">{value}</div>
     </div>
   </div>
 );
@@ -1580,15 +1840,26 @@ const StatCard = ({ icon, label, value, color, gradient }) => (
 const Label = ({ children }) => (
   <label className="block text-[10px] font-black text-slate-400 mb-2.5 uppercase tracking-[0.2em] ml-2">{children}</label>
 );
-const Input = ({ className = '', ...props }) => (
-  <input
-    className={`w-full px-8 py-5 bg-slate-50/50 border border-slate-100 rounded-[28px] text-sm font-black text-brand-dark outline-none focus:border-brand-primary/30 focus:ring-8 focus:ring-brand-primary/5 focus:bg-white transition-all placeholder:text-slate-300 shadow-inner ${className}`}
-    {...props}
-  />
+const Input = ({ className = '', error, icon, ...props }) => (
+  <div className="space-y-1.5 w-full">
+    <div className="relative group">
+      {icon && <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-primary transition-colors">{icon}</div>}
+      <input
+        className={`w-full ${icon ? 'pl-14' : 'px-6'} py-3.5 bg-slate-50 border border-slate-200 rounded-[22px] text-xs font-black text-brand-dark outline-none transition-all shadow-sm ${
+          error ? 'border-rose-300 ring-4 ring-rose-300/10' : 'focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 focus:bg-white placeholder:text-slate-400'
+        } ${className}`}
+        {...props}
+      />
+    </div>
+    {error && <div className="flex items-center gap-1.5 ml-4 text-rose-500">
+        <Activity className="w-3 h-3" />
+        <span className="text-[8px] font-black underline decoration-rose-300/30 uppercase tracking-widest">{error}</span>
+    </div>}
+  </div>
 );
 const Select = ({ className = '', children, ...props }) => (
   <select
-    className={`w-full px-8 py-5 bg-slate-50/50 border border-slate-100 rounded-[28px] text-sm font-black text-brand-dark outline-none focus:border-brand-primary/30 focus:ring-8 focus:ring-brand-primary/5 focus:bg-white transition-all appearance-none cursor-pointer shadow-inner ${className}`}
+    className={`w-full px-6 py-3.5 bg-slate-50 border border-slate-200 rounded-[22px] text-xs font-black text-brand-dark outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm ${className}`}
     {...props}
   >
     {children}

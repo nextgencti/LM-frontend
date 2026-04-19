@@ -119,7 +119,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Implicit inheritance: If the feature is missing in Pro/Enterprise completely, but exists in Basic, assume it's inherited.
-    if (planId.toLowerCase() === 'pro' || planId.toLowerCase() === 'enterprise') {
+    const isPremiumPlan = ['pro', 'enterprise', 'pay_as_you_go'].includes(planId.toLowerCase());
+    if (isPremiumPlan) {
         const basicPlan = allPlans.find(p => p.id === 'basic');
         if (basicPlan) {
            const basicFeat = basicPlan.features.find(f => f.text.toLowerCase().trim() === featureName.toLowerCase().trim());

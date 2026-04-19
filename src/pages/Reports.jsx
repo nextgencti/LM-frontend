@@ -41,6 +41,73 @@ const Reports = () => {
   const [labProfile, setLabProfile] = useState(null);
   const [paymentBooking, setPaymentBooking] = useState(null); // The booking document for the current quick payment
   const [isQuickPaying, setIsQuickPaying] = useState(false);
+  const [isDeducting, setIsDeducting] = useState(null); // BillId of group being deducted
+
+  // Helper to deduct 1 token for an action
+  const deductTokenAction = async (actionName) => {
+    if (subscription?.plan !== 'pay_as_you_go') return true;
+    
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const token = await currentUser.getIdToken();
+      
+      const response = await fetch(`${BACKEND_URL}/api/tokens/deduct-action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: actionName, labId: activeLabId })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || `Failed to deduct token for ${actionName}`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Token deduction failed:", error);
+      toast.error("Network error during token validation");
+      return false;
+    }
+  };
+
+  const handlePreviewClick = async (e, group) => {
+    e.stopPropagation();
+
+    // 1. If already deducted or not pay_as_you_go, open immediately
+    if (group.tokenDeducted || subscription?.plan !== 'pay_as_you_go') {
+      setPreviewGroupId(group.groupKey);
+      handleMarkDelivered(group);
+      return;
+    }
+
+    // 2. Perform one-time token deduction
+    setIsDeducting(group.groupKey);
+    const success = await deductTokenAction(`Preview & Print: ${group.patientName}`);
+    
+    if (success) {
+      try {
+        // Update ALL reports in this group to mark as deducted
+        const batch = writeBatch(db);
+        group.tests.forEach(test => {
+          const reportRef = doc(db, 'reports', test.id);
+          batch.update(reportRef, { tokenDeducted: true });
+        });
+        await batch.commit();
+        
+        // Now open the preview
+        setPreviewGroupId(group.groupKey);
+        handleMarkDelivered(group);
+      } catch (err) {
+        console.error("Error updating token status:", err);
+        toast.error("Process failed, but token might have been deducted. Contact support if balance is wrong.");
+      }
+    }
+    
+    setIsDeducting(null);
+  };
 
   // ─── Fetch reports from Firestore ─────────────────────────────────────────
   useEffect(() => {
@@ -122,6 +189,7 @@ const Reports = () => {
         };
       }
       map[key].tests.push(r);
+      if (r.tokenDeducted) map[key].tokenDeducted = true;
     });
 
     return Object.values(map).map(group => {
@@ -875,13 +943,18 @@ const Reports = () => {
                     {/* Preview/Email */}
                     {(groupStatus === 'Final' || groupStatus === 'Delivered') && (
                       <div className="flex gap-2">
-                        <button onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setPreviewGroupId(group.groupKey); 
-                            handleMarkDelivered(group);
-                          }}
-                          className={`p-2 sm:px-4 sm:py-2 text-white font-black text-[10px] uppercase rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 ${groupStatus === 'Delivered' ? 'bg-brand-dark' : 'bg-brand-primary shadow-brand-primary/10'}`}>
-                          <Eye className="w-4 h-4 sm:mr-1 inline" /> <span className="hidden sm:inline">{groupStatus === 'Delivered' ? 'Re-Print' : 'Preview & Print'}</span>
+                        <button 
+                         disabled={isDeducting === group.groupKey}
+                         onClick={(e) => handlePreviewClick(e, group)}
+                          className={`p-2 sm:px-4 sm:py-2 text-white font-black text-[10px] uppercase rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 ${groupStatus === 'Delivered' ? 'bg-brand-dark' : 'bg-brand-primary shadow-brand-primary/10'} disabled:opacity-50`}>
+                          {isDeducting === group.groupKey ? (
+                            <Loader className="w-4 h-4 animate-spin text-white" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                          <span className="hidden sm:inline">
+                            {isDeducting === group.groupKey ? 'Authorizing...' : (groupStatus === 'Delivered' ? 'Re-Print' : 'Preview & Print')}
+                          </span>
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); handleSendGroupEmail(group); }} disabled={emailSending === group.groupKey}
                           className="p-2 sm:p-2.5 bg-brand-dark text-white font-black text-[10px] uppercase rounded-xl shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center"

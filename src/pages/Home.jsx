@@ -16,6 +16,7 @@ const Home = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [plans, setPlans] = useState({});
     const [loadingPlans, setLoadingPlans] = useState(true);
+    const [billingType, setBillingType] = useState('fixed');
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -94,7 +95,7 @@ const Home = () => {
                         ) : (
                             <>
                                 <Link to="/login" className="hover:text-brand-dark transition-colors">Login</Link>
-                                <Link to="/login" className="px-6 py-3 bg-brand-primary text-brand-dark rounded-2xl shadow-xl shadow-brand-primary/20 hover:scale-105 active:scale-95 transition-all">Get Started</Link>
+                                <Link to="/signup" className="px-6 py-3 bg-brand-primary text-brand-dark rounded-2xl shadow-xl shadow-brand-primary/20 hover:scale-105 active:scale-95 transition-all">Get Started</Link>
                             </>
                         )}
                     </div>
@@ -300,115 +301,215 @@ const Home = () => {
                 </div>
             </section>
 
-            {/* Pricing Section */}
-            <section id="pricing" className="py-32 bg-slate-50">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center max-w-3xl mx-auto mb-20">
-                        <h3 className="text-brand-primary font-black uppercase tracking-[0.4em] mb-4 text-sm">Flexible Pricing</h3>
-                        <h2 className="text-4xl md:text-5xl font-black text-brand-dark mb-6 tracking-tight leading-tight">Plans designed for labs of all sizes.</h2>
-                        <p className="text-lg text-slate-500 font-bold leading-relaxed">Choose a subscription that matches your laboratory's scale and ambition.</p>
+            {/* Pricing Section - PROFESSIONAL OVERHAUL */}
+            <section id="pricing" className="py-32 bg-slate-50 relative overflow-hidden">
+                {/* Background Decorations */}
+                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-primary/5 rounded-full blur-[150px] -mr-96 -mt-96 pointer-events-none"></div>
+                
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <div className="text-center max-w-3xl mx-auto mb-16">
+                        <div className="inline-flex items-center gap-3 bg-brand-primary/10 px-6 py-2 rounded-full border border-brand-primary/20 mb-8">
+                           <Activity className="w-4 h-4 text-brand-primary" />
+                           <span className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-dark">Investment Models</span>
+                        </div>
+                        <h2 className="text-4xl md:text-6xl font-black text-brand-dark mb-6 tracking-tighter leading-none">
+                           Plans for every <span className="text-brand-primary underline decoration-brand-primary/30 underline-offset-8">Scale</span>.
+                        </h2>
+                        <p className="text-lg text-slate-500 font-bold leading-relaxed">
+                           From scaling startups to enterprise laboratories, choose the model that fits your operational needs.
+                        </p>
+                        
+                        {/* THE TOGGLE - High Fidelity */}
+                        <div className="mt-12 inline-flex items-center p-1.5 bg-slate-100/80 rounded-[28px] border border-slate-200 shadow-inner group">
+                           <button 
+                              onClick={() => setBillingType('fixed')}
+                              className={`px-8 py-3.5 rounded-[22px] text-[11px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-3 ${billingType === 'fixed' ? 'bg-white text-brand-dark shadow-xl ring-1 ring-black/5' : 'text-slate-400 hover:text-slate-600'}`}
+                           >
+                              <Shield className={`w-4 h-4 ${billingType === 'fixed' ? 'text-brand-primary' : ''}`} />
+                              Fixed Subscriptions
+                           </button>
+                           <button 
+                              onClick={() => setBillingType('flexible')}
+                              className={`px-8 py-3.5 rounded-[22px] text-[11px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-3 ${billingType === 'flexible' ? 'bg-brand-dark text-brand-primary shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
+                           >
+                              <Zap className={`w-4 h-4 ${billingType === 'flexible' ? 'text-brand-primary' : ''}`} />
+                              Flexible (Tokens)
+                           </button>
+                        </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto">
+                    <div className="flex flex-col items-center">
                         {loadingPlans ? (
-                            <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white rounded-[50px] shadow-sm border border-slate-100">
+                            <div className="w-full py-20 flex flex-col items-center justify-center bg-white rounded-[50px] shadow-sm border border-slate-100">
                                 <Loader className="w-10 h-10 animate-spin text-brand-primary mb-4" />
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accessing Real-time pricing...</p>
                             </div>
-                        ) : (
-                            Object.values(plans)
+                        ) : (() => {
+                            const filteredPlans = Object.values(plans)
                                 .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                .map((plan) => {
+                                .filter(p => billingType === 'fixed' ? p.id !== 'pay_as_you_go' : p.id === 'pay_as_you_go');
+                            
+                            const colCount = billingType === 'flexible' ? 3 : Math.min(filteredPlans.length, 3);
+                            const maxWidth = colCount === 1 ? 'max-w-md' : (colCount === 2 ? 'max-w-5xl' : 'max-w-7xl');
+
+                            return (
+                                <div className={`grid gap-10 w-full items-stretch md:grid-cols-2 lg:grid-cols-${colCount} ${maxWidth}`}>
+                                    {filteredPlans.map((plan) => {
                                     const isPro = plan.id === 'pro';
-                                    const isPayAsYouGo = plan.id === 'pay_as_you_go';
-                                    const isDark = isPro || isPayAsYouGo;
+                                    const isFlexible = plan.id === 'pay_as_you_go';
+                                    
+                                    if (isFlexible) {
+                                       return (
+                                          <React.Fragment key={plan.id}>
+                                             {/* Explanation Card for Tokens */}
+                                             <div className="lg:col-span-1 p-10 bg-slate-900 rounded-[50px] text-white overflow-hidden relative group border border-white/5 order-1">
+                                                <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+                                                <h4 className="text-2xl font-black mb-6 tracking-tighter uppercase">How it <span className="text-brand-primary">Works</span></h4>
+                                                <div className="space-y-8 relative z-10">
+                                                   <div className="flex gap-4">
+                                                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 italic text-brand-primary font-black">01</div>
+                                                      <div>
+                                                         <p className="text-[11px] font-black uppercase tracking-widest text-brand-primary mb-1">Buy Atoms</p>
+                                                         <p className="text-xs font-bold text-slate-400">Recharge your wallet with report tokens (Atoms) anytime.</p>
+                                                      </div>
+                                                   </div>
+                                                   <div className="flex gap-4">
+                                                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 italic text-brand-primary font-black">02</div>
+                                                      <div>
+                                                         <p className="text-[11px] font-black uppercase tracking-widest text-brand-primary mb-1">Single Deduction</p>
+                                                         <p className="text-xs font-bold text-slate-400">1 Atom is deducted only when you preview/print a finalized report.</p>
+                                                      </div>
+                                                   </div>
+                                                   <div className="flex gap-4">
+                                                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 italic text-brand-primary font-black">03</div>
+                                                      <div>
+                                                         <p className="text-[11px] font-black uppercase tracking-widest text-brand-primary mb-1">No Expiry</p>
+                                                         <p className="text-xs font-bold text-slate-400">Your atoms never expire. Use them at your laboratory's own pace.</p>
+                                                      </div>
+                                                   </div>
+                                                </div>
+                                             </div>
+
+                                             {/* The Flexible Plan Card */}
+                                             <div className="lg:col-span-2 p-12 bg-white rounded-[60px] border border-slate-100 shadow-[0_40px_100px_-20px_rgba(45,50,80,0.08)] flex flex-col md:flex-row gap-12 relative overflow-hidden group order-2 animate-in zoom-in-95 duration-700">
+                                                <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 blur-[100px] rounded-full -mr-48 -mt-48 transition-all group-hover:bg-amber-500/10"></div>
+                                                
+                                                <div className="flex-1 z-10">
+                                                   <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-full mb-8">
+                                                      <Zap className="w-4 h-4 text-amber-500 animate-pulse fill-amber-500" />
+                                                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">The Power of Choice</span>
+                                                   </div>
+                                                   <h3 className="text-5xl font-black text-brand-dark mb-4 tracking-tighter uppercase">{plan.name}</h3>
+                                                   <p className="text-slate-500 font-bold leading-relaxed mb-10 text-lg">{plan.description}</p>
+                                                   
+                                                   <div className="grid grid-cols-2 gap-4">
+                                                      {plan.features?.filter(f => f.available).map((f, idx) => (
+                                                         <div key={idx} className="flex items-center gap-3">
+                                                            <CheckCircle2 className="w-5 h-5 text-amber-500" />
+                                                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">{f.text}</span>
+                                                         </div>
+                                                      ))}
+                                                   </div>
+                                                </div>
+
+                                                <div className="md:w-72 flex flex-col items-center justify-center p-10 bg-slate-50 rounded-[40px] border border-slate-100 relative z-10">
+                                                   <div className="text-center mb-8">
+                                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Starts from</p>
+                                                      <div className="text-6xl font-black text-brand-dark tabular-nums tracking-tighter">
+                                                         ₹{plan.price}
+                                                      </div>
+                                                      <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 mt-1">Per Atom</p>
+                                                   </div>
+                                                   <Link 
+                                                      to="/signup" 
+                                                      className="w-full py-5 bg-brand-dark text-white text-center rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-brand-dark/20 hover:scale-105 active:scale-95 transition-all"
+                                                   >
+                                                      Choose Flexible
+                                                   </Link>
+                                                </div>
+                                             </div>
+                                          </React.Fragment>
+                                       )
+                                    }
 
                                     return (
                                         <div 
-                                            key={plan.id || plan.name}
-                                            className={`p-10 rounded-[50px] flex flex-col transition-all duration-500 relative overflow-hidden group border ${
+                                            key={plan.id}
+                                            className={`p-10 rounded-[50px] flex flex-col transition-all duration-700 relative overflow-hidden group border animate-in slide-in-from-bottom duration-500 delay-${(plan.order || 0) * 100} ${
                                                 isPro 
-                                                ? 'bg-brand-dark border-white/5 hover:translate-y-[-12px] hover:shadow-[0_40px_80px_-15px_rgba(151,250,11,0.25)]' 
-                                                : isPayAsYouGo
-                                                ? 'bg-gradient-to-br from-amber-400 to-orange-600 border-white/10 hover:translate-y-[-12px] hover:shadow-[0_40px_80px_-15px_rgba(251,191,36,0.4)]'
-                                                : 'bg-gradient-to-br from-emerald-200/50 via-white to-white border-emerald-100/50 hover:translate-y-[-12px] hover:shadow-[0_40px_80px_-15px_rgba(16,185,129,0.15)] shadow-2xl shadow-emerald-900/5'
+                                                ? 'bg-brand-dark border-white/5 hover:translate-y-[-16px] hover:shadow-[0_64px_128px_-20px_rgba(151,250,11,0.3)] shadow-2xl' 
+                                                : 'bg-white border-slate-200 hover:translate-y-[-12px] hover:shadow-[0_48px_80px_-15px_rgba(45,50,80,0.15)] shadow-xl'
                                             }`}
                                         >
                                             {/* Background Accents */}
-                                            {isDark ? (
+                                            {isPro ? (
                                                 <>
-                                                    <div className={`absolute top-0 right-0 w-64 h-64 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2 transition-all duration-700 ${isPro ? 'bg-brand-primary/20 group-hover:bg-brand-primary/30' : 'bg-white/20 group-hover:bg-white/30'}`}></div>
-                                                    <div className={`absolute bottom-0 left-0 w-48 h-48 blur-[60px] rounded-full translate-y-1/2 -translate-x-1/2 ${isPro ? 'bg-brand-secondary/10' : 'bg-white/10'}`}></div>
+                                                    <div className={`absolute top-0 right-0 w-64 h-64 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2 transition-all duration-700 bg-brand-primary/20 group-hover:bg-brand-primary/30`}></div>
+                                                    <div className={`absolute bottom-0 left-0 w-48 h-48 blur-[60px] rounded-full translate-y-1/2 -translate-x-1/2 bg-brand-secondary/10 opacity-50`}></div>
                                                 </>
                                             ) : (
-                                                <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-300/20 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                                                <div className="absolute top-0 right-0 w-48 h-48 bg-brand-primary/10 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:scale-150 transition-transform duration-1000"></div>
                                             )}
                                             
-                                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-6 px-4 py-1.5 rounded-full inline-block w-fit ring-1 ${
+                                            <div className={`text-[9px] font-black uppercase tracking-[0.3em] mb-8 inline-block w-fit px-5 py-2 rounded-full ring-1 ${
                                                 isPro 
-                                                ? 'bg-brand-primary/10 text-brand-primary ring-brand-primary/20' 
-                                                : isPayAsYouGo
-                                                ? 'bg-white/20 text-white ring-white/30'
-                                                : 'bg-emerald-100/50 text-emerald-600 ring-emerald-200/50'
+                                                ? 'bg-brand-primary/10 text-brand-primary ring-brand-primary/30' 
+                                                : 'bg-slate-50 text-slate-400 ring-slate-200/50'
                                             }`}>
-                                                {plan.popular ? 'Most Popular' : (isPayAsYouGo ? 'Maximum Flexibility' : 'Essential')}
+                                                {plan.popular ? 'Recommended Choice' : 'Stable Entry'}
                                             </div>
 
-                                            <h5 className={`text-3xl font-black mb-2 tracking-tight ${isDark ? 'text-white' : 'text-brand-dark'}`}>
+                                            <h5 className={`text-4xl font-black mb-3 tracking-tighter uppercase ${isPro ? 'text-white' : 'text-brand-dark'}`}>
                                                 {plan.name}
                                             </h5>
-                                            <p className={`font-bold text-xs mb-8 ${isPro ? 'text-slate-400' : isPayAsYouGo ? 'text-white/70' : 'text-slate-500'}`}>
+                                            <p className={`font-bold text-sm leading-relaxed mb-10 ${isPro ? 'text-slate-400' : 'text-slate-500'}`}>
                                                 {plan.description}
                                             </p>
                                             
-                                            <div className={`flex flex-col mb-10 p-6 rounded-3xl border shadow-inner ${
+                                            <div className={`flex items-baseline mb-12 p-8 rounded-[32px] border transition-colors ${
                                                 isPro 
-                                                ? 'bg-white/5 border-white/5 backdrop-blur-sm' 
-                                                : isPayAsYouGo
-                                                ? 'bg-white/10 border-white/10 backdrop-blur-sm'
-                                                : 'bg-white/90 border-emerald-50/50'
+                                                ? 'bg-white/5 border-white/5 backdrop-blur-md shadow-inner' 
+                                                : 'bg-slate-50 border-slate-50'
                                             }`}>
-                                                <div className={`text-5xl font-black ${isPro ? 'text-brand-primary' : isPayAsYouGo ? 'text-white' : 'text-brand-dark'}`}>
+                                                <span className={`text-6xl font-black tabular-nums tracking-tighter ${isPro ? 'text-brand-primary' : 'text-brand-dark'}`}>
                                                     {formatPrice(plan.price)}
-                                                    <span className={`text-lg font-bold uppercase tracking-widest ml-1 ${isPro ? 'text-brand-light' : isPayAsYouGo ? 'text-white/60' : 'text-emerald-400'}`}>
-                                                        {plan.period}
-                                                    </span>
-                                                </div>
+                                                </span>
+                                                <span className={`text-sm font-black uppercase tracking-widest ml-3 ${isPro ? 'text-slate-400' : 'text-slate-400'}`}>
+                                                    / {plan.period}
+                                                </span>
                                             </div>
                                             
-                                            <div className="space-y-4 mb-12 flex-grow">
+                                            <div className="space-y-5 mb-12 flex-grow">
                                                 {plan.features?.filter(f => f.available).map((feature, i) => (
-                                                    <div key={i} className={`flex items-center gap-4 text-xs font-bold ${isDark ? 'text-slate-100' : 'text-slate-600'}`}>
-                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-inner ${
+                                                    <div key={i} className={`flex items-start gap-4 text-[13px] font-bold transition-all group-hover:translate-x-1 ${isPro ? 'text-slate-100' : 'text-slate-600'}`}>
+                                                        <div className={`w-6 h-6 rounded-[10px] flex items-center justify-center shadow-lg shrink-0 mt-0.5 ${
                                                             isPro 
-                                                            ? 'bg-brand-primary/20 text-brand-primary' 
-                                                            : isPayAsYouGo
-                                                            ? 'bg-white/20 text-white'
-                                                            : 'bg-emerald-50 text-emerald-400'
+                                                            ? 'bg-brand-primary text-brand-dark' 
+                                                            : 'bg-white text-emerald-500 shadow-sm border border-slate-50'
                                                         }`}>
                                                             <CheckCircle2 className="w-3.5 h-3.5" />
                                                         </div>
-                                                        <span>{feature.text}</span>
+                                                        <span className="leading-snug">{feature.text}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                             
                                             <Link 
                                                 to="/signup" 
-                                                className={`block w-full text-center py-5 font-black rounded-3xl transition-all shadow-xl uppercase text-[10px] tracking-widest ${
+                                                className={`block w-full text-center py-5 font-black rounded-[24px] transition-all shadow-xl uppercase text-[10px] tracking-widest active:scale-95 ${
                                                     isPro
-                                                    ? 'bg-brand-primary text-brand-dark shadow-brand-primary/20 hover:scale-105'
-                                                    : isPayAsYouGo
-                                                    ? 'bg-white text-orange-600 shadow-orange-900/20 hover:bg-slate-50'
+                                                    ? 'bg-brand-primary text-brand-dark shadow-brand-primary/30 hover:shadow-brand-primary/50'
                                                     : 'bg-brand-dark text-white shadow-brand-dark/20 hover:bg-black'
                                                 }`}
                                             >
-                                                {plan.cta || 'Get Started'}
+                                                Plan Details
                                             </Link>
                                         </div>
                                     );
-                                })
-                        )}
+                                })}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </section>

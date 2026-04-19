@@ -3,12 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Loader, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, Database, Pencil, IndianRupee } from 'lucide-react';
+import { Search, Plus, Loader, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, Database, Pencil, IndianRupee, ShieldAlert, AlertTriangle, Zap } from 'lucide-react';
 import { toast } from 'react-toastify';
+import OutOfTokensModal from '../components/OutOfTokensModal';
 import { generateLabId, generateBatchIds } from '../utils/idGenerator';
 
 const Bookings = () => {
-  const { userData, activeLabId } = useAuth();
+  const { userData, activeLabId, subscription, currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [bookings, setBookings] = useState([]);
@@ -38,6 +39,7 @@ const Bookings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [bookingToDelete, setBookingToDelete] = useState(null);
   const [selectedTestsBooking, setSelectedTestsBooking] = useState(null);
+  const [showTokenModal, setShowTokenModal] = useState(false);
 
   // Date Filters
   const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -74,9 +76,17 @@ const Bookings = () => {
     const pid = params.get('patientId');
     
     if (shouldAutoOpen === 'true' && pid && activeLabId) {
-      setNewBooking(prev => ({ ...prev, patientId: pid }));
-      setIsEditing(false);
-      setShowAddModal(true);
+      // --- PAY AS YOU GO ENFORCEMENT ---
+      const isPayAsYouGo = subscription?.plan === 'pay_as_you_go';
+      const balance = subscription?.tokenBalance || 0;
+      if (isPayAsYouGo && balance <= 0) {
+        setShowTokenModal(true);
+      } else {
+        setNewBooking(prev => ({ ...prev, patientId: pid }));
+        setIsEditing(false);
+        setShowAddModal(true);
+      }
+      
       // Clean URL
       navigate('/bookings', { replace: true });
     }
@@ -326,6 +336,16 @@ const Bookings = () => {
 
   const handleAddBooking = async (e) => {
     e.preventDefault();
+
+    // --- PAY AS YOU GO ENFORCEMENT ---
+    const isPayAsYouGo = subscription?.plan === 'pay_as_you_go';
+    const balance = subscription?.tokenBalance || 0;
+    
+    if (isPayAsYouGo && balance <= 0) {
+      setShowTokenModal(true);
+      return;
+    }
+
     if (!activeLabId) {
       toast.error("Please select a laboratory first.");
       return;
@@ -623,6 +643,15 @@ const Bookings = () => {
               alert("Super Admin: Please select a Laboratory from the top navigation dropdown to create a booking.");
               return;
             }
+
+            // --- PAY AS YOU GO ENFORCEMENT ---
+            const isPayAsYouGo = subscription?.plan === 'pay_as_you_go';
+            const balance = subscription?.tokenBalance || 0;
+            if (isPayAsYouGo && balance <= 0) {
+              setShowTokenModal(true);
+              return;
+            }
+
             setShowAddModal(true);
           }}
           disabled={!activeLabId && userData?.role === 'SuperAdmin'}
@@ -871,36 +900,36 @@ const Bookings = () => {
       {/* Modern Booking Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-2 sm:p-4 z-[200] backdrop-blur-3xl animate-in fade-in duration-300">
-          <div className="bg-white rounded-[32px] sm:rounded-[48px] shadow-3xl max-w-6xl w-full p-4 sm:p-10 overflow-hidden relative border border-white/20 flex flex-col max-h-[96vh]">
-            <button onClick={exitModal} className="absolute top-3 sm:top-8 right-3 sm:right-8 p-2 sm:p-3 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
-              <X className="w-5 h-5 sm:w-7 sm:h-7" />
+          <div className="bg-white rounded-[28px] sm:rounded-[40px] shadow-3xl max-w-5xl w-full p-4 sm:p-8 overflow-hidden relative border border-white/20 flex flex-col max-h-[96vh]">
+            <button onClick={exitModal} className="absolute top-3 sm:top-6 right-3 sm:right-6 p-2 sm:p-2 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             
-            <div className="mb-4 sm:mb-10 flex items-center gap-3 sm:gap-6 shrink-0">
-              <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl sm:rounded-[28px] flex items-center justify-center shadow-xl rotate-6 shrink-0 transition-all ${isEditing ? 'bg-amber-500 shadow-amber-500/20' : 'bg-brand-primary shadow-brand-primary/20'}`}>
-                {isEditing ? <Pencil className="w-5 h-5 sm:w-8 sm:h-8 text-white" /> : <Calendar className="w-5 h-5 sm:w-8 sm:h-8 text-white" />}
+            <div className="mb-4 sm:mb-8 flex items-center gap-3 sm:gap-5 shrink-0">
+              <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-[22px] flex items-center justify-center shadow-xl rotate-6 shrink-0 transition-all ${isEditing ? 'bg-amber-500 shadow-amber-500/20' : 'bg-brand-primary shadow-brand-primary/20'}`}>
+                {isEditing ? <Pencil className="w-5 h-5 sm:w-7 sm:h-7 text-white" /> : <Calendar className="w-5 h-5 sm:w-7 sm:h-7 text-white" />}
               </div>
               <div>
-                <h2 className="text-xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">
+                <h2 className="text-xl sm:text-3xl font-black text-brand-dark tracking-tighter uppercase leading-none">
                   {isEditing ? 'Modify Booking' : 'New Entry'}
                 </h2>
-                <p className="text-slate-400 font-bold text-[9px] sm:text-[13px] uppercase tracking-[0.2em] mt-1.5 sm:mt-2 leading-none">
+                <p className="text-slate-400 font-bold text-[9px] sm:text-[12px] uppercase tracking-[0.2em] mt-1.5 sm:mt-1.5 leading-none">
                   {isEditing ? `Editing Order: ${editingBookingId}` : `${userData?.labId} Standard Order`}
                 </p>
               </div>
             </div>
             
-            <form onSubmit={isEditing ? handleUpdateBooking : handleAddBooking} className="flex flex-col lg:flex-row gap-4 sm:gap-8 max-h-[85vh] min-h-[400px]">
+            <form onSubmit={isEditing ? handleUpdateBooking : handleAddBooking} className="flex flex-col lg:flex-row gap-3 sm:gap-6 max-h-[85vh] min-h-[400px]">
               {/* Left Column: Inputs */}
-              <div className="flex-[1.4] space-y-4 sm:space-y-8 overflow-y-auto custom-scrollbar pr-2 sm:pr-6 pb-6 lg:border-r border-slate-50">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
+              <div className="flex-[1.4] space-y-3 sm:space-y-5 overflow-y-auto custom-scrollbar pr-2 sm:pr-6 pb-6 lg:border-r border-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">1. Select Patient</label>
+                    <label className="block text-[10px] sm:text-[11px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-1 sm:mb-1.5 ml-2">1. Select Patient</label>
                     <div className="relative group">
                       <select 
                         required 
                         disabled={isEditing}
-                        className={`w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300 ${isEditing ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
+                        className={`w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300 ${isEditing ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
                         value={newBooking.patientId} 
                         onChange={e => !isEditing && setNewBooking({...newBooking, patientId: e.target.value})}
                       >
@@ -914,9 +943,9 @@ const Bookings = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">2. Referrer</label>
+                    <label className="block text-[10px] sm:text-[11px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-1 sm:mb-1.5 ml-2">2. Referrer</label>
                     <div className="relative group">
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
+                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
                         value={newBooking.doctorId} onChange={e => setNewBooking({...newBooking, doctorId: e.target.value})}
                       >
                         <option value="">SELF / DIRECT VISIT</option>
@@ -929,9 +958,9 @@ const Bookings = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">3. Priority</label>
+                    <label className="block text-[10px] sm:text-[11px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-1 sm:mb-1.5 ml-2">3. Priority</label>
                     <div className="relative group">
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] py-3 sm:py-4 px-4 sm:px-6 text-[14px] sm:text-[15px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
+                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-[13px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
                         value={newBooking.urgency} onChange={e => setNewBooking({...newBooking, urgency: e.target.value})}
                       >
                         <option>Routine</option>
@@ -946,22 +975,22 @@ const Bookings = () => {
                 </div>
 
               <div className="lg:col-span-2">
-                <label className="block text-[11px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-3 sm:mb-4 ml-2">4. Select Tests</label>
-                <div className="mb-4 sm:mb-6 relative group">
-                  <div className="absolute inset-y-0 left-0 pl-5 sm:pl-6 flex items-center pointer-events-none group-focus-within:text-brand-primary transition-colors text-slate-400">
-                    <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+                <label className="block text-[11px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">4. Select Tests</label>
+                <div className="mb-2 sm:mb-3 relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 sm:pl-5 flex items-center pointer-events-none group-focus-within:text-brand-primary transition-colors text-slate-400">
+                    <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
                   <input 
                     type="text" 
                     placeholder="Search master catalog..." 
                     value={testSearchQuery}
                     onChange={(e) => setTestSearchQuery(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-[16px] sm:rounded-[20px] pl-12 sm:pl-16 pr-4 sm:pr-6 py-3 sm:py-4 text-[13px] sm:text-[14px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all placeholder:text-slate-400 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] pl-10 sm:pl-12 pr-4 sm:pr-5 py-1.5 sm:py-2 text-xs sm:text-[13px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all placeholder:text-slate-400 shadow-sm"
                   />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4 p-2 sm:p-4 min-h-[140px] max-h-[250px] overflow-y-auto bg-slate-50/30 rounded-[28px] sm:rounded-[36px] border border-slate-100 shadow-inner">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-1.5 sm:gap-2 p-2 sm:p-2.5 min-h-[140px] max-h-[180px] overflow-y-auto bg-slate-50/30 rounded-[16px] sm:rounded-[22px] border border-slate-100 shadow-inner">
                   {tests.filter(t => t.testName?.toLowerCase().includes(testSearchQuery.toLowerCase())).map(t => (
-                    <label key={t.id} className={`flex items-center p-3 sm:p-4 rounded-[18px] sm:rounded-[22px] border-2 transition-all cursor-pointer group relative overflow-hidden ${newBooking.testIds.includes(t.id) ? 'bg-brand-dark border-brand-dark text-white shadow-xl shadow-brand-dark/30' : 'bg-white border-transparent text-slate-600 hover:border-brand-primary/30 shadow-sm'}`}>
+                    <label key={t.id} className={`flex items-center p-2 sm:p-2.5 rounded-[12px] sm:rounded-[14px] border-2 transition-all cursor-pointer group relative overflow-hidden ${newBooking.testIds.includes(t.id) ? 'bg-brand-dark border-brand-dark text-white shadow-xl shadow-brand-dark/30' : 'bg-white border-transparent text-slate-600 hover:border-brand-primary/30 shadow-sm'}`}>
                       <input 
                         type="checkbox" 
                         className="hidden"
@@ -973,9 +1002,9 @@ const Bookings = () => {
                           calculateTotal(ids);
                         }}
                       />
-                      <span className="text-[11px] font-black uppercase tracking-tight relative z-10">{t.testName}</span>
-                      <div className="ml-auto mr-4 text-[11px] font-black opacity-70 relative z-10 tabular-nums">₹{t.price}</div>
-                      {newBooking.testIds.includes(t.id) && <div className="absolute top-0 right-0 w-8 h-8 bg-brand-primary rounded-bl-[22px] flex items-center justify-center p-1.5 shadow-lg"><CheckCircle className="w-4 h-4 text-white relative -top-0.5 -right-0.5" /></div>}
+                      <span className="text-[10px] font-black uppercase tracking-tight relative z-10">{t.testName}</span>
+                      <div className="ml-auto mr-4 text-[10px] font-black opacity-70 relative z-10 tabular-nums">₹{t.price}</div>
+                      {newBooking.testIds.includes(t.id) && <div className="absolute top-0 right-0 w-6 h-6 bg-brand-primary rounded-bl-[16px] flex items-center justify-center p-1 shadow-lg"><CheckCircle className="w-3 h-3 text-white relative -top-0.5 -right-0.5" /></div>}
                     </label>
                   ))}
                 </div>
@@ -984,32 +1013,32 @@ const Bookings = () => {
 
             {/* Right Column: Billing & Notes Sidebar */}
               <div className="flex-1 flex flex-col gap-3 sm:gap-4">
-                <div className="bg-brand-dark p-4 sm:p-6 rounded-[28px] sm:rounded-[36px] space-y-3 sm:space-y-4 shadow-3xl shadow-brand-dark/20 relative overflow-hidden shrink-0">
+                <div className="bg-brand-dark p-4 sm:p-5 rounded-[24px] sm:rounded-[28px] space-y-2.5 sm:space-y-3 shadow-3xl shadow-brand-dark/20 relative overflow-hidden shrink-0">
                   <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-brand-primary/10 blur-[60px] sm:blur-[80px] rounded-full"></div>
                   <div className="relative z-10">
-                    <div className="flex justify-between items-center mb-2 sm:mb-4">
+                    <div className="flex justify-between items-center mb-1.5 sm:mb-3">
                       <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Subtotal</span>
-                      <span className="font-black text-brand-light text-base sm:text-lg tabular-nums">₹{newBooking.subtotal || 0}</span>
+                      <span className="font-black text-brand-light text-base sm:text-base tabular-nums">₹{newBooking.subtotal || 0}</span>
                     </div>
-                    <div className="space-y-1 mb-3 sm:mb-5">
-                      <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">Discount (₹)</label>
+                    <div className="space-y-0.5 mb-2 sm:mb-4">
+                      <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-0.5">Discount (₹)</label>
                       <input 
                         type="number" 
                         disabled={!userData?.permissions?.can_apply_discounts && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin'}
-                        className={`w-full bg-white/5 border border-white/10 rounded-[12px] sm:rounded-[16px] p-2.5 sm:p-3 text-[13px] sm:text-[14px] font-black text-white outline-none focus:ring-4 focus:ring-brand-primary/30 transition-all tabular-nums ${(!userData?.permissions?.can_apply_discounts && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        className={`w-full bg-white/5 border border-white/10 rounded-[10px] sm:rounded-[14px] p-2 sm:p-2.5 text-[13px] sm:text-[13px] font-black text-white outline-none focus:ring-4 focus:ring-brand-primary/30 transition-all tabular-nums ${(!userData?.permissions?.can_apply_discounts && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') ? 'opacity-30 cursor-not-allowed' : ''}`}
                         placeholder="0"
                         value={newBooking.discount} onChange={e => handleDiscountChange(e.target.value)}
                       />
                     </div>
-                    <div className="pt-3 sm:pt-4 border-t border-white/10 flex justify-between items-end">
-                      <div className="text-left py-0.5 sm:py-1">
-                        <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-0.5 sm:mb-1">Total</p>
-                        <p className="text-xl sm:text-2xl font-black text-white tracking-tighter tabular-nums">₹{newBooking.totalAmount || 0}</p>
+                    <div className="pt-2 sm:pt-3 border-t border-white/10 flex justify-between items-end">
+                      <div className="text-left py-0.5 sm:py-0.5">
+                        <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-0.5 sm:mb-0.5">Total</p>
+                        <p className="text-lg sm:text-xl font-black text-white tracking-tighter tabular-nums">₹{newBooking.totalAmount || 0}</p>
                       </div>
-                      <div className="text-right flex flex-col items-end gap-0.5 sm:gap-1">
+                      <div className="text-right flex flex-col items-end gap-0.5 sm:gap-0.5">
                          <p className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">Paid</p>
                          <input type="number" 
-                           className="w-16 sm:w-20 bg-transparent border-b-2 border-brand-primary py-0 text-right text-lg sm:text-xl font-black text-brand-primary outline-none focus:bg-brand-primary/10 transition-all tabular-nums"
+                           className="w-16 sm:w-20 bg-transparent border-b-2 border-brand-primary py-0 text-right text-base sm:text-lg font-black text-brand-primary outline-none focus:bg-brand-primary/10 transition-all tabular-nums"
                            value={newBooking.paidAmount} onChange={e => setNewBooking({...newBooking, paidAmount: parseFloat(e.target.value) || 0})}
                          />
                       </div>
@@ -1017,20 +1046,20 @@ const Bookings = () => {
                   </div>
                 </div>
 
-                <div className="bg-brand-light/20 p-4 sm:p-5 rounded-[28px] sm:rounded-[32px] border border-brand-primary/10 space-y-1 sm:space-y-2 shrink-0">
+                <div className="bg-brand-light/20 p-3 sm:p-4 rounded-[20px] sm:rounded-[24px] border border-brand-primary/10 space-y-1 sm:space-y-1 shrink-0">
                    <label className="block text-[10px] font-black text-brand-dark/50 uppercase tracking-[0.3em] ml-2">Observations & History</label>
                    <textarea 
-                     className="w-full bg-white/60 border border-slate-100 rounded-[16px] sm:rounded-[20px] p-3 sm:p-4 text-[12px] font-bold text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 h-16 sm:h-20 resize-none shadow-inner transition-all"
+                     className="w-full bg-white/60 border border-slate-100 rounded-[12px] sm:rounded-[16px] p-2.5 sm:p-3 text-[12px] font-bold text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 h-12 sm:h-16 resize-none shadow-inner transition-all"
                      placeholder="Notes, symptoms..."
                      value={newBooking.notes} onChange={e => setNewBooking({...newBooking, notes: e.target.value})}
                    ></textarea>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:gap-3 mt-auto pt-2">
+                <div className="flex flex-col gap-2 sm:gap-2.5 mt-auto pt-1">
                     <button 
                       type="submit" 
                       disabled={isSaving} 
-                      className={`w-full py-3.5 sm:py-4.5 rounded-[20px] sm:rounded-[22px] text-[11px] font-black uppercase tracking-[0.3em] transition-all border border-white/10 group flex items-center justify-center gap-3 ${
+                      className={`w-full py-2.5 sm:py-3.5 rounded-[16px] sm:rounded-[20px] text-[11px] font-black uppercase tracking-[0.3em] transition-all border border-white/10 group flex items-center justify-center gap-3 ${
                         isSaving 
                           ? 'bg-brand-dark/80 cursor-not-allowed text-white/50' 
                           : isEditing 
@@ -1054,7 +1083,7 @@ const Bookings = () => {
                         </>
                       )}
                     </button>
-                    <button type="button" onClick={exitModal} className="w-full py-2.5 sm:py-3.5 bg-slate-50 text-slate-400 rounded-[14px] sm:rounded-[18px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
+                    <button type="button" onClick={exitModal} className="w-full py-2 sm:py-2.5 bg-slate-50 text-slate-400 rounded-[12px] sm:rounded-[14px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
                 </div>
               </div>
             </form>
@@ -1139,8 +1168,13 @@ const Bookings = () => {
            </div>
         </div>
       )}
+      <OutOfTokensModal 
+        isOpen={showTokenModal} 
+        onClose={() => setShowTokenModal(false)} 
+      />
     </>
   );
 };
 
 export default Bookings;
+

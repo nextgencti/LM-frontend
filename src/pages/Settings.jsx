@@ -152,11 +152,20 @@ const Settings = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 1. Update primary lab profile
       await updateDoc(doc(db, 'labs', targetLabId), {
         ...labData,
         updatedAt: serverTimestamp()
       });
-      // Also update subscriptions if needed, but here we focus on lab profile
+
+      // 2. Sync with subscriptions collection (for Super Admin Dashboard visibility)
+      if (labData.labName) {
+        await updateDoc(doc(db, 'subscriptions', targetLabId), {
+          labName: labData.labName,
+          updatedAt: serverTimestamp()
+        }).catch(err => console.warn("Sync with subscriptions failed:", err));
+      }
+
       toast.success("Settings saved successfully!");
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -904,7 +913,7 @@ const Settings = () => {
                       {subData && (
                         <div className="flex items-center gap-4 bg-slate-50 px-6 py-4 rounded-[24px] border border-slate-100">
                           <div className="text-right">
-                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">License Expires In</p>
+                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Subscription expires in</p>
                              <p className="text-sm font-black text-brand-dark">
                                 {subData.expiryDate ? (
                                   `${Math.ceil((new Date(subData.expiryDate) - new Date()) / (1000 * 60 * 60 * 24))} Days Remaining`
@@ -930,7 +939,7 @@ const Settings = () => {
                                     <Crown className="w-8 h-8 text-brand-dark" />
                                  </div>
                                  <div>
-                                    <h4 className="text-3xl font-black uppercase tracking-tighter">Plan: {subData.plan?.toUpperCase() || 'BASIC'}</h4>
+                                    <h4 className="text-3xl font-black uppercase tracking-tighter">Plan: {subData.plan?.replace(/_/g, ' ') || 'BASIC'}</h4>
                                     <p className="text-brand-primary text-[10px] font-black uppercase tracking-[0.3em]">Status: {subData.status || 'Active'}</p>
                                  </div>
                               </div>

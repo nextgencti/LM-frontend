@@ -4,9 +4,11 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { 
   Users, Stethoscope, FileText, Calendar, 
-  TrendingUp, IndianRupee, Clock, CheckCircle2 
+  TrendingUp, IndianRupee, Clock, CheckCircle2,
+  Zap, PlusCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import OutOfTokensModal from '../components/OutOfTokensModal';
 
 const Dashboard = () => {
   const { userData, subscription, activeLabId, labFullName } = useAuth();
@@ -21,6 +23,7 @@ const Dashboard = () => {
     pendingReports: 0
   });
   const [loading, setLoading] = useState(true);
+  const [showTokenModal, setShowTokenModal] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -111,34 +114,34 @@ const Dashboard = () => {
   const StatCard = ({ title, value, icon: Icon, gradient, onClick }) => (
     <div 
       onClick={onClick}
-      className="relative bg-white p-4 rounded-[22px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.07)] transition-all duration-300 cursor-pointer group overflow-hidden"
+      className="relative bg-white p-3.5 rounded-[22px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.07)] transition-all duration-300 cursor-pointer group overflow-hidden"
     >
       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-[0.03] rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700`}></div>
       
       <div className="flex justify-between items-start relative z-10">
-        <div className={`p-4 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg shadow-blue-900/10 group-hover:scale-110 transition-transform duration-500`}>
-          <Icon className="w-6 h-6 text-white" />
+        <div className={`p-3 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg shadow-blue-900/10 group-hover:scale-110 transition-transform duration-500`}>
+          <Icon className="w-5 h-5 text-white" />
         </div>
         <div className="flex flex-col items-end shrink-0">
-          <p className="text-[10px] sm:text-[12px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
-          <h3 className="text-xl sm:text-2xl font-black text-slate-800 mt-0.5 tabular-nums">{value}</h3>
+          <p className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
+          <h3 className="text-lg sm:text-xl font-black text-slate-800 mt-0.5 tabular-nums">{value}</h3>
         </div>
       </div>
       
-      <div className="mt-4 flex items-center text-[12px] font-black text-slate-300 uppercase tracking-widest relative z-10 group-hover:text-slate-500 transition-colors">
+      <div className="mt-3 flex items-center text-[11px] font-black text-slate-300 uppercase tracking-widest relative z-10 group-hover:text-slate-500 transition-colors uppercase">
         View <TrendingUp className="w-2.5 h-2.5 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-brand-light/20 px-4 sm:px-6 lg:px-10 py-10 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-brand-light/20 px-4 sm:px-5 lg:px-8 py-6 animate-in fade-in duration-700">
       <div className="max-w-7xl mx-auto w-full">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-6">
           <div className="md:max-w-xl">
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tighter flex items-center flex-wrap gap-x-3 gap-y-2">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter flex items-center flex-wrap gap-x-3 gap-y-2">
               {isSuperAdmin ? (
                 <span className="text-brand-dark">Admin <span className="text-brand-primary">Overview</span></span>
               ) : (() => {
@@ -170,11 +173,11 @@ const Dashboard = () => {
           </div>
           
           {subscription && (
-            <div className={`px-5 py-2.5 rounded-2xl text-[12px] font-black tracking-[0.2em] flex items-center shadow-md border-2 ${
+            <div className={`px-4 py-2 rounded-2xl text-[11px] font-black tracking-[0.2em] flex items-center shadow-md border-2 ${
               subscription.status === 'active' ? 'bg-white text-brand-primary border-brand-primary/10' : 'bg-rose-50 text-rose-600 border-rose-100'
             }`}>
-              <div className={`w-2.5 h-2.5 rounded-full mr-3 ${subscription.status === 'active' ? 'bg-brand-primary shadow-[0_0_12px_rgba(155,207,131,0.5)]' : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]'}`}></div>
-              {subscription.status.toUpperCase()} LICENSE
+              <div className={`w-2 h-2 rounded-full mr-2.5 ${subscription.status === 'active' ? 'bg-brand-primary shadow-[0_0_12px_rgba(155,207,131,0.5)]' : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]'}`}></div>
+              {subscription.status.toUpperCase()} PAY AS YOU GO
             </div>
           )}
         </div>
@@ -213,44 +216,44 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Service List */}
-          <div className="lg:col-span-2 bg-white rounded-[40px] shadow-[0_20px_60px_rgb(0,0,0,0.02)] border border-slate-100 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-brand-dark flex items-center tracking-tight">
-                <div className="w-9 h-9 rounded-xl bg-brand-light flex items-center justify-center mr-4 shadow-sm border border-brand-primary/10">
-                  <CheckCircle2 className="w-5 h-5 text-brand-primary" />
+          <div className="lg:col-span-2 bg-white rounded-[32px] shadow-[0_20px_60px_rgb(0,0,0,0.02)] border border-slate-100 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-brand-dark flex items-center tracking-tight">
+                <div className="w-8 h-8 rounded-xl bg-brand-light flex items-center justify-center mr-3 shadow-sm border border-brand-primary/10">
+                  <CheckCircle2 className="w-4 h-4 text-brand-primary" />
                 </div>
                 Quick Access
               </h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               <div 
                 onClick={() => navigate('/tests')}
-                className="group flex items-center justify-between p-5 bg-brand-light/30 rounded-[28px] border border-transparent hover:border-brand-primary/30 hover:bg-white hover:shadow-2xl hover:shadow-brand-primary/10 transition-all duration-500 cursor-pointer overflow-hidden relative"
+                className="group flex items-center justify-between p-4 bg-brand-light/30 rounded-[24px] border border-transparent hover:border-brand-primary/30 hover:bg-white hover:shadow-2xl hover:shadow-brand-primary/10 transition-all duration-500 cursor-pointer overflow-hidden relative"
               >
                 <div className="flex items-center relative z-10">
-                  <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center mr-4 shadow-sm group-hover:bg-brand-primary group-hover:text-white transition-all duration-500 group-hover:rotate-6">
-                    <FileText className="w-5 h-5 text-brand-primary group-hover:text-white" />
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center mr-3 shadow-sm group-hover:bg-brand-primary group-hover:text-white transition-all duration-500 group-hover:rotate-6">
+                    <FileText className="w-4 h-4 text-brand-primary group-hover:text-white" />
                   </div>
                   <div>
-                    <p className="text-base font-black text-brand-dark">Tests</p>
-                    <p className="text-[12px] text-slate-400 font-bold uppercase tracking-[0.2em]">{stats.tests} Available</p>
+                    <p className="text-sm font-black text-brand-dark">Tests</p>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em]">{stats.tests} Available</p>
                   </div>
                 </div>
                 <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/5 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700"></div>
               </div>
-
+    
               <div 
                 onClick={() => navigate('/doctors')}
-                className="group flex items-center justify-between p-5 bg-slate-50 rounded-[28px] border border-transparent hover:border-brand-secondary/30 hover:bg-white hover:shadow-2xl hover:shadow-brand-secondary/10 transition-all duration-500 cursor-pointer overflow-hidden relative"
+                className="group flex items-center justify-between p-4 bg-slate-50 rounded-[24px] border border-transparent hover:border-brand-secondary/30 hover:bg-white hover:shadow-2xl hover:shadow-brand-secondary/10 transition-all duration-500 cursor-pointer overflow-hidden relative"
               >
                 <div className="flex items-center relative z-10">
-                  <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center mr-4 shadow-sm group-hover:bg-brand-secondary group-hover:text-white transition-all duration-500 group-hover:-rotate-6">
-                    <Stethoscope className="w-5 h-5 text-brand-secondary group-hover:text-white" />
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center mr-3 shadow-sm group-hover:bg-brand-secondary group-hover:text-white transition-all duration-500 group-hover:-rotate-6">
+                    <Stethoscope className="w-4 h-4 text-brand-secondary group-hover:text-white" />
                   </div>
                   <div>
-                    <p className="text-base font-black text-brand-dark">Doctors</p>
-                    <p className="text-[12px] text-slate-400 font-bold uppercase tracking-[0.2em]">{stats.doctors} Registered</p>
+                    <p className="text-sm font-black text-brand-dark">Doctors</p>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em]">{stats.doctors} Registered</p>
                   </div>
                 </div>
                 <div className="absolute top-0 right-0 w-24 h-24 bg-brand-secondary/5 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700"></div>
@@ -259,41 +262,64 @@ const Dashboard = () => {
           </div>
 
           {/* Premium Subscription Card */}
-          <div className="relative group overflow-hidden bg-brand-dark rounded-[40px] shadow-2xl p-8 text-white min-h-[320px]">
+          <div className="relative group overflow-hidden bg-brand-dark rounded-[32px] shadow-2xl p-6 text-white min-h-[280px]">
             <div className="absolute top-0 right-0 w-80 h-80 bg-brand-primary/20 blur-[100px] rounded-full -mr-40 -mt-40"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-secondary/10 blur-[80px] rounded-full -ml-32 -mb-32"></div>
             
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black tracking-tighter">License Details</h2>
-                <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xl border border-white/10 group-hover:rotate-12 transition-transform duration-500">
-                   <TrendingUp className="w-6 h-6 text-brand-light" />
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-black tracking-tighter">Subscription details</h2>
+                <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-xl border border-white/10 group-hover:rotate-12 transition-transform duration-500">
+                   <TrendingUp className="w-5 h-5 text-brand-light" />
                 </div>
               </div>
               
-              <div className="space-y-6 flex-grow">
-                <div className="p-5 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md">
-                  <p className="text-slate-400 text-[12px] uppercase tracking-[0.3em] font-black mb-2 opacity-60">Current Plan</p>
-                  <p className="text-3xl font-black capitalize tracking-tight text-brand-light">{subscription?.plan || 'Standard'}</p>
+              <div className="space-y-4 flex-grow">
+                <div className="flex gap-3">
+                  <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
+                    <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-black mb-1 opacity-60">Plan</p>
+                    <p className="text-xl font-black uppercase tracking-tight text-brand-light">{subscription?.plan?.replace(/_/g, ' ') || 'Standard'}</p>
+                  </div>
+                  {subscription?.plan === 'pay_as_you_go' && (
+                    <div className="flex-1 p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 backdrop-blur-md relative overflow-hidden group/token">
+                      <Zap className="absolute -right-2 -bottom-2 w-12 h-12 text-amber-500/10 group-hover/token:scale-110 transition-transform" />
+                      <p className="text-amber-500/60 text-[10px] uppercase tracking-[0.3em] font-black mb-1">Tokens</p>
+                      <p className="text-2xl font-black tracking-tight text-amber-400 tabular-nums">{subscription?.tokenBalance || 0}</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-4 px-2">
-                  <div className="w-12 h-12 rounded-2xl bg-brand-light/10 flex items-center justify-center border border-brand-light/20 shadow-inner">
-                    <Clock className="w-6 h-6 text-brand-light" />
+                  <div className="w-10 h-10 rounded-xl bg-brand-light/10 flex items-center justify-center border border-brand-light/20 shadow-inner">
+                    <Clock className="w-5 h-5 text-brand-light" />
                   </div>
                   <div>
-                    <p className="text-slate-500 text-[12px] uppercase tracking-widest font-black opacity-60">Valid Until</p>
-                    <p className="text-xl font-black tracking-tighter tabular-nums text-white lg:text-lg xl:text-xl">{formatDate(subscription?.expiryDate)}</p>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-widest font-black opacity-60 leading-none mb-1">Valid Until</p>
+                    <p className="text-lg font-black tracking-tighter tabular-nums text-white">{formatDate(subscription?.expiryDate)}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="mt-8">
-                <button className="w-full bg-brand-light text-brand-dark font-black py-4 rounded-[22px] hover:shadow-[0_20px_40px_rgba(238,250,189,0.3)] hover:-translate-y-1 transition-all duration-300 transform active:scale-95 text-base uppercase tracking-widest">
+              <div className="mt-4 flex flex-col gap-2.5">
+                {subscription?.plan === 'pay_as_you_go' && (
+                  <button 
+                    onClick={() => setShowTokenModal(true)}
+                    className="w-full bg-amber-500 text-white font-black py-3 rounded-[18px] hover:shadow-[0_20px_40px_rgba(245,158,11,0.3)] hover:-translate-y-1 transition-all duration-300 transform active:scale-95 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                  >
+                    <PlusCircle className="w-4.5 h-4.5" />
+                    Buy Tokens
+                  </button>
+                )}
+                <button className="w-full bg-white/10 text-white border border-white/10 font-black py-2.5 rounded-[14px] hover:bg-white/20 transition-all duration-300 transform active:scale-95 text-[10px] uppercase tracking-widest">
                   Upgrade Plan
                 </button>
               </div>
             </div>
+            
+            <OutOfTokensModal 
+              isOpen={showTokenModal} 
+              onClose={() => setShowTokenModal(false)} 
+            />
           </div>
         </div>
       </div>
