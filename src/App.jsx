@@ -78,12 +78,14 @@ const Layout = ({ children }) => {
       
       {/* Mobile Header (Top Bar) */}
       <header className="md:hidden bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
-          <div className="w-10 h-10 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1">
-            <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
-          </div>
-          <h1 className="text-xl font-black bg-clip-text text-brand-dark tracking-tighter uppercase">
-            Lab <span className="text-brand-primary">Mitra</span>
-          </h1>
+          <Link to="/dashboard" className="flex items-center gap-3 active:scale-95 transition-transform group">
+            <div className="w-10 h-10 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1 group-hover:shadow-brand-primary/20">
+              <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
+            </div>
+            <h1 className="text-xl font-black bg-clip-text text-brand-dark tracking-tighter uppercase group-hover:text-brand-primary transition-colors">
+              Lab <span className="text-brand-primary group-hover:text-brand-dark transition-colors">Mitra</span>
+            </h1>
+          </Link>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 bg-slate-50 rounded-xl text-brand-dark hover:bg-slate-100 transition-colors"
@@ -107,14 +109,17 @@ const Layout = ({ children }) => {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-4 border-b border-slate-50 flex items-center justify-between">
-          <div className="flex items-center space-x-3 group cursor-pointer">
+          <Link 
+            to={userData?.role === 'SuperAdmin' ? (activeLabId ? '/dashboard' : '/superadmin') : '/dashboard'} 
+            className="flex items-center space-x-3 group cursor-pointer active:scale-95 transition-transform"
+          >
             <div className="w-10 h-10 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden flex items-center justify-center p-1.5 transition-all duration-500 group-hover:shadow-brand-primary/20 group-hover:scale-105 group-hover:rotate-3">
               <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-2xl font-black text-brand-dark tracking-tighter uppercase transition-colors group-hover:text-brand-primary">
               Lab <span className="text-brand-primary group-hover:text-brand-dark transition-colors">Mitra</span>
             </h1>
-          </div>
+          </Link>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-brand-dark">
             <X className="h-5 w-5" />
           </button>

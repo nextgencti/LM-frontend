@@ -21,11 +21,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
   // Standardized QR Data for Verification & Direct Access
   const qrUrl = reportData.viewToken 
     ? `${window.location.origin}/v/${reportData.viewToken}`
-    : JSON.stringify({ 
-        id: report.bookingId || report.id, 
-        patient: report.patientName, 
-        status: 'Verified' 
-      });
+    : `${window.location.origin}/v/legacy?id=${report.bookingId || report.id}`;
   
   const QRCodeComponent = (QRCode && QRCode.default) ? QRCode.default : QRCode;
   
