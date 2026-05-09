@@ -217,7 +217,7 @@ const Dashboard = () => {
         <div className="flex justify-between items-center py-4 gap-4">
           <div>
             <h1 className="text-xl font-bold text-brand-dark flex items-center gap-2">
-              Hello, {userData?.firstName || userData?.displayName?.split(' ')[0] || 'Sanjay'} 👋
+              Hello, {userData?.firstName || userData?.name?.split(' ')[0] || currentUser?.displayName?.split(' ')[0] || 'Admin'} 👋
             </h1>
             <p className="text-slate-500 font-semibold text-[11px]">Welcome back! Overview of {labFullName || 'your lab'} today.</p>
           </div>
