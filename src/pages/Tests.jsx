@@ -2,23 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, setDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Loader, FileText, Trash2, Edit3, ChevronRight, FlaskConical, Beaker, CheckCircle, ChevronDown, Upload, Download, Layers, FolderPlus, X, Zap, Folder, Search, Copy } from 'lucide-react';
+import { Plus, Loader, FileText, Trash2, Edit3, ChevronRight, ChevronLeft, FlaskConical, Beaker, CheckCircle, ChevronDown, Upload, Download, Layers, FolderPlus, X, Zap, Folder, Search, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 /* ─── Tiny reusable primitives ───────────────────────────────────────────── */
 const Label = ({ children }) => (
-  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider ml-1">{children}</label>
+  <label className="block text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider mb-1.5 ml-1">{children}</label>
 );
 const Input = ({ className = '', ...props }) => (
   <input
-    className={`w-full px-4 py-2.5 bg-slate-50/50 border border-slate-100 rounded-xl text-sm font-bold text-brand-dark outline-none focus:border-brand-primary/30 focus:ring-4 focus:ring-brand-primary/10 transition-all placeholder:text-slate-300 shadow-inner ${className}`}
+    className={`w-full px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[13px] font-bold text-[#1F2937] outline-none focus:border-[#1E2A5A]/30 focus:ring-4 focus:ring-[#1E2A5A]/10 transition-all placeholder:text-[#98A2B3] shadow-sm ${className}`}
     {...props}
   />
 );
 const Select = ({ className = '', children, ...props }) => (
   <select
-    className={`w-full px-4 py-2.5 bg-slate-50/50 border border-slate-100 rounded-xl text-sm font-bold text-brand-dark outline-none focus:border-brand-primary/30 focus:ring-4 focus:ring-brand-primary/10 transition-all appearance-none cursor-pointer shadow-inner ${className}`}
+    className={`w-full px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[13px] font-bold text-[#1F2937] outline-none focus:border-[#1E2A5A]/30 focus:ring-4 focus:ring-[#1E2A5A]/10 transition-all appearance-none cursor-pointer shadow-sm ${className}`}
     {...props}
   >
     {children}
@@ -26,9 +26,9 @@ const Select = ({ className = '', children, ...props }) => (
 );
 const SectionTag = ({ color = 'blue', children }) => {
   const colors = {
-    blue: 'bg-brand-secondary/10 text-brand-secondary border-brand-secondary/20',
-    purple: 'bg-brand-dark text-white border-brand-dark',
-    green: 'bg-brand-primary/10 text-brand-primary border-brand-primary/20',
+    blue: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    purple: 'bg-[#1E2A5A] text-white border-[#1E2A5A]',
+    green: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     amber: 'bg-amber-50 text-amber-600 border-amber-100',
   };
   return (
@@ -42,13 +42,20 @@ const SectionTag = ({ color = 'blue', children }) => {
 const Tests = () => {
   const { userData, activeLabId } = useAuth();
   const isSuperAdmin = userData?.role === 'SuperAdmin';
+  const isLabAdmin   = userData?.role === 'LabAdmin';
+  const canEditFull  = isSuperAdmin || isLabAdmin;
   const [tests, setTests]     = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const csvInputRef = React.useRef(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const [testForm, setTestForm] = useState({
     testCode: '', testName: '', category: 'Hematology',
@@ -70,7 +77,8 @@ const Tests = () => {
   const [showParamLibraryMenu, setShowParamLibraryMenu] = useState(false);
   const paramSearchInputRef = React.useRef(null);
 
-  useEffect(() => { if (showModal && isSuperAdmin) fetchMasterParams(); }, [showModal]);
+  useEffect(() => { if (showModal && canEditFull) fetchMasterParams(); }, [showModal]);
+
 
   const fetchMasterParams = async () => {
     try {
@@ -151,6 +159,15 @@ const Tests = () => {
       return nameMatch || codeMatch || categoryMatch;
     });
   }, [tests, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, rowsPerPage]);
+
+  const paginatedTests = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredTests.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredTests, currentPage, rowsPerPage]);
 
   const getParamCount = (test) =>
     test.groups?.length
@@ -527,132 +544,125 @@ const Tests = () => {
   /* ─── RENDER ──────────────────────────────────────────────────────────── */
   return (
     <>
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-        <div className="flex items-center gap-5">
-          <div className="p-3 bg-brand-light rounded-2xl shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
-            <FlaskConical className="w-8 h-8 text-brand-primary" />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 px-1">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-[#1E2A5A] rounded-2xl shadow-xl shadow-[#1E2A5A]/20 rotate-3 transition-transform hover:rotate-0 hover:scale-110">
+            <FlaskConical className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter uppercase leading-none">Catalog</h1>
-            <p className="text-slate-500 mt-2 font-medium text-sm sm:text-base italic">Diagnostic Architecture & Protocol Schema</p>
+            <h1 className="text-[24px] font-bold text-[#1F2937] tracking-tight leading-tight">Test Catalog</h1>
+            <p className="text-[#7B8794] text-[11px] font-bold uppercase tracking-[0.2em] mt-1 opacity-70">Laboratory Diagnostic Protocol Repository</p>
           </div>
         </div>
-        {isSuperAdmin && (
+        {canEditFull && (
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-            <button onClick={handleDownloadSampleCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-100 text-slate-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:border-brand-primary/30 transition-all shadow-sm">
+            <button onClick={handleDownloadSampleCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#E5E7EB] text-[#4B5563] rounded-xl text-[12px] font-bold hover:bg-[#F9FAFB] transition-all shadow-sm">
               <Download className="w-4 h-4" /> <span>Sample</span>
             </button>
-            <button onClick={() => csvInputRef.current?.click()} disabled={csvImporting} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-brand-secondary/10 border border-brand-secondary/20 text-brand-secondary rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-brand-secondary/20 transition-all shadow-sm">
+            <button onClick={() => csvInputRef.current?.click()} disabled={csvImporting} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-[12px] font-bold hover:bg-indigo-100 transition-all shadow-sm">
               {csvImporting ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>} <span>Import</span>
             </button>
-            <button onClick={() => { resetForm(); setShowModal(true); }} className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-brand-dark text-white rounded-[22px] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-brand-secondary transition-all shadow-xl shadow-brand-dark/10 active:scale-95 group">
-              <Plus className="w-4 h-4 text-brand-primary group-hover:rotate-90 transition-transform" /> New Test
+            <button onClick={() => { resetForm(); setShowModal(true); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold tracking-wide hover:scale-[1.02] transition-all shadow-lg shadow-[#1E2A5A]/20 active:scale-95 group">
+              <Plus className="w-4 h-4 text-white group-hover:rotate-90 transition-transform" /> New Test
             </button>
           </div>
         )}
       </div>
 
-      {/* Sticky Filters Header */}
-      <div className="sticky top-0 z-[20] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
-        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
-          
-          {/* Left Side: Search Bar */}
-          <div className="relative flex-grow w-full lg:max-w-2xl group">
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
-            </div>
-            <input type="text"
-              className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-[12px] font-black text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
-              placeholder="Search by test name, code or category..." value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} />
-          </div>
+      {/* Search and Filters Header */}
+      <div className="flex flex-col lg:flex-row gap-3 mb-6">
+        <div className="flex-[2] relative group max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+          <input type="text"
+            className="w-full pl-11 pr-6 py-2.5 bg-white border border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A]/20 transition-all font-bold text-[13px] text-[#1F2937] outline-none placeholder:text-[#98A2B3] shadow-sm"
+            placeholder="Search by test name, code or category..." value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
 
-          {/* Right Side: Quick Stats / Status Filters */}
-          <div className="flex flex-wrap items-center gap-2.5 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 -mb-1">
+          <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E5E7EB] rounded-xl shadow-sm h-10 shrink-0">
             {[
               { id: 'active', label: 'Active', color: 'bg-emerald-500', count: statusCounts.Active },
               { id: 'inactive', label: 'Inactive', color: 'bg-rose-500', count: statusCounts.Inactive },
               { id: 'All', label: 'All Tests', color: 'bg-slate-400', count: statusCounts.All }
             ].map((btn) => (
-              <div key={btn.id} className="flex items-center gap-2.5 px-4 py-2 bg-slate-50 border border-slate-100 rounded-[18px] transition-all whitespace-nowrap">
-                <div className={`w-1.5 h-1.5 rounded-full ${btn.color} shadow-sm`}></div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{btn.label}</span>
-                <span className="text-[10px] font-black px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-brand-dark tabular-nums shadow-sm">{btn.count}</span>
+              <div key={btn.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F8FAFC] transition-all whitespace-nowrap h-full border border-transparent hover:border-[#E5E7EB]">
+                <div className={`w-1.5 h-1.5 rounded-full ${btn.color}`}></div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#64748B]">{btn.label}</span>
+                <span className="text-[9px] font-black px-1.5 py-0.5 bg-white border border-[#E5E7EB] rounded-md tabular-nums text-[#1F2937]">{btn.count}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100" style={{ maxHeight: 'calc(100vh - 360px)' }}>
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-center">
-            <Loader className="w-12 h-12 animate-spin text-brand-primary mb-4" />
-            <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Hydrating Catalog...</p>
+          <div className="py-24 text-center">
+            <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-5" />
+            <p className="text-[11px] font-bold text-[#98A2B3] uppercase tracking-[0.3em]">Hydrating Catalog...</p>
           </div>
         ) : tests.length === 0 ? (
-          <div className="py-20 text-center">
-            <Beaker className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-            <p className="text-slate-500 font-bold uppercase tracking-widest text-[12px]">Catalog Empty</p>
+          <div className="py-32 text-center">
+            <div className="w-20 h-20 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 transition-transform hover:rotate-12">
+              <Beaker className="w-8 h-8 text-slate-200" />
+            </div>
+            <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Catalog Empty</p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-[#f1f5f9] sticky top-0 z-[20] border-b border-slate-200">
+          <table className="w-full border-collapse">
+            <thead className="border-y border-slate-100">
               <tr>
-                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Test Name / ID</th>
-                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Category</th>
-                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Base Price</th>
-                <th className="px-10 py-6 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Status</th>
-                <th className="px-10 py-6 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Action Control</th>
+                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-left text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Test Name / ID</th>
+                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-center text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Category</th>
+                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-center text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Base Price</th>
+                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-center text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Status</th>
+                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-right text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-50">
-                {filteredTests.map((test) => (
-                  <tr key={test.id} className="hover:bg-brand-light/10 transition-colors group/row">
-                    <td className="px-10 py-6">
+            <tbody className="divide-y divide-slate-50">
+                {paginatedTests.map((test) => (
+                  <tr key={test.id} className="hover:bg-slate-50/40 transition-all group relative">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-brand-light/40 rounded-xl border border-brand-primary/10">
-                          <Zap className="w-4 h-4 text-brand-primary" />
+                        <div className="p-2 bg-[#F3F4F6] rounded-xl text-[#1E2A5A]">
+                          <Zap className="w-4 h-4" />
                         </div>
                         <div>
-                          <div className="text-[14px] font-black text-brand-dark tracking-tight leading-none mb-1.5 uppercase">{test.testName}</div>
-                          <div className="text-[11px] font-black text-brand-secondary uppercase tracking-[0.1em]">CODE: {test.testCode}</div>
+                          <div className="text-[14px] font-semibold text-[#1F2937] leading-tight mb-0.5">{test.testName}</div>
+                          <div className="text-[11px] font-medium text-[#7B8794] uppercase tracking-wider">{test.testCode}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-10 py-6 text-center text-[12px] font-black text-slate-500 uppercase tracking-wide">{test.category}</td>
-                    <td className="px-10 py-6 text-center text-[12px] font-black text-brand-dark tabular-nums">₹{parseFloat(test.price||0).toLocaleString()}</td>
-                    <td className="px-10 py-6 text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <div className={`w-2 h-2 rounded-full shadow-sm ${test.status === 'inactive' ? 'bg-rose-500 shadow-rose-500/50' : 'bg-brand-primary animate-pulse shadow-brand-primary/50'}`} />
-                        <span className="text-[12px] font-black text-brand-dark uppercase tracking-wide">
-                          {test.status === 'inactive' ? 'Inactive' : 'Active'}
-                        </span>
-                      </div>
+                    <td className="px-6 py-4 text-center text-[12px] font-semibold text-[#4B5563]">{test.category}</td>
+                    <td className="px-6 py-4 text-center text-[13px] font-bold text-[#1F2937] tabular-nums">₹{parseFloat(test.price||0).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+                        test.status === 'inactive' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {test.status === 'inactive' ? 'Inactive' : 'Active'}
+                      </span>
                     </td>
-                    <td className="px-10 py-6 text-right">
-                      <div className="flex items-center justify-end gap-3 transition-all">
-                        {/* Clone Button — LabAdmin और SuperAdmin दोनों के लिए */}
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         {userData?.role !== 'Staff' && (test.labId === 'GLOBAL' || test.isGlobal) && (
                           <button
                             onClick={() => handleCloneTest(test)}
                             title="Clone as local lab copy"
-                            className="p-3 bg-indigo-50 text-indigo-500 rounded-xl hover:bg-indigo-500 hover:text-white transition-all border border-indigo-100 hover:border-transparent group/clone"
+                            className="p-2 bg-[#F3F4F6] text-[#4B5563] rounded-xl hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm group/clone"
                           >
-                            <Copy className="w-4 h-4 group-hover/clone:scale-110 transition-transform" />
+                            <Copy className="w-4 h-4" />
                           </button>
                         )}
-                        {/* Edit Button */}
-                        <button onClick={() => { setTestForm({...test, groups: test.groups || []}); setShowModal(true); }} className="p-3 bg-brand-light text-brand-dark rounded-xl hover:bg-brand-primary hover:text-white transition-all">
+                        <button onClick={() => { setTestForm({...test, groups: test.groups || []}); setShowModal(true); }} className="p-2 bg-[#F3F4F6] text-[#4B5563] rounded-xl hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm">
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        {/* Delete — STRICTLY SuperAdmin Only */}
-                        {userData?.role === 'SuperAdmin' && (
-                          <button onClick={() => handleDeleteTest(test.id)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all">
+                        {(isSuperAdmin || (isLabAdmin && test.labId === activeLabId)) && (
+                          <button onClick={() => handleDeleteTest(test.id)} className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
@@ -664,70 +674,129 @@ const Tests = () => {
             </table>
         )}
       </div>
+
+      <div className="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 px-2 pb-8">
+        <div className="flex items-center gap-4">
+          <p className="text-[13px] font-medium text-[#7B8794]">
+            Showing <span className="text-[#1F2937]">{(currentPage - 1) * rowsPerPage + 1} - {Math.min(currentPage * rowsPerPage, filteredTests.length)}</span> of <span className="text-[#1F2937]">{filteredTests.length}</span> Records
+          </p>
+          <div className="h-4 w-px bg-[#E5E7EB] hidden md:block" />
+          <select 
+             className="bg-white border border-[#E5E7EB] px-3 py-1.5 rounded-lg text-[13px] font-semibold text-[#7B8794] outline-none cursor-pointer hover:border-[#1E2A5A] transition-all"
+             value={rowsPerPage}
+             onChange={e => setRowsPerPage(parseInt(e.target.value))}
+           >
+             <option value={5}>5 / page</option>
+             <option value={10}>10 / page</option>
+             <option value={20}>20 / page</option>
+             <option value={50}>50 / page</option>
+           </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+             <button 
+               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+               disabled={currentPage === 1}
+               className="p-2 bg-white border border-[#E5E7EB] rounded-xl text-[#98A2B3] hover:text-[#1E2A5A] hover:border-[#1E2A5A] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+              >
+               <ChevronLeft className="w-5 h-5" />
+             </button>
+             
+             <div className="flex items-center gap-1.5">
+               {[...Array(Math.ceil(filteredTests.length / rowsPerPage))].map((_, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-9 h-9 rounded-xl text-[12px] font-semibold transition-all ${
+                      currentPage === i + 1 
+                        ? 'bg-[#1E2A5A] text-white shadow-lg shadow-[#1E2A5A]/20 scale-105' 
+                        : 'bg-white text-[#7B8794] hover:bg-[#F3F4F6] border border-[#E5E7EB]'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+               ))}
+             </div>
+
+             <button 
+               onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredTests.length / rowsPerPage), p + 1))}
+               disabled={currentPage === Math.ceil(filteredTests.length / rowsPerPage) || Math.ceil(filteredTests.length / rowsPerPage) === 0}
+               className="p-2 bg-white border border-[#E5E7EB] rounded-xl text-[#98A2B3] hover:text-[#1E2A5A] hover:border-[#1E2A5A] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+              >
+               <ChevronRight className="w-5 h-5" />
+             </button>
+        </div>
+      </div>
     </div>
 
       {/* ══════════════════════════════ MODAL ══════════════════════════════ */}
       {showModal && (
-        <div className="fixed inset-0 z-[200] bg-brand-dark/80 backdrop-blur-md flex items-start justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[200] bg-[#1F2937]/80 backdrop-blur-md flex items-start justify-center p-4 overflow-y-auto">
           <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-6xl my-6 flex flex-col overflow-hidden text-left animate-in zoom-in-95 duration-200">
 
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 sm:px-10 py-5 sm:py-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
-              <div className="flex items-center gap-4 sm:gap-5">
-                <div className="p-2 sm:p-3 bg-brand-primary rounded-2xl border border-brand-primary/20 shadow-sm rotate-3">
-                  <FlaskConical className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <div className="flex justify-between items-center px-8 py-6 border-b border-[#E5E7EB] bg-[#F9FAFB] shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[#1E2A5A] rounded-2xl shadow-lg shadow-[#1E2A5A]/20 rotate-3">
+                  <FlaskConical className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-black text-brand-dark uppercase tracking-tight leading-none">{testForm.id ? 'Edit Protocol' : 'New Configuration'}</h2>
-                  <p className="text-[9px] sm:text-[10px] text-brand-primary font-black uppercase tracking-[0.3em] mt-1.5 leading-none">{testForm.testName || 'Protocol setup'}</p>
+                  <h2 className="text-xl font-bold text-[#1F2937] tracking-tight">{testForm.id ? 'Edit Protocol' : 'New Configuration'}</h2>
+                  <p className="text-[12px] text-[#7B8794] font-medium mt-1">{testForm.testName || 'Protocol setup definition'}</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2.5 bg-white border border-slate-100 shadow-sm hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all text-slate-400">
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-white border border-[#E5E7EB] shadow-sm hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all text-[#98A2B3]">
+                <X className="w-6 h-6" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 sm:p-10 space-y-10 sm:space-y-12 overflow-y-auto flex-grow max-h-[85vh] custom-scrollbar bg-white">
+            <div className="p-8 space-y-10 overflow-y-auto flex-grow max-h-[85vh] custom-scrollbar bg-white">
 
               {/* ── 1. Details ── */}
               <section>
-                <SectionTag color="blue">1. Basic schema</SectionTag>
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">1. Basic schema</span>
+                  <div className="h-px bg-[#E5E7EB] flex-grow" />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
                     <Label>Test Code *</Label>
-                    <Input placeholder="CBC001" value={testForm.testCode} disabled={!isSuperAdmin} onChange={e => setTestForm({...testForm, testCode: e.target.value.toUpperCase()})} className="font-mono text-brand-primary font-bold"/>
+                    <Input placeholder="CBC001" value={testForm.testCode} disabled={!canEditFull} onChange={e => setTestForm({...testForm, testCode: e.target.value.toUpperCase()})} className="font-mono text-[#1E2A5A] font-bold"/>
+
                   </div>
                   <div className="col-span-2">
                     <Label>Test Name *</Label>
-                    <Input placeholder="Full Diagnostic Name" value={testForm.testName} disabled={!isSuperAdmin} onChange={e => setTestForm({...testForm, testName: e.target.value})}/>
+                    <Input placeholder="Full Diagnostic Name" value={testForm.testName} disabled={!canEditFull} onChange={e => setTestForm({...testForm, testName: e.target.value})}/>
+
                   </div>
                   <div>
                     <Label>Category</Label>
-                    <Select value={testForm.category} disabled={!isSuperAdmin} onChange={e => setTestForm({...testForm, category: e.target.value})}>
+                    <Select value={testForm.category} disabled={!canEditFull} onChange={e => setTestForm({...testForm, category: e.target.value})}>
                       {['Hematology','Biochemistry','Immunology','Microbiology','Serology','Histopathology','Cytology'].map(c=><option key={c}>{c}</option>)}
                     </Select>
                   </div>
                   <div>
                     <Label>Sample</Label>
-                    <Select value={testForm.sampleType} disabled={!isSuperAdmin} onChange={e => setTestForm({...testForm, sampleType: e.target.value})}>
+                    <Select value={testForm.sampleType} disabled={!canEditFull} onChange={e => setTestForm({...testForm, sampleType: e.target.value})}>
                       {['Whole Blood (EDTA)','Serum','Plasma','Urine','Stool','Sputum','CSF','Swab','Biopsy'].map(s=><option key={s}>{s}</option>)}
                     </Select>
                   </div>
                   <div>
                     <Label>Methodology</Label>
-                    <Select value={testForm.methodology} disabled={!isSuperAdmin} onChange={e => setTestForm({...testForm, methodology: e.target.value})}>
+                    <Select value={testForm.methodology} disabled={!canEditFull} onChange={e => setTestForm({...testForm, methodology: e.target.value})}>
                       <option value="">Select Method</option>
                       {['Automated', 'Semi-Automated', 'Manual', 'Slide Agglutination', 'ELISA', 'HPLC', 'CLIA', 'Nephelometry', 'PCR', 'Microscopy', 'Culture', 'Rapid Test', 'Other'].map(m=><option key={m}>{m}</option>)}
                     </Select>
                   </div>
                   <div>
                     <Label>TAT (Hrs)</Label>
-                    <Input placeholder="24 Hrs" value={testForm.tatHours} disabled={!isSuperAdmin} onChange={e => setTestForm({...testForm, tatHours: e.target.value})}/>
+                    <Input placeholder="24 Hrs" value={testForm.tatHours} disabled={!canEditFull} onChange={e => setTestForm({...testForm, tatHours: e.target.value})}/>
                   </div>
+
                   <div>
                     <Label>Price (₹) *</Label>
-                    <Input type="number" value={testForm.price} onChange={e => setTestForm({...testForm, price: parseFloat(e.target.value)})} className="text-brand-primary font-black"/>
+                    <Input type="number" value={testForm.price} onChange={e => setTestForm({...testForm, price: parseFloat(e.target.value)})} className="text-[#1E2A5A] font-bold"/>
                   </div>
                   <div>
                     <Label>Report Layout</Label>
@@ -740,28 +809,32 @@ const Tests = () => {
               </section>
 
 
-              {isSuperAdmin && (
+              {canEditFull && (
                 <>
+
                   {/* ── 2. Parameter Groups ── */}
                   <section>
-                    <SectionTag color="blue">2. Parameter Groups</SectionTag>
-                    <div className="space-y-5">
+                    <div className="flex items-center gap-3 mb-6">
+                      <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100 shadow-sm">2. Parameter Groups</span>
+                      <div className="h-px bg-[#E5E7EB] flex-grow" />
+                    </div>
+                    <div className="space-y-6">
                       <div className="flex gap-3">
                         <Input placeholder="Add logical group (e.g. CBC, Liver Profile)" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddGroup()}/>
-                        <button onClick={handleAddGroup} className="px-6 py-2 bg-brand-dark text-white rounded-xl text-xs font-bold uppercase flex items-center gap-2 hover:bg-brand-secondary transition-all shadow-lg active:scale-95 whitespace-nowrap">
-                          <FolderPlus className="w-4 h-4 text-brand-primary" /> Add
+                        <button onClick={handleAddGroup} className="px-6 py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold uppercase tracking-wide flex items-center gap-2 hover:scale-[1.02] transition-all shadow-lg shadow-[#1E2A5A]/20 active:scale-95 whitespace-nowrap">
+                          <FolderPlus className="w-4 h-4 text-white" /> Add Group
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-2.5">
                         {testForm.groups.map((group, idx) => (
                           <div key={idx} onClick={() => { setSelectedGroupIndex(idx); setSelectedParamIndex(-1); }}
-                            className={`px-4 py-2.5 rounded-xl border flex items-center gap-4 cursor-pointer transition-all ${selectedGroupIndex === idx ? 'bg-brand-dark border-brand-dark text-white shadow-xl shadow-brand-dark/10' : 'bg-white border-slate-100 text-slate-500 hover:border-brand-primary hover:bg-brand-primary/5'}`}>
+                            className={`px-4 py-2.5 rounded-xl border flex items-center gap-4 cursor-pointer transition-all ${selectedGroupIndex === idx ? 'bg-[#1E2A5A] border-[#1E2A5A] text-white shadow-xl shadow-[#1E2A5A]/20' : 'bg-white border-[#E5E7EB] text-[#7B8794] hover:border-[#1E2A5A] hover:bg-[#F3F4F6]'}`}>
                             <div className="flex items-center gap-3">
-                              <Folder className={`w-4 h-4 ${selectedGroupIndex === idx ? 'text-brand-primary/70' : 'text-slate-300'}`} />
+                              <Folder className={`w-4 h-4 ${selectedGroupIndex === idx ? 'text-white' : 'text-[#98A2B3]'}`} />
                               <span className="text-sm font-bold tracking-tight">{group.group_name}</span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-lg ${selectedGroupIndex === idx ? 'bg-brand-primary text-white' : 'bg-slate-100 text-slate-400'}`}>{group.parameters.length}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-lg ${selectedGroupIndex === idx ? 'bg-white/20 text-white' : 'bg-[#F3F4F6] text-[#7B8794]'}`}>{group.parameters.length}</span>
                             </div>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteGroup(idx); }} className={`p-1 rounded-lg transition-colors ${selectedGroupIndex === idx ? 'hover:bg-brand-secondary text-brand-primary/30' : 'hover:bg-rose-100 text-slate-300 hover:text-rose-600'}`}>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteGroup(idx); }} className={`p-1 rounded-lg transition-colors ${selectedGroupIndex === idx ? 'hover:bg-white/20 text-white' : 'hover:bg-rose-100 text-[#98A2B3] hover:text-rose-600'}`}>
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -774,18 +847,21 @@ const Tests = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     {/* ── 3. Params ── */}
                     <section>
-                      <SectionTag color="amber">3. Parameters {selectedGroupIndex >= 0 && `(${testForm.groups[selectedGroupIndex].group_name})`}</SectionTag>
+                      <div className="flex items-center gap-3 mb-6">
+                        <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">3. Parameters {selectedGroupIndex >= 0 && `(${testForm.groups[selectedGroupIndex].group_name})`}</span>
+                        <div className="h-px bg-[#E5E7EB] flex-grow" />
+                      </div>
                       {selectedGroupIndex === -1 ? (
-                        <div className="py-20 text-center border-2 border-dashed border-slate-50 rounded-3xl bg-slate-50/50">
-                          <Layers className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                          <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Select group above to manage parameters</p>
+                        <div className="py-20 text-center border border-[#E5E7EB] border-dashed rounded-3xl bg-[#F9FAFB]">
+                          <Layers className="w-10 h-10 text-[#D1D5DB] mx-auto mb-3" />
+                          <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider">Select group above to manage parameters</p>
                         </div>
                       ) : (
                         <div className="space-y-6">
-                           <div className="bg-slate-50/10 border border-brand-primary/10 rounded-2xl p-5 space-y-4 relative">
+                           <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-5 space-y-4 relative">
                               <Label>Search & Select from Master Library</Label>
                               <div className="relative group">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
                                 <Input 
                                   ref={paramSearchInputRef}
                                   placeholder="Type to search or click to view all..." 
@@ -795,10 +871,10 @@ const Tests = () => {
                                   className="pl-10"
                                 />
                                 {showParamLibraryMenu && (
-                                  <div className="absolute z-[300] left-0 right-0 mt-2 bg-white border border-slate-200 rounded-3xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar divide-y divide-slate-50 p-1">
-                                    <div className="flex justify-between items-center p-2 px-4 bg-slate-50/50 rounded-t-xl mb-1 sticky top-0 z-10">
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Parameter Library</span>
-                                      <button onClick={(e) => { e.stopPropagation(); setShowParamLibraryMenu(false); }} className="p-1 hover:bg-slate-200 rounded-lg text-slate-400">
+                                  <div className="absolute z-[300] left-0 right-0 mt-2 bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#F3F4F6] p-1">
+                                    <div className="flex justify-between items-center p-2 px-4 bg-[#F9FAFB] rounded-t-xl mb-1 sticky top-0 z-10">
+                                      <span className="text-[10px] font-bold text-[#98A2B3] uppercase tracking-widest">Parameter Library</span>
+                                      <button onClick={(e) => { e.stopPropagation(); setShowParamLibraryMenu(false); }} className="p-1 hover:bg-[#E5E7EB] rounded-lg text-[#98A2B3]">
                                         <X className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
@@ -814,34 +890,34 @@ const Tests = () => {
                                             e.preventDefault();
                                             handleSelectMasterParam(p);
                                           }} 
-                                          className="w-full text-left px-4 py-3 hover:bg-brand-primary/5 transition-colors flex items-center justify-between group rounded-xl">
+                                          className="w-full text-left px-4 py-3 hover:bg-[#F3F4F6] transition-colors flex items-center justify-between group rounded-xl">
                                           <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-brand-dark group-hover:text-brand-primary transition-colors">{p.name}</span>
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{p.code} <span className="text-slate-200 mx-1">|</span> {p.unit || 'No unit'}</span>
+                                            <span className="text-sm font-bold text-[#1F2937] group-hover:text-[#1E2A5A] transition-colors">{p.name}</span>
+                                            <span className="text-[10px] text-[#98A2B3] font-bold uppercase tracking-widest">{p.code} <span className="text-[#E5E7EB] mx-1">|</span> {p.unit || 'No unit'}</span>
                                           </div>
-                                          <Plus className="w-4 h-4 text-slate-200 group-hover:text-brand-primary transition-all group-active:scale-125" />
+                                          <Plus className="w-4 h-4 text-[#D1D5DB] group-hover:text-[#1E2A5A] transition-all group-active:scale-125" />
                                         </button>
                                       ))}
                                     {masterParams.length > 0 && masterParams.filter(p => !paramSearch || p.name?.toLowerCase().includes(paramSearch.toLowerCase()) || p.code?.toLowerCase().includes(paramSearch.toLowerCase())).length === 0 && (
-                                      <div className="p-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">No match found</div>
+                                      <div className="p-10 text-center text-[11px] font-bold text-[#98A2B3] uppercase tracking-wider">No match found</div>
                                     )}
                                   </div>
                                 )}
                               </div>
-                              <p className="text-[10px] text-slate-400 font-bold px-1 italic">Select from master catalog to add into this test.</p>
+                              <p className="text-[11px] text-[#7B8794] font-medium px-1 italic">Select from master catalog to add into this test.</p>
                            </div>
 
-                           <div className="max-h-80 overflow-y-auto border border-slate-100 rounded-2xl divide-y divide-slate-50 bg-white shadow-inner custom-scrollbar">
+                           <div className="max-h-80 overflow-y-auto border border-[#E5E7EB] rounded-2xl divide-y divide-[#F3F4F6] bg-white shadow-sm custom-scrollbar">
                               {testForm.groups[selectedGroupIndex].parameters.map((p, pi) => (
                                 <div key={pi} onClick={() => { setSelectedParamIndex(pi); setParamInput({...p}); setSelectedRuleIndex(-1); setRuleInput({ gender: 'Any', ageMin: 0, ageMax: 100, ageUnit: 'Years', normalRange: '', criticalLow: '', criticalHigh: '' }); }}
-                                  className={`px-5 py-3.5 flex items-center justify-between cursor-pointer group transition-all ${selectedParamIndex === pi ? 'bg-brand-light/30 border-l-4 border-brand-primary' : 'hover:bg-slate-50/50'}`}>
+                                  className={`px-5 py-4 flex items-center justify-between cursor-pointer group transition-all ${selectedParamIndex === pi ? 'bg-[#F3F4F6] border-l-4 border-[#1E2A5A]' : 'hover:bg-[#F9FAFB]'}`}>
                                   <div>
-                                    <div className="text-sm font-bold text-brand-dark">{p.name}</div>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2 mt-1">
-                                      <span>{p.code}</span> <span className="text-slate-200">|</span> <span>{p.unit || 'No unit'}</span>
+                                    <div className="text-sm font-bold text-[#1F2937]">{p.name}</div>
+                                    <div className="text-[11px] font-medium text-[#7B8794] uppercase flex items-center gap-2 mt-1">
+                                      <span>{p.code}</span> <span className="text-[#E5E7EB]">|</span> <span>{p.unit || 'No unit'}</span>
                                     </div>
                                   </div>
-                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(selectedGroupIndex, pi); }} className="p-2 text-slate-300 hover:text-rose-500 rounded-lg transition-all">
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(selectedGroupIndex, pi); }} className="p-2 text-[#98A2B3] hover:text-rose-500 rounded-lg transition-all">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
@@ -853,62 +929,65 @@ const Tests = () => {
 
                     {/* ── 4. Rules ── */}
                     <section>
-                      <SectionTag color="green">4. Rules {selectedParamIndex >= 0 && `(${testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].name})`}</SectionTag>
+                      <div className="flex items-center gap-3 mb-6">
+                        <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">4. Rules {selectedParamIndex >= 0 && `(${testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].name})`}</span>
+                        <div className="h-px bg-[#E5E7EB] flex-grow" />
+                      </div>
                       {selectedParamIndex === -1 ? (
-                        <div className="py-20 text-center border-2 border-dashed border-slate-50 rounded-3xl bg-slate-50/50">
-                          <Zap className="w-10 h-10 text-slate-100 mx-auto mb-3" />
-                          <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Select parameter to manage rules</p>
+                        <div className="py-20 text-center border border-[#E5E7EB] border-dashed rounded-3xl bg-[#F9FAFB]">
+                          <Zap className="w-10 h-10 text-[#D1D5DB] mx-auto mb-3" />
+                          <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider">Select parameter to manage rules</p>
                         </div>
                       ) : (
                         <div className="space-y-6">
-                           <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm border-t-2 border-t-brand-primary/10 space-y-5">
-                              <div className="grid grid-cols-4 gap-3">
+                           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm border-t-4 border-t-[#1E2A5A]/10 space-y-5">
+                              <div className="grid grid-cols-4 gap-4">
                                 <div><Label>Gender</Label><Select value={ruleInput.gender} onChange={e => setRuleInput({...ruleInput, gender: e.target.value})}><option>Any</option><option>Male</option><option>Female</option></Select></div>
                                 <div><Label>Min Age</Label><Input type="number" value={ruleInput.ageMin} onChange={e => setRuleInput({...ruleInput, ageMin: parseInt(e.target.value)})}/></div>
                                 <div><Label>Max Age</Label><Input type="number" value={ruleInput.ageMax} onChange={e => setRuleInput({...ruleInput, ageMax: parseInt(e.target.value)})}/></div>
                                 <div><Label>Unit</Label><Select value={ruleInput.ageUnit} onChange={e => setRuleInput({...ruleInput, ageUnit: e.target.value})}><option>Years</option><option>Months</option><option>Days</option></Select></div>
                                 <div className="col-span-2"><Label>Normal Range *</Label><Input placeholder="e.g. 13.5 - 17.5" value={ruleInput.normalRange} onChange={e => setRuleInput({...ruleInput, normalRange: e.target.value})} className="text-emerald-600 font-bold"/></div>
-                                <div><Label>Crit Low</Label><Input placeholder="L" value={ruleInput.criticalLow} onChange={e => setRuleInput({...ruleInput, criticalLow: e.target.value})} className="text-rose-400"/></div>
-                                <div><Label>Crit High</Label><Input placeholder="H" value={ruleInput.criticalHigh} onChange={e => setRuleInput({...ruleInput, criticalHigh: e.target.value})} className="text-rose-500"/></div>
+                                <div><Label>Crit Low</Label><Input placeholder="L" value={ruleInput.criticalLow} onChange={e => setRuleInput({...ruleInput, criticalLow: e.target.value})} className="text-rose-500 font-bold"/></div>
+                                <div><Label>Crit High</Label><Input placeholder="H" value={ruleInput.criticalHigh} onChange={e => setRuleInput({...ruleInput, criticalHigh: e.target.value})} className="text-rose-600 font-bold"/></div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-3">
                                 {selectedRuleIndex === -1 ? (
-                                  <button onClick={handleAddRule} className="flex-grow py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 hover:bg-emerald-700 shadow-lg active:scale-95">
+                                  <button onClick={handleAddRule} className="flex-grow py-2.5 bg-emerald-600 text-white rounded-xl text-[12px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-100 active:scale-95">
                                     <Plus className="w-4 h-4" /> Add Rule
                                   </button>
                                 ) : (
                                   <>
-                                    <button onClick={handleUpdateRule} disabled={!hasRuleChanged()} className="flex-grow py-2.5 bg-brand-dark text-white rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 hover:bg-brand-secondary">Update Rule</button>
-                                    <button onClick={handleClearRule} className="px-6 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-xs font-bold uppercase hover:bg-slate-200">Clear</button>
+                                    <button onClick={handleUpdateRule} disabled={!hasRuleChanged()} className="flex-grow py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 hover:scale-[1.02] disabled:opacity-50">Update Rule</button>
+                                    <button onClick={handleClearRule} className="px-6 py-2.5 bg-[#F3F4F6] text-[#7B8794] rounded-xl text-[12px] font-bold uppercase hover:bg-[#E5E7EB] hover:text-[#1F2937] transition-all">Clear</button>
                                   </>
                                 )}
                               </div>
                            </div>
 
-                           <div className="max-h-56 overflow-y-auto border border-slate-100 rounded-2xl bg-white shadow-inner overflow-x-auto custom-scrollbar">
-                              <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-50/50 border-b border-slate-100 sticky top-0">
+                           <div className="max-h-56 overflow-y-auto border border-[#E5E7EB] rounded-2xl bg-white shadow-sm overflow-x-auto custom-scrollbar">
+                              <table className="w-full text-left">
+                                <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB] sticky top-0">
                                   <tr>
-                                    <th className="p-3 font-bold text-slate-400 uppercase tracking-widest text-[9px]">Gen</th>
-                                    <th className="p-3 font-bold text-slate-400 uppercase tracking-widest text-[9px]">Age</th>
-                                    <th className="p-3 font-bold text-emerald-600 uppercase tracking-widest text-[9px]">Normal Range</th>
-                                    <th className="p-3"></th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Gender</th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Age Range</th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Normal Range</th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider text-right">Actions</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50 text-[10px] font-bold">
+                                <tbody className="divide-y divide-[#F3F4F6]">
                                   {testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].rules?.map((rule, idx) => (
                                     <tr key={idx} onClick={() => { setSelectedRuleIndex(idx); setRuleInput({...rule}); }}
-                                      className={`cursor-pointer transition-all ${selectedRuleIndex === idx ? 'bg-emerald-50 border-l-2 border-emerald-500' : 'hover:bg-slate-50/50'}`}>
-                                      <td className="p-3">{rule.gender.charAt(0)}</td>
-                                      <td className="p-3 whitespace-nowrap">{rule.ageMin}-{rule.ageMax} {rule.ageUnit.charAt(0)}</td>
-                                      <td className="p-3 text-emerald-600 font-bold">{rule.normalRange}</td>
-                                      <td className="p-3 text-right">
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteRule(idx); }} className="p-1.5 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      className={`cursor-pointer transition-all ${selectedRuleIndex === idx ? 'bg-emerald-50/50 border-l-4 border-emerald-500' : 'hover:bg-[#F9FAFB]'}`}>
+                                      <td className="px-5 py-3 text-[13px] font-bold text-[#1F2937]">{rule.gender}</td>
+                                      <td className="px-5 py-3 text-[13px] font-medium text-[#4B5563]">{rule.ageMin}-{rule.ageMax} {rule.ageUnit}</td>
+                                      <td className="px-5 py-3 text-[13px] font-bold text-emerald-600">{rule.normalRange}</td>
+                                      <td className="px-5 py-3 text-right">
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteRule(idx); }} className="p-1.5 text-[#98A2B3] hover:text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                                       </td>
                                     </tr>
                                   ))}
                                   {(!testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].rules?.length) && (
-                                    <tr><td colSpan={4} className="p-6 text-center text-slate-300 font-bold uppercase tracking-widest">No rules defined</td></tr>
+                                    <tr><td colSpan={4} className="p-10 text-center text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider">No rules defined for this parameter</td></tr>
                                   )}
                                 </tbody>
                               </table>
@@ -922,15 +1001,15 @@ const Tests = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0 select-none">
-              <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-primary" /> {testForm.groups?.length || 0} Groups</div>
+            <div className="px-8 py-5 border-t border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-between shrink-0 select-none">
+              <div className="flex items-center gap-4 text-[11px] text-[#7B8794] font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#1E2A5A]" /> {testForm.groups?.length || 0} Parameter Groups</div>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => setShowModal(false)} className="px-6 py-2.5 text-xs font-bold text-slate-500 uppercase hover:text-brand-dark transition-colors">Cancel</button>
-                <button onClick={handleCreateTest} disabled={saving} className="px-10 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl shadow-emerald-100 active:scale-95 disabled:opacity-50">
+                <button onClick={() => setShowModal(false)} className="px-6 py-2.5 text-[12px] font-bold text-[#7B8794] uppercase hover:text-[#1F2937] transition-colors">Cancel</button>
+                <button onClick={handleCreateTest} disabled={saving} className="px-10 py-2.5 bg-emerald-600 text-white rounded-xl text-[12px] font-bold uppercase tracking-wide hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100 active:scale-95 disabled:opacity-50">
                   {saving ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  {testForm.id ? 'Update Test Definition' : 'Publish Test'}
+                  {testForm.id ? 'Update Test' : 'Publish Test'}
                 </button>
               </div>
             </div>

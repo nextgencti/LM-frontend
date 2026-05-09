@@ -1,12 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+
 @theme {
-  --color-brand-light: #EEFABD;
-  --color-brand-primary: #9BCF83;
-  --color-brand-secondary: #6B85A8;
-  --color-brand-dark: #2D3250;
+  --color-brand-light: #F5F7FA;
+  --color-brand-primary: rgb(155, 207, 131);
+  --color-brand-secondary: #7B8794;
+  --color-brand-accent: #14B8A6;
+  --color-brand-dark: #1F2937;
+  --color-muted-label: #98A2B3;
   
-  --font-sans: "Inter", "Outfit", "system-ui", "sans-serif";
+  --font-sans: "Inter", "system-ui", "sans-serif";
 }
 @layer utilities {
   .hide-scrollbar::-webkit-scrollbar {
@@ -51,5 +55,20 @@
     background-image: radial-gradient(var(--color-brand-primary) 0.5px, transparent 0.5px);
     background-size: 24px 24px;
     opacity: 0.1;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
   }
 }

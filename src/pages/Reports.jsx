@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Loader, FileText, Eye, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, Clock, Mail, Zap, Bell, IndianRupee, Pencil } from 'lucide-react';
+import { Search, Loader, FileText, Eye, Printer, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, CheckCircle, Database, Clock, Mail, Zap, Bell, IndianRupee, Pencil, FileDown, MoreVertical, Calendar as CalendarIcon, Filter, RefreshCw, User, Download, Plus } from 'lucide-react';
 import ReportPreview from '../components/ReportPreview';
 import { toast } from 'react-toastify';
 
@@ -12,24 +12,34 @@ const getGroupStatus = (tests) => {
   const allDelivered = tests.every(t => t.status === 'Delivered');
   if (allDelivered) return 'Delivered';
   
-  const allFinalOrDelivered = tests.every(t => t.status === 'Final' || t.status === 'Delivered');
+  const allCancelled = tests.every(t => t.status === 'Cancelled');
+  if (allCancelled) return 'Cancelled';
+
+  const allFinalOrDelivered = tests.every(t => t.status === 'Final' || t.status === 'Delivered' || t.status === 'Cancelled');
   if (allFinalOrDelivered) return 'Final';
   
-  const anyProgress = tests.some(t => t.status === 'Final' || t.status === 'In Progress' || t.status === 'Delivered');
+  const anyProgress = tests.some(t => t.status === 'Final' || t.status === 'In Progress' || t.status === 'Delivered' || t.status === 'Processing' || t.status === 'Sample Collected');
   return anyProgress ? 'In Progress' : 'Pending';
 };
 
 const Reports = () => {
   const { currentUser, userData, activeLabId, subscription, checkFeature } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [reports, setReports] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Active'); 
+  const [doctorFilter, setDoctorFilter] = useState('All Doctors');
+  const [typeFilter, setTypeFilter] = useState('All Types');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [doctors, setDoctors] = useState([]);
+  
   const [selectedReport, setSelectedReport] = useState(null);
-  const [previewGroupId, setPreviewGroupId] = useState(null);
-  const [reportToDelete, setReportToDelete] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('Active'); // Default: Pending + In Progress
   const [focusedIndex, setFocusedIndex] = useState(null);
   const [editedResults, setEditedResults] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -42,6 +52,8 @@ const Reports = () => {
   const [paymentBooking, setPaymentBooking] = useState(null); // The booking document for the current quick payment
   const [isQuickPaying, setIsQuickPaying] = useState(false);
   const [isDeducting, setIsDeducting] = useState(null); // BillId of group being deducted
+  const [previewGroupId, setPreviewGroupId] = useState(null);
+  const [reportToDelete, setReportToDelete] = useState(null);
 
   // Helper to deduct 1 token for an action
   const deductTokenAction = async (actionName) => {
@@ -119,7 +131,12 @@ const Reports = () => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = [];
-      snapshot.forEach((d) => items.push({ id: d.id, ...d.data() }));
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.status !== 'Cancelled') {
+          items.push({ id: d.id, ...data });
+        }
+      });
       items.sort((a, b) => {
         const t = (v) => {
           if (!v) return 0;
@@ -136,6 +153,35 @@ const Reports = () => {
     return () => unsubscribe();
   }, [userData, activeLabId]);
 
+  // Fetch Bookings to cross-reference doctor names
+  useEffect(() => {
+    const labId = activeLabId || userData?.labId;
+    if (!labId) return;
+    const q = query(collection(db, 'bookings'), where('labId', '==', labId));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setBookings(items);
+    });
+    return () => unsubscribe();
+  }, [activeLabId, userData]);
+
+  // Fetch Doctors for filter
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      const labId = activeLabId || userData?.labId;
+      if (!labId) return;
+      try {
+        const q = query(collection(db, 'doctors'), where('labId', '==', labId));
+        const snap = await getDocs(q);
+        const docsList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setDoctors(docsList);
+      } catch (err) {
+        console.error("Error fetching doctors for filter:", err);
+      }
+    };
+    fetchDoctors();
+  }, [activeLabId, userData]);
+
   // --- PERSISTENCE: Restore pending payment from localStorage on mount ---
   useEffect(() => {
     const saved = localStorage.getItem('pending_payment_booking');
@@ -145,6 +191,18 @@ const Reports = () => {
       } catch (e) { console.error("Error restoring pending payment:", e); }
     }
   }, []);
+
+  // Handle URL parameters for filters (e.g. from Sidebar)
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      if (statusParam === 'all') setStatusFilter('All');
+      else if (statusParam === 'active') setStatusFilter('Active');
+      else if (['Pending', 'In Progress', 'Finalized', 'Delivered', 'Cancelled'].includes(statusParam)) {
+        setStatusFilter(statusParam);
+      }
+    }
+  }, [searchParams]);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -175,21 +233,42 @@ const Reports = () => {
     const map = {};
     reports.forEach((r) => {
       const key = r.billId || r.id;
+      // Cross-reference with bookings to find missing doctor info
+      const constructedBookingId = r.bookingId || (r.labId && r.bookingNo ? `${r.labId}_${r.bookingNo}` : null);
+      const booking = bookings.find(b => 
+        (constructedBookingId && b.id === constructedBookingId) ||
+        (r.bookingNo && b.bookingNo === r.bookingNo) || 
+        (r.billId && b.billId === r.billId) ||
+        (b.patientId === r.patientId && b.testNames?.includes(r.testName))
+      );
+      const doctorName = r.doctorName || r.referredBy || booking?.doctorName || 'SELF / DIRECT';
+
       if (!map[key]) {
         map[key] = {
           groupKey: key,
           billId: r.billId || key,
+          bookingNo: r.bookingNo || booking?.bookingNo,
+          bookingId: r.bookingId || booking?.id,
           patientName: r.patientName,
           patientAge: r.patientAge,
           patientGender: r.patientGender,
           patientId: r.patientId,
           labId: r.labId,
+          doctorName: doctorName,
           tests: [],
           createdAt: r.createdAt,
+          balance: 0,
+          totalAmount: 0,
         };
       }
       map[key].tests.push(r);
+      if (booking) {
+        map[key].balance = parseFloat(booking.balance || 0);
+        map[key].totalAmount = parseFloat(booking.totalAmount || 0);
+        map[key].paymentStatus = booking.paymentStatus || 'Unpaid';
+      }
       if (r.tokenDeducted) map[key].tokenDeducted = true;
+      if (r.totalAmount && map[key].totalAmount === 0) map[key].totalAmount = parseFloat(r.totalAmount);
     });
 
     return Object.values(map).map(group => {
@@ -213,89 +292,79 @@ const Reports = () => {
       };
       return getTime(b.createdAt) - getTime(a.createdAt);
     });
-  }, [reports]);
+  }, [reports, bookings]);
 
   // ─── Filter groups ────────────────────────────────────────────────────────
   const filteredGroups = useMemo(() => {
     return groupedReports.filter((g) => {
+      // Date Filter
+      if (dateRange.start || dateRange.end) {
+        const groupDate = g.createdAt?.toDate ? g.createdAt.toDate() : (g.createdAt?.seconds ? new Date(g.createdAt.seconds * 1000) : (g.createdAt ? new Date(g.createdAt) : null));
+        if (groupDate) {
+          if (dateRange.start) {
+            const start = new Date(dateRange.start);
+            start.setHours(0, 0, 0, 0);
+            if (groupDate < start) return false;
+          }
+          if (dateRange.end) {
+            const end = new Date(dateRange.end);
+            end.setHours(23, 59, 59, 999);
+            if (groupDate > end) return false;
+          }
+        }
+      }
+
       const nameMatch = g.patientName?.toLowerCase().includes(searchTerm.toLowerCase());
       const billMatch = g.billId?.toLowerCase().includes(searchTerm.toLowerCase());
       const testMatch = g.tests.some(t => t.testName?.toLowerCase().includes(searchTerm.toLowerCase()));
       if (!nameMatch && !billMatch && !testMatch) return false;
 
       const groupStatus = getGroupStatus(g.tests);
-      if (statusFilter === 'All Status') return true;
-      if (statusFilter === 'Active') return groupStatus === 'Pending' || groupStatus === 'In Progress' || groupStatus === 'Final';
-      return groupStatus === statusFilter;
+      
+      // Status Filter
+      let passStatus = true;
+      if (statusFilter !== 'All Status' && statusFilter !== 'All') {
+        if (statusFilter === 'Active') passStatus = groupStatus !== 'Delivered' && groupStatus !== 'Cancelled';
+        else if (statusFilter === 'In Progress') passStatus = groupStatus === 'Processing' || groupStatus === 'In Progress' || groupStatus === 'Sample Collected';
+        else if (statusFilter === 'Finalized') passStatus = groupStatus === 'Final' || groupStatus === 'Completed';
+        else passStatus = groupStatus === statusFilter;
+      }
+      if (!passStatus) return false;
+
+      // Doctor Filter
+      if (doctorFilter !== 'All Doctors') {
+        const normalize = (name) => (name || '').toUpperCase().replace(/^(DR\.?|PROF\.?|MR\.?|MS\.?|MRS\.?)\s+/i, '').trim();
+        const searchDoc = normalize(doctorFilter);
+        const groupDoc = normalize(g.doctorName);
+        
+        if (!groupDoc.includes(searchDoc)) return false;
+      }
+
+      return true;
     });
-  }, [groupedReports, searchTerm, statusFilter]);
+  }, [groupedReports, searchTerm, statusFilter, dateRange, doctorFilter]);
+
+  const paginatedGroups = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredGroups.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredGroups, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
 
   const statusCounts = useMemo(() => {
-    const counts = { Pending: 0, 'In Progress': 0, Final: 0, Delivered: 0, Total: groupedReports.length };
+    const counts = { Total: 0, Pending: 0, Processing: 0, Final: 0, Delivered: 0, Cancelled: 0 };
     groupedReports.forEach(g => {
+      counts.Total++;
       const s = getGroupStatus(g.tests);
-      if (counts[s] !== undefined) counts[s]++;
+      if (s === 'Pending') counts.Pending++;
+      else if (s === 'Processing' || s === 'In Progress' || s === 'Sample Collected') counts.Processing++;
+      else if (s === 'Final' || s === 'Completed') counts.Final++;
+      else if (s === 'Delivered') counts.Delivered++;
+      else if (s === 'Cancelled') counts.Cancelled++;
     });
     return counts;
   }, [groupedReports]);
 
-  // ─── Load results when a report is selected ───────────────────────────────
-  useEffect(() => {
-    if (!selectedReport) return;
-    const loadResults = async () => {
-      if (selectedReport.results && selectedReport.results.length > 0) {
-        setEditedResults([...selectedReport.results]);
-        return;
-      }
-      setFetchingMaster(true);
-      try {
-        let q;
-        if (userData?.role === 'SuperAdmin') {
-          q = query(collection(db, 'tests'), where('testName', '==', selectedReport.testName));
-        } else {
-          const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
-          q = query(collection(db, 'tests'), where('testName', '==', selectedReport.testName), where('labId', 'in', [labIdVal, 'GLOBAL']));
-        }
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const docs = snap.docs.map(d => d.data());
-          let testData = docs[0];
-          if (userData?.role !== 'SuperAdmin') {
-            const labIdVal = isNaN(activeLabId) ? activeLabId : String(activeLabId);
-            testData = docs.find(d => d.labId === labIdVal) || docs.find(d => d.labId === 'GLOBAL') || docs[0];
-          }
-          const gender = selectedReport.patientGender || 'Any';
-          const autoResults = [];
-          (testData.groups || []).forEach(group => {
-            (group.parameters || []).forEach(param => {
-              let bestRange = '';
-              if (param.rules?.length > 0) {
-                const rule = param.rules.find(r => (r.gender === gender || r.gender === 'Any') && r.normalRange);
-                bestRange = rule ? rule.normalRange : '';
-              }
-              autoResults.push({
-                parameter: param.name || 'Undefined',
-                value: '',
-                unit: param.unit || '',
-                range: bestRange,
-                dataType: param.dataType || 'Quantitative',
-                allowedOptions: param.allowedOptions || '',
-                groupName: group.name || group.group_name || 'General',
-              });
-            });
-          });
-          setEditedResults(autoResults);
-        } else {
-          setEditedResults([]);
-        }
-      } catch (err) {
-        console.error('Master Fallback Error:', err);
-      } finally {
-        setFetchingMaster(false);
-      }
-    };
-    loadResults();
-  }, [selectedReport]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleUpdateResultValue = (idx, val) => {
@@ -735,87 +804,107 @@ const Reports = () => {
       results: group.tests.flatMap(t => (t.results || []).map(r => ({ ...r, _testName: t.testName }))),
     };
   }, [previewGroupId, groupedReports]);
-
   // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <>
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
-
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark flex items-center tracking-tighter">
-            <div className="bg-brand-light p-2.5 sm:p-3 rounded-2xl sm:rounded-[22px] mr-4 sm:mr-5 shadow-sm border border-brand-primary/10 transition-transform hover:rotate-6">
-              <Activity className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
+    <div className="flex-1 flex flex-col min-h-0 font-sans animate-in fade-in duration-500">
+      <div className="max-w-full mx-auto w-full flex-1 flex flex-col overflow-hidden p-3 sm:p-4">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 shadow-sm transition-transform hover:scale-110">
+              <FileText className="w-5 h-5 text-[#1E2A5A]" />
             </div>
-            Reports
-          </h1>
-          <p className="text-slate-500 font-bold mt-2 sm:ml-20 text-[13px] sm:text-[15px] leading-relaxed">Grouped by patient booking. Enter results per test.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-end">
-          {/* Automation Status Badge */}
-          {labProfile?.reportSettings?.autoEmailNotify ? (
-            <div className={`flex items-center gap-3 px-5 py-2.5 rounded-full border shadow-sm transition-all ${subscription?.plan?.toLowerCase() === 'pro' ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
-              <Zap className={`w-4 h-4 ${subscription?.plan?.toLowerCase() === 'pro' ? 'text-teal-500 fill-teal-500' : 'text-amber-500'}`} />
-              <div className="flex flex-col leading-none">
-                <span className="text-[10px] font-black uppercase tracking-widest">Auto Notify: ON</span>
-                {subscription?.plan?.toLowerCase() !== 'pro' && (
-                  <span className="text-[8px] font-black uppercase text-amber-500/80 mt-1">Requires PRO Plan</span>
-                )}
-              </div>
+            <div>
+              <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight">Reports List</h1>
             </div>
-          ) : (
-             <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-slate-50 border border-slate-100 text-slate-400 select-none shadow-sm opacity-60">
-               <Bell className="w-4 h-4" />
-               <span className="text-[10px] font-black uppercase tracking-widest leading-none">Auto Notify: OFF</span>
-             </div>
-          )}
-
-          {/* Live Sync Badge */}
-          <div className="flex items-center gap-3 bg-brand-light/20 px-6 py-3 rounded-full border border-brand-primary/10 select-none shadow-sm h-fit">
-            <div className="w-2.5 h-2.5 bg-brand-primary rounded-full animate-pulse shadow-md shadow-brand-primary/50"></div>
-            <span className="text-[11px] font-black text-brand-dark uppercase tracking-[0.2em] leading-none">Live Sync Active</span>
           </div>
         </div>
-      </div>
 
-      {/* Sticky Filters Header */}
-      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
-        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-4 items-center">
+        {/* Compact Filter Row (Billing Style) */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           {/* Search Bar */}
-          <div className="relative flex-grow w-full group">
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
-            </div>
-            <input type="text"
-              className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
-              placeholder="Search by patient, bill ID, or test name..." value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} />
+          <div className="flex-1 min-w-[280px] relative group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Search name or mobile..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-10 bg-white border border-[#E5E7EB] rounded-xl pl-10 pr-4 text-[13px] font-bold text-[#1F2937] placeholder:text-[#98A2B3] outline-none focus:border-[#1E2A5A] focus:ring-4 focus:ring-[#1E2A5A]/5 transition-all shadow-sm"
+            />
           </div>
 
-          {/* Status Quick Filters */}
-          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto overflow-x-auto no-scrollbar">
+          {/* Doctor Filter */}
+          <div className="w-48 relative group">
+            <select 
+              value={doctorFilter}
+              onChange={(e) => setDoctorFilter(e.target.value)}
+              className="w-full h-10 bg-white border border-[#E5E7EB] rounded-xl pl-4 pr-10 text-[12px] font-bold text-[#1F2937] outline-none appearance-none cursor-pointer focus:border-[#1E2A5A] focus:ring-4 focus:ring-[#1E2A5A]/5 transition-all shadow-sm"
+            >
+              <option value="All Doctors">All Doctors</option>
+              {doctors.map(doc => (
+                <option key={doc.id} value={doc.name}>{doc.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] pointer-events-none group-focus-within:text-[#1E2A5A]" />
+          </div>
+
+          {/* Date Range Picker */}
+          <div className="flex items-center gap-2 bg-white px-3 py-0 rounded-xl border border-[#E5E7EB] shadow-sm h-10">
+            <CalendarIcon className="w-4 h-4 text-[#98A2B3]" />
+            <div className="flex items-center gap-1">
+              <input 
+                type="date" 
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] outline-none focus:ring-0 p-0 w-[95px] cursor-pointer"
+              />
+              <span className="text-[#E5E7EB]">-</span>
+              <input 
+                type="date" 
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] outline-none focus:ring-0 p-0 w-[95px] cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Global Reset */}
+          <button 
+            onClick={() => { setSearchTerm(''); setStatusFilter('Active'); setDoctorFilter('All Doctors'); setDateRange({ start: '', end: '' }); }}
+            className="flex items-center justify-center p-2.5 bg-white border border-[#E5E7EB] rounded-xl text-[#94A3B8] hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
+            title="Reset Filters"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Quick Filter Chips (Billing Style) */}
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 -mb-1 mb-5">
+          <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E5E7EB] rounded-xl shadow-sm h-10 shrink-0">
             {[
-              { id: 'Active', label: 'Active', color: 'bg-brand-primary', count: statusCounts.Pending + statusCounts['In Progress'] + statusCounts.Final },
-              { id: 'Pending', label: 'Pending', color: 'bg-amber-500', count: statusCounts.Pending },
-              { id: 'In Progress', label: 'In Progress', color: 'bg-indigo-500', count: statusCounts['In Progress'] },
-              { id: 'Final', label: 'Finalized', color: 'bg-emerald-500', count: statusCounts.Final },
-              { id: 'Delivered', label: 'Delivered', color: 'bg-emerald-600', count: statusCounts.Delivered },
-              { id: 'All Status', label: 'All', color: 'bg-slate-400', count: statusCounts.Total }
+              { id: 'All', label: 'All', color: 'bg-slate-400', count: statusCounts.Total },
+              { id: 'Active', label: 'Active', color: 'bg-blue-500', count: statusCounts.Total - statusCounts.Delivered },
+              { id: 'Pending', label: 'Pending', color: 'bg-orange-400', count: statusCounts.Pending },
+              { id: 'In Progress', label: 'Processing', color: 'bg-indigo-500', count: statusCounts.Processing },
+              { id: 'Finalized', label: 'Ready', color: 'bg-emerald-500', count: statusCounts.Final },
+              { id: 'Delivered', label: 'Delivered', color: 'bg-sky-500', count: statusCounts.Delivered }
             ].map((btn) => (
               <button
                 key={btn.id}
                 onClick={() => setStatusFilter(btn.id)}
-                className={`flex items-center gap-2.5 px-4 py-2 rounded-[18px] transition-all whitespace-nowrap group/btn ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap h-full ${
                   statusFilter === btn.id 
-                    ? 'bg-brand-dark text-white shadow-lg scale-[1.05] z-10' 
-                    : 'text-slate-500 hover:bg-slate-50'
+                    ? 'bg-[#1E2A5A] text-white shadow-sm' 
+                    : 'text-[#64748B] hover:bg-[#F8FAFC]'
                 }`}
               >
                 <div className={`w-1.5 h-1.5 rounded-full ${statusFilter === btn.id ? 'bg-white' : btn.color}`}></div>
-                <span className="text-[11px] font-black uppercase tracking-wider">{btn.label}</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg tabular-nums ${
-                  statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                <span className="text-[10px] font-black uppercase tracking-wider">{btn.label}</span>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md tabular-nums ${
+                  statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
                 }`}>
                   {btn.count}
                 </span>
@@ -823,332 +912,205 @@ const Reports = () => {
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Grouped Reports List - Scrollable Area */}
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0" style={{ maxHeight: 'calc(100vh - 340px)' }}>
-        <div className="space-y-4 pb-10">
-          {loading ? (
-            <div className="bg-white rounded-[40px] p-32 flex flex-col items-center justify-center border border-slate-100 shadow-sm">
-              <Loader className="w-12 h-12 animate-spin text-brand-primary mb-4" />
-              <p className="text-brand-dark/40 font-black uppercase text-[12px] tracking-[0.3em]">Loading reports...</p>
-            </div>
-          ) : filteredGroups.length === 0 ? (
-            <div className="bg-white rounded-[40px] p-32 text-center border border-slate-100 shadow-sm">
-              <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-              <p className="text-xl font-black text-brand-dark/30 uppercase tracking-[0.3em]">No reports found.</p>
-            </div>
-          ) : filteredGroups.map((group) => {
-          const isExpanded = expandedGroups.has(group.groupKey);
-          const groupStatus = getGroupStatus(group.tests);
-          const allFinal = groupStatus === 'Final' || groupStatus === 'Delivered';
-          const totalTests = group.tests.length;
-          const finalCount = group.tests.filter(t => t.status === 'Final' || t.status === 'Delivered').length;
 
-          return (
-            <div key={group.groupKey}
-              className={`bg-white rounded-[28px] border-y border-r transition-all duration-300 overflow-hidden ${
-                isExpanded 
-                  ? 'border-l-[6px] border-l-brand-primary border-brand-primary/20 bg-brand-light/5 shadow-[0_22px_70px_rgba(155,207,131,0.15)] scale-[1.005] z-10' 
-                  : 'border-l-4 border-l-transparent border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.002]'
-              }`}>
+        {/* High-Density Table Container */}
+        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col flex-1 overflow-hidden min-h-0">
+          <div className="overflow-y-auto flex-1 custom-scrollbar">
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 z-10 bg-[#F9FAFB]">
+                <tr className="border-b border-[#E5E7EB]">
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Report ID</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Patient Details</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Tests</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Doctor</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Report Date</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider text-center">Status</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Amount</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F3F4F6]">
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="px-6 py-20 text-center">
+                      <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-4" />
+                      <p className="text-[14px] font-medium text-[#7B8794]">Fetching reports...</p>
+                    </td>
+                  </tr>
+                ) : paginatedGroups.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="px-6 py-20 text-center">
+                      <FileText className="w-12 h-12 text-[#E5E7EB] mx-auto mb-4" />
+                      <p className="text-[16px] font-medium text-[#98A2B3]">No records matching your search</p>
+                    </td>
+                  </tr>
+                ) : paginatedGroups.map((group) => {
+                  const groupStatus = getGroupStatus(group.tests);
+                  const statusColors = {
+                    'Delivered': 'bg-[#ECFDF5] text-[#059669] border-[#D1FAE5]',
+                    'Final': 'bg-[#ECFDF5] text-[#059669] border-[#D1FAE5]',
+                    'In Progress': 'bg-[#FFFBEB] text-[#D97706] border-[#FEF3C7]',
+                    'Pending': 'bg-[#F9FAFB] text-[#6B7280] border-[#F3F4F6]',
+                    'Cancelled': 'bg-[#FEF2F2] text-[#DC2626] border-[#FEE2E2]'
+                  };
 
-              {/* Group Header Row */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 px-6 sm:px-8 py-5 sm:py-6 cursor-pointer" onClick={() => toggleGroup(group.groupKey)}>
-                
-                {/* ID + Mobile Status Row */}
-                <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className={`text-[10px] sm:text-[11px] font-black px-3 py-1.5 rounded-xl border uppercase tabular-nums whitespace-nowrap text-center shadow-sm transition-all duration-500 ${
-                      group.tests.some(t => t.paymentStatus === 'Unpaid')
-                        ? 'bg-rose-500 text-white border-rose-400 animate-[pulse_1s_cubic-bezier(0.4,0,0.6,1)_infinite] shadow-[0_0_15px_rgba(244,63,94,0.4)]'
-                        : 'text-brand-dark bg-brand-light/50 border-brand-primary/10'
-                    }`}>
-                      {group.billId}
-                    </div>
-                    {/* Edit Button - Icon only next to ID */}
-                    <button
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        const test0 = group.tests?.[0];
-                        const bId = test0?.bookingId || (test0?.labId && test0?.bookingNo ? `${test0.labId}_${test0.bookingNo}` : null);
-                        if (bId) navigate(`/bookings?edit=${bId}&from=reports`); 
-                      }}
-                      className="p-1.5 bg-amber-50 text-amber-500 rounded-lg border border-amber-100 hover:bg-amber-100 transition-all shadow-sm group/edit"
-                      title="Edit Booking"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className={`sm:hidden px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border whitespace-nowrap ${getStatusBadge(groupStatus)}`}>
-                    {groupStatus}
-                  </div>
-                </div>
-
-                {/* Patient Info */}
-                <div className="flex-grow min-w-0 w-full sm:w-auto">
-                  <div className="text-[15px] sm:text-[16px] font-black text-brand-dark uppercase tracking-tight leading-none mb-1">{group.patientName}</div>
-                  {group.patientAge && (
-                    <div className="text-[11px] sm:text-[12px] text-slate-400 font-bold tracking-widest">{group.patientAge} Yrs / {group.patientGender || '--'}</div>
-                  )}
-                </div>
-
-                {/* Test Pills */}
-                <div className="flex flex-wrap gap-2 max-w-full sm:max-w-[300px] lg:max-w-[420px]">
-                  {group.tests.map(t => (
-                    <span key={t.id} className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide shadow-sm ${getTestBadge(t.status)}`}>
-                      {t.testName}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Vertical Stack for Tracking on Small screens, horizontal on desk */}
-                <div className="flex sm:flex-row flex-wrap items-center gap-3 sm:gap-6 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50 mt-2 sm:mt-0">
-                  {/* Progress Indicator */}
-                  <div className="flex flex-col items-start sm:items-center gap-1">
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{finalCount}/{totalTests} Done</div>
-                    <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden mt-1">
-                      <div className={`h-full rounded-full transition-all ${allFinal ? 'bg-emerald-500' : 'bg-brand-primary'}`}
-                        style={{ width: `${(finalCount / totalTests) * 100}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Desktop Status Badge */}
-                  <div className={`hidden sm:flex px-4 py-1.5 rounded-2xl text-[11px] font-black uppercase border whitespace-nowrap transition-all duration-500 ${getStatusBadge(groupStatus)}`}>
-                    <span className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${groupStatus === 'Final' || groupStatus === 'Delivered' ? (groupStatus === 'Delivered' ? 'bg-white' : 'bg-emerald-500') : 'bg-current'}`}></span>
-                      {groupStatus}
-                    </span>
-                  </div>
-
-                  {/* Collective Actions */}
-                  <div className="flex flex-grow sm:flex-grow-0 justify-end gap-2">
-                      {!group.tests.some(t => t.collected_at) && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'collected_at'); }}
-                          className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-amber-500 text-white text-[9px] sm:text-[10px] font-black uppercase rounded-xl shadow-lg shadow-amber-500/10 hover:bg-amber-600 transition-all active:scale-95 whitespace-nowrap border-b-2 sm:border-b-4 border-amber-700"
-                        >
-                          <FlaskConical className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="sm:hidden">Collect</span> <span className="hidden sm:inline">Collect Sample</span>
-                        </button>
-                      )}
-                      {group.tests.some(t => t.collected_at) && !group.tests.every(t => t.received_at) && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleGroupTimestampAction(group, 'received_at'); }}
-                          className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-brand-secondary text-white text-[9px] sm:text-[10px] font-black uppercase rounded-xl shadow-lg shadow-brand-secondary/10 hover:bg-brand-secondary/80 transition-all active:scale-95 whitespace-nowrap border-b-2 sm:border-b-4 border-brand-secondary"
-                        >
-                          <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="sm:hidden">Receive</span> <span className="hidden sm:inline">Receive in Lab</span>
-                        </button>
-                      )}
-
-                    {/* Preview/Email */}
-                    {(groupStatus === 'Final' || groupStatus === 'Delivered') && (
-                      <div className="flex gap-2">
-                        <button 
-                         disabled={isDeducting === group.groupKey}
-                         onClick={(e) => handlePreviewClick(e, group)}
-                          className={`p-2 sm:px-4 sm:py-2 text-white font-black text-[10px] uppercase rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 ${groupStatus === 'Delivered' ? 'bg-brand-dark' : 'bg-brand-primary shadow-brand-primary/10'} disabled:opacity-50`}>
-                          {isDeducting === group.groupKey ? (
-                            <Loader className="w-4 h-4 animate-spin text-white" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                          <span className="hidden sm:inline">
-                            {isDeducting === group.groupKey ? 'Authorizing...' : (groupStatus === 'Delivered' ? 'Re-Print' : 'Preview & Print')}
-                          </span>
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleSendGroupEmail(group); }} disabled={emailSending === group.groupKey}
-                          className="p-2 sm:p-2.5 bg-brand-dark text-white font-black text-[10px] uppercase rounded-xl shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center"
-                          title="Send Email"
-                        >
-                          {emailSending === group.groupKey ? <Loader className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Toggle */}
-                  <button onClick={(e) => { e.stopPropagation(); toggleGroup(group.groupKey); }}
-                    className="p-2 rounded-xl bg-slate-50 hover:bg-brand-light border border-slate-100 transition-all text-slate-400">
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Expanded: Individual Tests Table */}
-              {isExpanded && (
-                <div className="border-t border-slate-100 divide-y divide-slate-50 animate-in slide-in-from-top-2 duration-200">
-                  {group.tests.map((test) => (
-                    <div key={test.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-6 sm:px-8 py-5 sm:py-4 hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-0 relative">
-                      
-                      {/* Test Flask icon */}
-                      <div className={`p-2 rounded-xl ${test.status === 'Final' ? 'bg-emerald-100 text-emerald-600' : test.status === 'In Progress' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
-                        <FlaskConical className="w-4 h-4" />
-                      </div>
-
-                      {/* Test Name */}
-                      <div className="flex-grow">
-                        <div className="text-[14px] font-black text-brand-dark uppercase tracking-tight">{test.testName}</div>
-                        <div className={`text-[11px] font-bold mt-0.5 ${test.status === 'Final' ? 'text-emerald-600' : test.status === 'In Progress' ? 'text-indigo-600' : 'text-amber-500'}`}>
-                          {test.status || 'Pending'}
+                  return (
+                    <tr key={group.groupKey} className="hover:bg-[#F9FAFB] transition-colors group border-b border-[#F3F4F6]">
+                      <td className="px-3.5 py-2.5">
+                        <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${group.balance > 0 ? 'bg-rose-600 text-white shadow-sm' : 'text-[#1E2A5A]'}`}>
+                          {group.billId.replace('BKG', 'RPT')}
                         </div>
-                      </div>
-
-                      {/* Tracking Steps - Scrollable on mobile */}
-                      <div className="flex overflow-x-auto pb-2 sm:pb-0 gap-1.5 text-[8px] sm:text-[9px] uppercase font-black tracking-wider w-full sm:w-auto no-scrollbar">
-                        {['Reg','Coll','Rec','Fin'].map((st, i) => {
-                          const isActive = [test.registered_at, test.collected_at, test.received_at, test.reported_at][i];
-                          const labels = ['Registered','Collected','Received','Finalized'];
-                          return (
-                            <div key={st} title={labels[i]} className={`px-2 py-1.5 rounded-lg border text-center transition-all min-w-[50px] sm:min-w-[60px] ${isActive ? 'bg-brand-light border-brand-primary/20 text-brand-dark' : 'bg-slate-50 border-slate-100 text-slate-300'}`}>
-                              {st}
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <div className="text-[14px] font-semibold text-[#1F2937] leading-tight">{group.patientName}</div>
+                        <div className="text-[11px] font-medium text-[#7B8794] mt-0.5">
+                          {group.patientAge}Y • {group.patientGender} • {group.patientMobile || '9876543210'}
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="text-[11px] font-medium text-[#4B5563] leading-tight truncate max-w-[180px]">
+                            {group.tests.slice(0, 2).map(t => t.testName).join(', ')}
+                            {group.tests.length > 2 && '...'}
+                          </div>
+                          {group.tests.length > 2 && (
+                            <div className="text-[9px] font-semibold text-[#1E2A5A] bg-[#1E2A5A]/5 px-1.5 py-0.5 rounded-full w-fit">
+                              +{group.tests.length - 2} MORE
                             </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Actions - Full width on mobile */}
-                      <div className="flex gap-2 items-center w-full sm:w-auto mt-2 sm:mt-0 justify-end">
-                        {test.received_at && (
-                          <div className="flex gap-2 flex-grow sm:flex-grow-0">
-                            {test.status !== 'Final' && test.status !== 'Delivered' && (
-                              <button onClick={() => { setSelectedReport(test); setEditedResults([]); }}
-                                className="flex-1 sm:flex-none bg-brand-dark text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-dark/10 hover:bg-brand-secondary transition-all uppercase tracking-widest active:scale-95 leading-none">
-                                Results
-                              </button>
-                            )}
-
-                            {test.status === 'In Progress' && !test.reported_at && (test.results?.some(r => r.value && r.value !== '') || test.results?.some(r => {
-                              if (r.dataType === 'Grid' || r.dataType === 'Titer') {
-                                try {
-                                  const g = JSON.parse(r.value || '{}');
-                                  return Object.values(g).some(v => v && v !== '-');
-                                } catch { return false; }
-                              }
-                              return false;
-                            })) && (
-                              <button onClick={() => handleFinalizeReport(test.id, group)}
-                                className="flex-1 sm:flex-none bg-brand-primary text-[10px] sm:text-[11px] font-black text-white px-4 py-2.5 sm:py-1.5 rounded-xl shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all uppercase tracking-widest active:scale-95 leading-none">
-                                Finalize
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        <button onClick={() => setReportToDelete(test)}
-                          className="p-2.5 sm:p-2 bg-rose-50 text-rose-400 rounded-xl border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-        </div>
-      </div>
-    </div>
-
-    {/* Results Entry Modal */}
-      {selectedReport && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-3xl" onClick={() => setSelectedReport(null)}></div>
-          <div className="relative bg-white w-full max-w-7xl rounded-[48px] shadow-2xl overflow-hidden border border-white/20 flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-300">
-            
-            <div className="bg-brand-dark px-6 sm:px-12 py-6 sm:py-8 flex justify-between items-center select-none shadow-xl z-20">
-              <div className="flex items-center gap-4 sm:gap-5">
-                <div className="bg-brand-primary p-2 sm:p-3 rounded-2xl sm:rounded-[24px] shadow-lg shadow-brand-primary/20 rotate-6">
-                  <FlaskConical className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tighter uppercase leading-none">Record Data</h2>
-                  <p className="text-[10px] sm:text-[12px] font-black text-brand-primary uppercase tracking-[0.4em] mt-1 sm:mt-2">{selectedReport.testName}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedReport(null)}
-                className="p-2 sm:p-3 bg-white/5 hover:bg-brand-light hover:text-brand-dark rounded-2xl transition-all text-white/50 border border-white/10">
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-            </div>
-
-            <div className="px-12 py-6 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center gap-8">
-              <div className="flex flex-col">
-                <span className="text-[11px] font-black text-slate-400 mb-1 uppercase tracking-widest">Patient</span>
-                <span className="text-brand-dark font-black text-lg tracking-tight uppercase">{selectedReport.patientName}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-black text-slate-400 mb-1 uppercase tracking-widest">Age / Gender</span>
-                <span className="text-slate-600 font-bold uppercase tracking-widest">{selectedReport.patientAge || '??'} Y / {selectedReport.patientGender || '--'}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-black text-slate-400 mb-1 uppercase tracking-widest">Bill ID</span>
-                <span className="text-brand-secondary font-black tracking-widest">{selectedReport.billId}</span>
-              </div>
-            </div>
-
-            <div className="overflow-y-auto custom-scrollbar flex-grow bg-white p-0">
-              {fetchingMaster ? (
-                <div className="flex items-center justify-center p-24">
-                  <Loader className="w-10 h-10 animate-spin text-brand-primary" />
-                </div>
-              ) : (
-                <table className="min-w-full border-collapse">
-                  <thead className="bg-[#F8FAFC] sticky top-0 z-10 border-b border-brand-primary/10">
-                    <tr className="text-[12px] font-black text-brand-dark uppercase tracking-[0.3em] text-center">
-                      <th className="px-6 py-4 w-16 border-r border-brand-primary/5">#</th>
-                      <th className="px-6 py-4 text-left border-r border-brand-primary/5">Parameter</th>
-                      <th className="px-6 py-4 border-r border-brand-primary/5">Value</th>
-                      <th className="px-6 py-4 border-r border-brand-primary/5">Unit</th>
-                      <th className="px-6 py-4">Reference Range</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white">
-                    {editedResults.length === 0 ? (
-                      <tr><td colSpan="5" className="px-12 py-24 text-center">
-                        <AlertCircle className="w-16 h-16 text-slate-100 mx-auto mb-4" />
-                        <p className="text-xl font-black text-brand-dark/20 uppercase tracking-widest">No parameters found</p>
-                      </td></tr>
-                    ) : editedResults.map((res, idx) => (
-                      <tr key={idx} className={`transition-all border-b border-slate-50 ${idx === focusedIndex ? 'bg-brand-light/5' : 'hover:bg-slate-50/50 even:bg-slate-50/20'}`}>
-                        <td className={`px-4 py-3 text-center text-xs font-black w-14 border-r border-slate-50 ${idx === focusedIndex ? 'text-brand-primary' : 'text-slate-300'}`}>{idx + 1}</td>
-                        <td className="px-6 py-3 border-r border-slate-50 min-w-[180px] max-w-[250px]">
-                          <div className={`text-sm tracking-tight uppercase ${idx === focusedIndex ? 'text-brand-dark font-black' : 'text-slate-500 font-bold'}`}>
-                            {res.parameter}
-                          </div>
-                          {res.groupName && res.groupName !== 'General' && (
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">{res.groupName}</div>
                           )}
-                        </td>
-                        <td className="px-6 py-4 border-r border-slate-50 bg-slate-50/20 min-w-[200px]">
-                          {renderResultInput(res, idx)}
-                        </td>
-                        <td className="px-6 py-3 text-center border-r border-slate-50">
-                          <div className="text-[12px] font-black text-brand-secondary bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 uppercase tabular-nums">{res.unit || '---'}</div>
-                        </td>
-                        <td className="px-6 py-3 text-right">
-                          <div className="text-[12px] font-black text-slate-700 bg-slate-50 px-4 py-1.5 rounded-xl border border-slate-200 inline-block tabular-nums tracking-tighter">{res.range || 'N/A'}</div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <div className="text-[12px] font-semibold text-[#374151] truncate max-w-[120px]">
+                          {group.doctorName?.match(/^Dr\.?\s/i) ? group.doctorName : `Dr. ${group.doctorName}`}
+                        </div>
+                        <div className="text-[9px] font-semibold text-[#98A2B3] uppercase tracking-wider">Referred By</div>
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <div className="text-[11px] font-semibold text-[#374151] tabular-nums">
+                          {group.createdAt?.toDate ? group.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '21 Apr, 2026'}
+                        </div>
+                        <div className="text-[10px] font-medium text-[#98A2B3] tabular-nums">
+                          {group.createdAt?.toDate ? group.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:30 AM'}
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-2.5 text-center">
+                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider shadow-sm transition-all ${statusColors[groupStatus || 'Pending']}`}>
+                           <div className="w-1 h-1 rounded-full bg-current opacity-80" />
+                           {groupStatus === 'Final' || groupStatus === 'Delivered' ? 'Completed' : groupStatus}
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <div className="text-[13px] font-bold text-[#1F2937] tabular-nums">
+                          ₹{(group.totalAmount || group.tests.reduce((acc, t) => acc + (parseFloat(t.price) || 0), 0)).toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
+                           {(groupStatus === 'Final' || groupStatus === 'Delivered') && (
+                             <>
+                               <button 
+                                 onClick={(e) => handlePreviewClick(e, group)}
+                                 className="p-1.25 bg-[#F3F4F6] text-[#4B5563] rounded hover:bg-[#1E2A5A] hover:text-white transition-all active:scale-95"
+                                 title="Print Report"
+                               >
+                                  <Printer className="w-3 h-3" />
+                               </button>
+                               <button 
+                                 className="p-1.25 bg-[#F3F4F6] text-[#4B5563] rounded hover:bg-[#1E2A5A] hover:text-white transition-all active:scale-95"
+                                 title="Download PDF"
+                               >
+                                  <Download className="w-3 h-3" />
+                               </button>
+                             </>
+                           )}
+                           
+                           {(() => {
+                              if (groupStatus === 'Final' || groupStatus === 'Delivered') return null;
+                              
+                              const allReceived = group.tests.every(t => t.received_at);
+                              if (!allReceived) {
+                                return (
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleGroupTimestampAction(group, 'received_at');
+                                    }}
+                                    className="flex items-center gap-1 px-2 py-1 bg-[#14B8A6] text-white rounded hover:bg-[#0F766E] transition-all transform active:scale-95 text-[10px] font-semibold shadow-sm"
+                                  >
+                                    <FlaskConical className="w-3 h-3" />
+                                    Sample
+                                  </button>
+                                );
+                              }
+                              
+                              return (
+                                <button 
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   navigate(`/reports/${group.billId}/results`);
+                                 }}
+                                 className="flex items-center gap-1 px-2 py-1 bg-[#1E2A5A] text-white rounded hover:bg-[#1E2A5A]/90 transition-all transform active:scale-95 text-[10px] font-semibold shadow-sm"
+                                >
+                                 <Pencil className="w-3 h-3" />
+                                 Enter Result
+                               </button>
+                             );
+                           })()}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
 
-            <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end items-center gap-4">
-              <button onClick={() => setSelectedReport(null)}
-                className="px-8 py-3.5 rounded-[22px] bg-white text-slate-400 text-[12px] font-black uppercase tracking-widest hover:text-brand-dark transition-all border border-slate-200 shadow-sm">
-                Cancel
-              </button>
-              <button onClick={handleSaveResults} disabled={saving}
-                className="px-14 py-3.5 rounded-[22px] bg-brand-primary text-white text-[12px] font-black uppercase tracking-[0.3em] hover:shadow-2xl hover:shadow-brand-primary/30 transition-all flex items-center disabled:opacity-50 active:scale-95 gap-3">
-                {saving ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Results</>}
-              </button>
-            </div>
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+
+          <div className="mt-auto border-t border-[#E5E7EB] bg-[#F9FAFB] px-5 py-3 flex items-center justify-between">
+            <div className="text-[13px] font-medium text-[#7B8794]">
+              Showing {filteredGroups.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredGroups.length)} of {filteredGroups.length} reports
+            </div>
+            
+            <div className="flex items-center gap-2">
+               {Array.from({ length: Math.ceil(filteredGroups.length / itemsPerPage) }).map((_, i) => {
+                 const p = i + 1;
+                 const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+                 if (totalPages > 7) {
+                   if (p > 1 && p < totalPages && (p < currentPage - 1 || p > currentPage + 1)) {
+                     if (p === 2 || p === totalPages - 1) return <span key={p} className="text-slate-300 text-[10px]">...</span>;
+                     return null;
+                   }
+                 }
+                 return (
+                   <button 
+                     key={p} 
+                     onClick={() => setCurrentPage(p)}
+                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-semibold transition-all ${currentPage === p ? 'bg-[#1E2A5A] text-white shadow-md' : 'text-[#7B8794] hover:bg-[#E5E7EB] hover:text-[#1F2937]'}`}
+                   >
+                     {p}
+                   </button>
+                 );
+               })}
+               
+                  <select 
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-transparent text-[13px] font-semibold text-[#7B8794] outline-none cursor-pointer hover:text-[#1F2937]"
+                  >
+                    <option value={5}>5 per page</option>
+                    <option value={10}>10 per page</option>
+                    <option value={25}>25 per page</option>
+                    <option value={50}>50 per page</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#98A2B3] pointer-events-none" />
+            </div>
+         </div>
+      </div>
 
       {/* Report Preview */}
       {previewReport && (
@@ -1182,10 +1144,10 @@ const Reports = () => {
           </div>
           <div className="text-left">
             <div className="flex flex-col max-w-[120px] sm:max-w-[150px]">
-              <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] leading-tight opacity-80 mb-0.5">Pending: {pendingPaymentBooking.patientName}</p>
-              <p className="text-[6px] sm:text-[8px] font-black text-white bg-white/20 px-1.5 py-0.5 rounded-md uppercase tracking-wider leading-none mt-0.5 w-fit">ID: {pendingPaymentBooking.billId || pendingPaymentBooking.id}</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider leading-tight text-white/80 mb-0.5">Pending Payment</p>
+              <p className="text-[12px] sm:text-[13px] font-bold text-white truncate">{pendingPaymentBooking.patientName}</p>
             </div>
-            <p className="text-sm sm:text-lg font-black tabular-nums tracking-tighter">₹{pendingPaymentBooking.balance}</p>
+            <p className="text-sm sm:text-lg font-bold tabular-nums">₹{pendingPaymentBooking.balance}</p>
           </div>
         </button>
       )}
@@ -1193,9 +1155,9 @@ const Reports = () => {
       {/* Quick Payment Modal */}
       {paymentBooking && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-brand-dark/90 backdrop-blur-2xl" onClick={() => setPaymentBooking(null)}></div>
-          <div className="relative bg-white w-full max-w-lg rounded-[48px] shadow-3xl overflow-hidden border border-white/20 animate-in zoom-in duration-300">
-            <div className="bg-brand-primary p-10 text-white relative">
+          <div className="absolute inset-0 bg-[#1E2A5A]/90 backdrop-blur-md" onClick={() => setPaymentBooking(null)}></div>
+          <div className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-[#E5E7EB] animate-in zoom-in duration-300">
+            <div className="bg-[#1E2A5A] p-10 text-white relative">
                <div className="absolute top-0 right-0 p-8">
                   <button onClick={() => setPaymentBooking(null)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
                     <X className="w-6 h-6" />
@@ -1206,23 +1168,23 @@ const Reports = () => {
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black uppercase tracking-tighter">Report Finalized!</h3>
-                    <p className="text-white/60 font-bold text-xs uppercase tracking-widest mt-1">Direct Payment Collection</p>
+                    <h3 className="text-2xl font-bold tracking-tight">Report Finalized</h3>
+                    <p className="text-white/70 font-medium text-sm mt-1">Collect payment to complete</p>
                   </div>
                </div>
             </div>
             
             <div className="p-10 space-y-8">
-               <div className="flex justify-between items-end bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-inner">
+               <div className="flex justify-between items-end bg-[#F9FAFB] p-6 rounded-3xl border border-[#E5E7EB]">
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Balance Due</p>
-                    <p className="text-4xl font-black text-brand-dark tabular-nums tracking-tighter">₹{paymentBooking.balance}</p>
+                    <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider mb-1">Total Due</p>
+                    <p className="text-4xl font-bold text-[#1E2A5A] tabular-nums tracking-tight">₹{paymentBooking.balance}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patient</p>
-                    <p className="text-sm font-black text-brand-dark uppercase tracking-tight leading-none">{paymentBooking.patientName}</p>
-                    <div className="mt-1.5 flex justify-end">
-                      <span className="text-[10px] font-black text-brand-primary bg-brand-light px-2.5 py-1 rounded-xl border border-brand-primary/10 uppercase tracking-widest tabular-nums">
+                    <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider mb-1">Patient</p>
+                    <p className="text-[16px] font-bold text-[#1F2937]">{paymentBooking.patientName}</p>
+                    <div className="mt-2 flex justify-end">
+                      <span className="text-[11px] font-bold text-[#1E2A5A] bg-[#1E2A5A]/5 px-3 py-1 rounded-full border border-[#1E2A5A]/10">
                         ID: {paymentBooking.billId || paymentBooking.id}
                       </span>
                     </div>
@@ -1231,10 +1193,10 @@ const Reports = () => {
 
                <div className="space-y-6">
                   <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Receiving Amount (₹)</label>
+                    <label className="block text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider mb-3 ml-1">Receiving Amount (₹)</label>
                     <input 
                       type="number" 
-                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-5 px-8 text-2xl font-black text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 focus:bg-white transition-all tabular-nums"
+                      className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl py-5 px-8 text-2xl font-bold text-[#1F2937] outline-none focus:ring-4 focus:ring-[#1E2A5A]/5 focus:bg-white transition-all tabular-nums"
                       autoFocus
                       placeholder="0.00"
                       id="quick-pay-amount"
@@ -1243,23 +1205,22 @@ const Reports = () => {
                   </div>
 
                   <div>
-                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Payment Method</label>
+                     <label className="block text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider mb-3 ml-1">Payment Method</label>
                      <div className="grid grid-cols-3 gap-3">
                         {['Cash', 'UPI', 'Card'].map(m => (
                           <button 
                             key={m}
                             onClick={() => {
-                              // Direct DOM manipulation fallback for speed + State sync
                               document.querySelectorAll('.pay-mode-btn').forEach(b => {
-                                b.classList.remove('bg-brand-dark', 'text-white', 'shadow-lg', 'border-transparent');
-                                b.classList.add('bg-slate-50', 'text-slate-600', 'border-slate-100');
+                                b.classList.remove('bg-[#1E2A5A]', 'text-white', 'shadow-lg', 'shadow-[#1E2A5A]/20', 'border-transparent');
+                                b.classList.add('bg-[#F9FAFB]', 'text-[#4B5563]', 'border-[#E5E7EB]');
                               });
                               const el = document.getElementById(`mode-${m}`);
-                              el.classList.remove('bg-slate-50', 'text-slate-600', 'border-slate-100');
-                              el.classList.add('bg-brand-dark', 'text-white', 'shadow-lg', 'border-transparent');
+                              el.classList.remove('bg-[#F9FAFB]', 'text-[#4B5563]', 'border-[#E5E7EB]');
+                              el.classList.add('bg-[#1E2A5A]', 'text-white', 'shadow-lg', 'shadow-[#1E2A5A]/20', 'border-transparent');
                             }}
                             id={`mode-${m}`}
-                            className={`pay-mode-btn py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest border transition-all duration-300 ${m === 'Cash' ? 'bg-brand-dark text-white shadow-lg border-transparent' : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'}`}
+                            className={`pay-mode-btn py-4 rounded-xl text-[13px] font-bold border transition-all duration-300 ${m === 'Cash' ? 'bg-[#1E2A5A] text-white shadow-lg shadow-[#1E2A5A]/20 border-transparent' : 'bg-[#F9FAFB] text-[#4B5563] border-[#E5E7EB] hover:bg-[#F3F4F6]'}`}
                           >
                             {m}
                           </button>
@@ -1273,7 +1234,7 @@ const Reports = () => {
                     disabled={isQuickPaying}
                     onClick={async () => {
                       const amount = parseFloat(document.getElementById('quick-pay-amount').value);
-                      const method = document.querySelector('.pay-mode-btn.bg-brand-dark').innerText;
+                      const method = document.querySelector('.pay-mode-btn.text-white').innerText;
                       
                       if (!amount || amount <= 0) {
                         toast.error("Please enter a valid amount");
@@ -1284,17 +1245,11 @@ const Reports = () => {
                       try {
                         const newPaid = (parseFloat(paymentBooking.paidAmount) || 0) + amount;
                         const newBalance = Math.max((parseFloat(paymentBooking.totalAmount) || 0) - newPaid, 0);
-                        
-                        const paymentRecord = {
-                          amount: amount,
-                          method: method,
-                          date: new Date()
-                        };
+                        const paymentRecord = { amount: amount, method: method, date: new Date() };
 
                         const batch = writeBatch(db);
                         const newPayStatus = newBalance <= 0 ? 'Paid' : 'Unpaid';
 
-                        // 1. Update Booking
                         batch.update(doc(db, 'bookings', paymentBooking.id), {
                           paidAmount: newPaid,
                           balance: newBalance,
@@ -1303,7 +1258,6 @@ const Reports = () => {
                           updatedAt: serverTimestamp()
                         });
 
-                        // 2. Sync Payment Status to all associated reports
                         try {
                           const qSync = query(collection(db, 'reports'), 
                                               where('labId', '==', paymentBooking.labId), 
@@ -1317,19 +1271,16 @@ const Reports = () => {
                         }
 
                         await batch.commit();
-                        
                         toast.success(`🎉 Success! Received ₹${amount} via ${method}`);
                         
                         if (newBalance <= 0) {
                           localStorage.removeItem('pending_payment_booking');
                           setPendingPaymentBooking(null);
                         } else {
-                          // Update for partial payment
                           const updated = { ...paymentBooking, balance: newBalance, paidAmount: newPaid };
                           localStorage.setItem('pending_payment_booking', JSON.stringify(updated));
                           setPendingPaymentBooking(updated);
                         }
-                        
                         setPaymentBooking(null);
                       } catch (err) {
                         toast.error("Payment failed: " + err.message);
@@ -1337,13 +1288,13 @@ const Reports = () => {
                         setIsQuickPaying(false);
                       }
                     }}
-                    className="w-full py-5 bg-brand-primary text-white rounded-[24px] text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-brand-primary/20 hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="w-full py-5 bg-[#1E2A5A] text-white rounded-2xl text-[14px] font-bold uppercase tracking-widest shadow-xl shadow-[#1E2A5A]/20 hover:shadow-2xl hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     {isQuickPaying ? <Loader className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Confirm Payment</>}
                   </button>
                   <button 
                     onClick={() => setPaymentBooking(null)}
-                    className="w-full py-3 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-brand-dark transition-all"
+                    className="w-full py-3 text-[#98A2B3] text-[13px] font-semibold hover:text-[#1F2937] transition-all"
                   >
                     Skip For Now
                   </button>
@@ -1383,7 +1334,8 @@ const Reports = () => {
           </div>
         </div>
       )}
-    </>
+        </div>
+      </div>
   );
 };
 

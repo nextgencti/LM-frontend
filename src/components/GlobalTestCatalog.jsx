@@ -3,6 +3,8 @@ import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, where, setDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { Search, Plus, Loader, Database, FileText, Settings, Trash2, Edit3, ChevronRight, FlaskConical, Beaker, Activity, Save, X, Globe, User, Clock, IndianRupee, CheckCircle, ChevronDown, Download, Upload, Layers, FolderPlus, Folder, Zap } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
+
 
 /* ─── Tiny reusable primitives ───────────────────────────────────────────── */
 const Label = ({ children }) => (
@@ -41,12 +43,16 @@ const SectionTag = ({ color = 'red', children }) => {
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 const GlobalTestCatalog = () => {
+  const { currentUser } = useAuth();
   const [tests, setTests] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [syncToLabs, setSyncToLabs] = useState(false);
+
   
   // Library State
   const [masterParams, setMasterParams] = useState([]);
@@ -123,7 +129,9 @@ const GlobalTestCatalog = () => {
     setSelectedRuleIndex(-1);
     setOriginalParamData(null);
     setOriginalRuleData(null);
+    setSyncToLabs(false);
   };
+
 
   const handleAddGroup = () => {
     if (!groupNameInput.trim()) return alert('Group name required');
@@ -281,21 +289,35 @@ const GlobalTestCatalog = () => {
     if (!testForm.testName || !testForm.testCode) return alert("Required fields missing");
     setSaving(true);
     try {
-      const docId = testForm.id || `GLOBAL_${testForm.testCode.replace(/[^a-zA-Z0-9]/g, '_')}`;
       const payload = {
         ...testForm,
         labId: 'GLOBAL',
         isGlobal: true,
-        updatedAt: serverTimestamp(),
+        syncToLabs: syncToLabs,
         groups: testForm.groups.map((g, gi) => ({
           ...g,
           parameters: g.parameters.map((p, pi) => ({ ...p }))
         }))
       };
-      
-      if (!testForm.id) payload.createdAt = serverTimestamp();
 
-      await setDoc(doc(db, 'tests', docId), payload, { merge: true });
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`${BACKEND_URL}/api/tests/global`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to save global test");
+      }
+
+      toast.success(testForm.id ? "Master test updated" : "Master test published");
+      if (syncToLabs) toast.info("Sync initiated for all labs");
+
       setShowAddModal(false); 
       fetchTests(); 
       resetForm();
@@ -306,6 +328,7 @@ const GlobalTestCatalog = () => {
       setSaving(false); 
     }
   };
+
 
 
   return (
@@ -802,7 +825,19 @@ const GlobalTestCatalog = () => {
                 <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500" /> {getParamCount(testForm)} Parameters</div>
               </div>
               <div className="flex items-center gap-4">
+                {testForm.id && (
+                  <label className="flex items-center gap-3 cursor-pointer group pr-4 border-r border-gray-100 mr-2">
+                    <input 
+                      type="checkbox" 
+                      checked={syncToLabs} 
+                      onChange={(e) => setSyncToLabs(e.target.checked)}
+                      className="w-4 h-4 rounded-lg border-gray-300 text-red-600 focus:ring-red-500 transition-all cursor-pointer"
+                    />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-red-600 transition-colors">Sync with all Labs</span>
+                  </label>
+                )}
                 <button onClick={() => setShowAddModal(false)} className="px-6 py-2.5 text-xs font-bold text-gray-500 uppercase hover:text-gray-900 transition-colors">Cancel</button>
+
                 <button onClick={handleSaveAll} disabled={saving} className="px-10 py-2.5 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-xl shadow-emerald-50 disabled:opacity-50">
                   {saving ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                   {testForm.id ? 'Save Master Definition' : 'Publish to Catalog'}

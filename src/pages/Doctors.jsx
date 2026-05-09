@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Printer, Edit2, Users, IndianRupee, CreditCard, Activity, CheckSquare, Square, Info } from 'lucide-react';
+import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Printer, Edit2, Users, IndianRupee, CreditCard, Activity, CheckSquare, Square, Info, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Doctors = () => {
@@ -12,6 +12,10 @@ const Doctors = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [newDoctor, setNewDoctor] = useState({
     name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.'
@@ -99,8 +103,16 @@ const Doctors = () => {
     }
     
     let formattedName = newDoctor.name.trim();
-    if (honorificPrefix && !formattedName.toLowerCase().startsWith(honorificPrefix.toLowerCase())) {
-      formattedName = honorificPrefix + formattedName;
+
+    // Clean existing honorifics from name to prevent duplication (e.g. "Ms. Mr. Sanjay")
+    const allHonorifics = ['Mr.', 'Ms.', 'Mrs.', 'Master', 'Baby', 'Miss', 'Dr.', 'Prof.', 'Shri', 'Smt.'];
+    allHonorifics.forEach(h => {
+      const regex = new RegExp(`^${h.replace('.', '\\.')}\\s+`, 'i');
+      formattedName = formattedName.replace(regex, '');
+    });
+
+    if (honorificPrefix) {
+      formattedName = honorificPrefix + formattedName.trim();
     }
 
     if (!newDoctor.commissionValue || parseFloat(newDoctor.commissionValue) <= 0) {
@@ -788,153 +800,157 @@ const Doctors = () => {
     d.phone?.includes(searchTerm)
   );
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, rowsPerPage]);
+
+  const paginatedDoctors = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredDoctors.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredDoctors, currentPage, rowsPerPage]);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center text-left leading-none">
-            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
-              <Stethoscope className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
+          <h1 className="text-[20px] font-bold text-[#1F2937] flex items-center gap-3">
+            <div className="p-2 bg-[#F3F4F6] rounded-xl shadow-sm border border-[#E5E7EB]">
+              <Stethoscope className="w-5 h-5 text-[#1E2A5A]" />
             </div>
             Doctors
           </h1>
-          <p className="text-slate-500 mt-2 sm:mt-3 font-medium text-sm sm:text-base italic">Manage referring Doctors & Clinic networks.</p>
+          <p className="text-[11px] font-medium text-[#7B8794] mt-1.5">Manage referring Doctors & Clinic networks.</p>
         </div>
         
         <button 
           onClick={() => setShowAddModal(true)}
-          className="w-full md:w-auto flex items-center justify-center px-8 py-4 bg-brand-dark text-white rounded-[22px] font-black hover:shadow-2xl hover:shadow-brand-dark/20 hover:-translate-y-1 transition-all duration-300 group active:scale-95 shadow-lg tracking-[0.2em] text-[11px] uppercase whitespace-nowrap"
+          className="w-full md:w-auto bg-[#1E2A5A] text-white px-5 py-2.5 rounded-xl text-[12px] font-bold tracking-wide shadow-lg hover:shadow-[#1E2A5A]/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group"
         >
-          <Plus className="w-5 h-5 mr-3 group-hover:rotate-90 transition-transform duration-300 text-brand-primary" />
-          Add New Doctor
+          <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
+          Add Doctor
         </button>
       </div>
 
-      {/* Sticky Filters Header */}
-      <div className="sticky top-0 z-[20] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
-        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
-          
-          {/* Left Side: Search Bar */}
-          <div className="relative flex-grow w-full lg:max-w-2xl group">
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
-            </div>
-            <input type="text"
-              className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
-              placeholder="Search by doctor name or clinic..." value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} />
-          </div>
+      {/* Search and Filters Header */}
+      <div className="flex flex-col lg:flex-row gap-3 mb-6">
+        {/* Left Side: Search Bar */}
+        <div className="flex-[2] relative group shadow-sm transition-all focus-within:shadow-md rounded-xl max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+          <input type="text"
+            className="w-full pl-11 pr-6 py-2.5 bg-white border border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A]/20 transition-all font-bold text-[13px] text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium"
+            placeholder="Search by doctor name or clinic..." value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
 
-          {/* Right Side: Total Stats */}
-          <div className="flex items-center gap-3 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm w-full lg:w-auto">
-             <div className="px-6 py-2.5 bg-slate-50 border border-slate-100 rounded-[18px] flex items-center gap-4">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Doctors</span>
-                <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-sm font-black text-brand-dark tabular-nums shadow-sm">{doctors.length}</span>
-             </div>
+        {/* Right Side: Total Stats */}
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 -mb-1">
+          <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-white border border-[#E5E7EB] rounded-xl shadow-sm h-[42px]">
+             <span className="text-[10px] font-black text-[#7B8794] uppercase tracking-wider">Total Doctors</span>
+             <span className="px-2 py-0.5 bg-[#F3F4F6] border border-[#E5E7EB] rounded-md text-[9px] font-black text-[#1F2937] tabular-nums">{doctors.length}</span>
           </div>
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100" style={{ maxHeight: 'calc(100vh - 360px)' }}>
-        <table className="min-w-full divide-y divide-slate-100">
-          <thead className="bg-[#f1f5f9] sticky top-0 z-[10] border-b border-slate-200">
-            <tr>
-              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Doctor</th>
-              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Clinic / Hospital</th>
-              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Structure</th>
-              <th scope="col" className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Status</th>
-              <th scope="col" className="px-8 py-5 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Actions</th>
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[24px] shadow-sm border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Doctor Name</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Clinic / Hospital</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Structure</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Status</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-50">
+          <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="px-8 py-20 text-center">
-                    <Loader className="h-10 w-10 animate-spin text-brand-primary mx-auto mb-4" />
-                    <p className="text-slate-400 font-black uppercase text-[12px] tracking-widest">Loading...</p>
+                  <td colSpan={5} className="py-24 text-center">
+                    <Loader className="w-10 h-10 animate-spin text-brand-primary mx-auto mb-5" />
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Synchronizing Records...</p>
                   </td>
                 </tr>
               ) : filteredDoctors.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-8 py-20 text-center">
-                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300">
-                      <Stethoscope className="w-8 h-8" />
+                  <td colSpan={5} className="py-32 text-center">
+                    <div className="w-20 h-20 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 transition-transform hover:rotate-12">
+                      <Stethoscope className="w-8 h-8 text-slate-200" />
                     </div>
-                    <p className="text-slate-500 font-bold">No doctors found.</p>
+                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Zero Matching Records Found</p>
                   </td>
                 </tr>
               ) : (
-                filteredDoctors.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-brand-light/10 transition-colors group">
-                    <td className="px-8 py-6 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0 bg-brand-light rounded-xl flex items-center justify-center text-brand-dark font-black shadow-sm border border-brand-primary/10 group-hover:scale-110 transition-transform">
+                paginatedDoctors.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-slate-50/40 transition-all group relative">
+                    <td className="px-6 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#1E2A5A] font-bold text-[13px] border border-[#E5E7EB]">
                           {doc.name?.charAt(0).toUpperCase()}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-black text-brand-dark tracking-tight">{doc.name}</div>
-                          <div className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {doc.doctorId || 'N/A'}</div>
+                        <div>
+                          <div className="text-[14px] font-semibold text-[#1F2937] leading-tight mb-0.5">{doc.name}</div>
+                          <div className="text-[11px] font-medium text-[#7B8794]">ID: {doc.doctorId || doc.id.slice(-8)}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 whitespace-nowrap">
+                    <td className="px-6 py-2.5">
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-700 tracking-tight">{doc.clinic || 'Independent Practice'}</span>
+                        <span className="text-[14px] font-semibold text-[#1F2937] leading-tight mb-0.5">{doc.clinic || 'Independent Practice'}</span>
                         {doc.phone && (
-                          <div className="flex items-center mt-1 text-slate-400">
-                             <Phone className="w-3 h-3 mr-1.5" />
-                             <span className="text-sm font-medium">{doc.phone}</span>
+                          <div className="flex items-center text-[#7B8794]">
+                             <Phone className="w-3 h-3 mr-1" />
+                             <span className="text-[11px] font-medium uppercase tracking-tight">{doc.phone}</span>
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-6 whitespace-nowrap">
-                      <div className="inline-flex items-center px-3 py-1 bg-brand-light rounded-lg text-[12px] font-black text-brand-dark uppercase tracking-widest border border-brand-primary/10">
+                    <td className="px-6 py-2.5">
+                      <div className="inline-flex items-center px-2 py-0.5 bg-[#F3F4F6] rounded-lg text-[10px] font-bold text-[#1E2A5A] uppercase tracking-wider border border-[#E5E7EB]">
                         {doc.commissionValue}{doc.commissionType === 'Percentage' ? '%' : ' Fixed'}
                       </div>
                     </td>
-                    <td className="px-8 py-6 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-black uppercase tracking-widest ${
-                        doc.status === 'Active' ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20' : 'bg-slate-100 text-slate-400 border border-slate-200'
+                    <td className="px-6 py-2.5">
+                      <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
+                        doc.status === 'Active' ? 'bg-[#ECFDF5] text-[#059669]' : 'bg-[#F9FAFB] text-[#64748B]'
                       }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full mr-2 ${doc.status === 'Active' ? 'bg-brand-primary animate-pulse' : 'bg-slate-300'}`}></div>
+                        <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${doc.status === 'Active' ? 'bg-[#10B981]' : 'bg-[#94A3B8]'}`}></div>
                         {doc.status}
                       </span>
                     </td>
-                     <td className="px-8 py-6 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
+                    <td className="px-6 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1 isolate">
                         <button
                           onClick={() => fetchLedgerData(doc)}
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all shadow-sm active:scale-95 flex items-center gap-2 ${
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1.5 ${
                             checkFeature('Doctor Ledger Management') 
-                            ? 'bg-brand-light text-brand-dark border-brand-primary/10 hover:bg-brand-primary hover:text-white' 
-                            : 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-70'
+                            ? 'bg-[#1E2A5A] text-white hover:bg-[#1E2A5A]/90' 
+                            : 'bg-[#F9FAFB] text-[#98A2B3] border border-[#E5E7EB] cursor-not-allowed'
                           }`}
                         >
                           {!checkFeature('Doctor Ledger Management') && <Activity className="w-3 h-3 text-brand-primary animate-pulse" />}
                           View Ledger
                         </button>
                         {doc.phone && (
-                          <a href={`tel:${doc.phone}`} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-xl transition-all" title="Call Doctor">
-                            <Phone className="w-5 h-5" />
+                          <a href={`tel:${doc.phone}`} className="p-2 text-brand-primary hover:bg-brand-primary/5 rounded-xl transition-all" title="Call Doctor">
+                            <Phone className="w-4 h-4" />
                           </a>
                         )}
                         <button
                           onClick={() => handleEditClick(doc)}
-                          className="p-2 text-sky-400 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-all"
+                          className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/5 rounded-xl transition-all"
                           title="Edit Profile"
                         >
-                          <Edit2 className="w-5 h-5" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_delete_records) && (
                           <button
                             onClick={() => setDeleteConfirm(doc.id)}
-                            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                             title="Remove from Registry"
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -946,23 +962,80 @@ const Doctors = () => {
         </table>
       </div>
 
+      {/* Pagination Footer */}
+      <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 px-6 pb-6">
+        <div className="flex items-center gap-4">
+          <p className="text-[13px] font-medium text-[#7B8794]">
+            Showing <span className="text-[#1F2937] font-semibold">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredDoctors.length)}</span> of <span className="text-[#1F2937] font-semibold">{filteredDoctors.length}</span> reports
+          </p>
+          <div className="h-3 w-[1px] bg-[#E5E7EB] hidden md:block" />
+        <div className="flex items-center gap-1">
+            <select 
+               className="bg-transparent text-[13px] font-semibold text-[#7B8794] outline-none cursor-pointer hover:text-[#1F2937] transition-all appearance-none"
+               value={rowsPerPage}
+               onChange={e => setRowsPerPage(parseInt(e.target.value))}
+             >
+               <option value={5}>5 per page</option>
+               <option value={10}>10 per page</option>
+               <option value={20}>20 per page</option>
+               <option value={50}>50 per page</option>
+             </select>
+             <ChevronDown className="w-4 h-4 text-[#98A2B3] pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+             <button 
+               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+               disabled={currentPage === 1}
+               className="p-2 bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg text-[#64748B] hover:text-[#1E2A5A] hover:border-[#1E2A5A]/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
+              >
+               <ChevronLeft className="w-4 h-4" />
+             </button>
+             
+             <div className="flex items-center gap-2">
+               {[...Array(Math.ceil(filteredDoctors.length / rowsPerPage))].map((_, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-semibold transition-all ${
+                      currentPage === i + 1 
+                        ? 'bg-[#1E2A5A] text-white shadow-md' 
+                        : 'text-[#7B8794] hover:bg-[#E5E7EB] hover:text-[#1F2937]'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+               ))}
+             </div>
+
+             <button 
+               onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredDoctors.length / rowsPerPage), p + 1))}
+               disabled={currentPage === Math.ceil(filteredDoctors.length / rowsPerPage) || Math.ceil(filteredDoctors.length / rowsPerPage) === 0}
+               className="p-2 bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg text-[#64748B] hover:text-[#1E2A5A] hover:border-[#1E2A5A]/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
+              >
+               <ChevronRight className="w-4 h-4" />
+             </button>
+        </div>
+      </div>
+
       {showAddModal && (
         <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-3xl flex items-center justify-center p-4 z-[200] animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] shadow-[0_32px_128px_rgba(0,0,0,0.3)] max-w-2xl w-full border border-white/20 animate-in zoom-in-95 duration-500 overflow-hidden flex flex-col max-h-[90vh]">
             
-            <div className="px-10 py-8 bg-brand-dark text-white flex justify-between items-center shrink-0 border-b border-white/5 relative overflow-hidden">
-               <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 rounded-full blur-[80px] -mr-20 -mt-20"></div>
-               <div className="relative z-10 flex items-center gap-5">
-                  <div className="p-3 bg-brand-primary rounded-[18px] transition-transform rotate-3 hover:rotate-6">
+            <div className="px-6 sm:px-10 py-6 sm:py-8 bg-[#1E2A5A] text-white flex justify-between items-center shrink-0 border-b border-white/5 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] -mr-20 -mt-20"></div>
+               <div className="relative z-10 flex items-center gap-4 sm:gap-5">
+                  <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10 transition-transform rotate-3 hover:rotate-6">
                      <Stethoscope className="w-6 h-6 text-white" />
                   </div>
                    <div>
-                      <h2 className="text-2xl font-black tracking-tighter uppercase leading-none">{editingDoc ? 'Edit Doctor' : 'Add Doctor'}</h2>
-                      <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.4em] mt-1.5">{editingDoc ? 'Update Profile Details' : 'Doctor Registry Setup'}</p>
+                      <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{editingDoc ? 'Edit Doctor' : 'Add Doctor'}</h2>
+                      <p className="text-[11px] font-medium text-white/60 uppercase tracking-wider mt-1">{editingDoc ? 'Update Profile Details' : 'Doctor Registry Setup'}</p>
                    </div>
                </div>
-               <button onClick={() => setShowAddModal(false)} className="relative z-10 w-12 h-12 flex justify-center items-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all text-white/50 border border-white/5">
-                  <span className="text-xl">&times;</span>
+               <button onClick={() => setShowAddModal(false)} className="relative z-10 w-10 h-10 sm:w-12 sm:h-12 flex justify-center items-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all text-white border border-white/10">
+                  <X className="w-5 h-5" />
                </button>
             </div>
             
@@ -970,10 +1043,10 @@ const Doctors = () => {
               <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
                 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Doctor Name *</label>
+                  <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider pl-1">Doctor Name *</label>
                   <div className="flex gap-2">
                     <select 
-                      className="w-[100px] shrink-0 px-3 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-sm"
+                      className="w-[100px] shrink-0 px-3 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white rounded-xl transition-all font-bold text-[#1F2937] outline-none cursor-pointer text-sm"
                       value={newDoctor.honorific}
                       onChange={e => setNewDoctor({...newDoctor, honorific: e.target.value})}
                     >
@@ -988,7 +1061,7 @@ const Doctors = () => {
                       required 
                       type="text" 
                       placeholder="Enter doctor's name"
-                      className="flex-grow px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
+                      className="flex-grow px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium" 
                       value={newDoctor.name} 
                       onChange={e => setNewDoctor({...newDoctor, name: e.target.value})} 
                     />
@@ -997,21 +1070,21 @@ const Doctors = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Phone Number</label>
+                    <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider pl-1">Phone Number</label>
                     <input 
                       type="tel" 
                       placeholder="10-digit mobile number"
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
+                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium" 
                       value={newDoctor.phone} 
                       onChange={e => setNewDoctor({...newDoctor, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})} 
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Email <span className="text-brand-primary lowercase tracking-normal font-bold opacity-80">(Needed for reports)</span></label>
+                    <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider pl-1">Email <span className="text-[#1E2A5A] lowercase tracking-normal font-bold opacity-80">(Needed for reports)</span></label>
                     <input 
                       type="email" 
                       placeholder="doctor@email.com"
-                      className="w-full px-4 py-3 bg-amber-50/50 border border-amber-500/30 focus:border-amber-500 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-amber-500/50 placeholder:font-medium" 
+                      className="w-full px-4 py-3 bg-amber-50/50 border border-amber-500/30 focus:border-amber-500 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-amber-500/50 placeholder:font-medium" 
                       value={newDoctor.email} 
                       onChange={e => setNewDoctor({...newDoctor, email: e.target.value})} 
                     />
@@ -1020,12 +1093,12 @@ const Doctors = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Specialization</label>
+                    <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider pl-1">Specialization</label>
                     <input 
                       type="text" 
                       placeholder="e.g. Cardiologist"
                       list="specializationList"
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
+                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium" 
                       value={newDoctor.specialization} 
                       onChange={e => setNewDoctor({...newDoctor, specialization: e.target.value})} 
                     />
@@ -1047,11 +1120,11 @@ const Doctors = () => {
                     </datalist>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Clinic / Hospital</label>
+                    <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider pl-1">Clinic / Hospital</label>
                     <input 
                       type="text" 
                       placeholder="Enter base location"
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 placeholder:font-medium" 
+                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium" 
                       value={newDoctor.clinic} 
                       onChange={e => setNewDoctor({...newDoctor, clinic: e.target.value})} 
                     />
@@ -1060,10 +1133,10 @@ const Doctors = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Commission Structure *</label>
+                    <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider pl-1">Commission Structure *</label>
                     <div className="flex gap-2">
                       <select 
-                        className="w-1/2 px-4 py-3 bg-slate-50 border border-slate-100 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-sm"
+                        className="w-1/2 px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white rounded-xl transition-all font-bold text-[#1F2937] outline-none cursor-pointer text-sm"
                         value={newDoctor.commissionType} 
                         onChange={e => setNewDoctor({...newDoctor, commissionType: e.target.value})}
                       >
@@ -1074,17 +1147,17 @@ const Doctors = () => {
                         required
                         type="number" 
                         placeholder="0"
-                        className="w-1/2 px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300"
+                        className="w-1/2 px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3]"
                         value={newDoctor.commissionValue} 
                         onChange={e => setNewDoctor({...newDoctor, commissionValue: e.target.value})}
                       />
                     </div>
-                    <p className="text-[9px] font-bold text-brand-primary uppercase tracking-widest pl-1 mt-1 opacity-80 italic">Note: Commission value must be greater than 0.</p>
+                    <p className="text-[11px] font-bold text-[#1E2A5A] uppercase tracking-wider pl-1 mt-1 opacity-80 italic">Note: Commission value must be greater than 0.</p>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Account Status</label>
+                    <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider pl-1">Account Status</label>
                     <select 
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-sm"
+                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white rounded-xl transition-all font-bold text-[#1F2937] outline-none cursor-pointer text-sm"
                       value={newDoctor.status} 
                       onChange={e => setNewDoctor({...newDoctor, status: e.target.value})}
                     >
@@ -1107,14 +1180,14 @@ const Doctors = () => {
                       name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.'
                     });
                   }}
-                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-brand-dark hover:border-slate-300 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-3 bg-white border border-[#E5E7EB] rounded-2xl text-[12px] font-bold text-[#7B8794] hover:text-[#1F2937] hover:border-[#D1D5DB] transition-all shadow-sm"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={isSaving}
-                  className="px-6 py-3 bg-brand-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="px-6 py-3 bg-[#1E2A5A] text-white rounded-2xl text-[12px] font-bold tracking-wide transition-all shadow-xl shadow-[#1E2A5A]/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSaving && <Loader className="w-4 h-4 animate-spin" />}
                   {editingDoc ? 'Update Details' : 'Save Doctor'}
@@ -1131,9 +1204,9 @@ const Doctors = () => {
           <div className="bg-white h-full w-full max-w-7xl shadow-[0_32px_128px_rgba(0,0,0,0.5)] rounded-[32px] md:rounded-[48px] flex flex-col relative overflow-hidden animate-in zoom-in-95 duration-500 border border-white/20">
             
             {/* Modal Header - Refined Premium */}
-            <div className="px-6 py-4 md:px-8 md:py-6 bg-brand-dark text-white relative overflow-hidden shrink-0">
-               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-primary/10 rounded-full blur-[120px] -mr-48 -mt-48"></div>
-               <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-secondary/5 rounded-full blur-[100px] -ml-20 -mb-20"></div>
+            <div className="px-6 py-4 md:px-8 md:py-6 bg-[#1E2A5A] text-white relative overflow-hidden shrink-0">
+               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full blur-[120px] -mr-48 -mt-48"></div>
+               <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-[100px] -ml-20 -mb-20"></div>
                
                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
                   <div className="flex items-center gap-6 md:gap-8">
@@ -1141,7 +1214,7 @@ const Doctors = () => {
                         <img src="/favicon.png" alt="Logo" className="w-full h-full object-contain" />
                      </div>
                      <div>
-                        <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none truncate max-w-[200px] sm:max-w-none">{selectedDoc.name}</h2>
+                        <h2 className="text-xl md:text-3xl font-bold tracking-tight truncate max-w-[200px] sm:max-w-none">{selectedDoc.name}</h2>
                         <div className="flex flex-wrap items-center gap-3 mt-3">
                            <span className="text-[10px] md:text-[11px] font-black text-brand-primary uppercase tracking-[0.4em]">{selectedDoc.clinic || 'Medical Practice'}</span>
                            <span className="w-1.5 h-1.5 rounded-full bg-white/20"></span>
@@ -1161,19 +1234,19 @@ const Doctors = () => {
                      <button 
                        disabled={isEmailing}
                        onClick={() => handleEmailLedger()}
-                       className="flex-1 md:flex-none px-6 py-4 bg-brand-primary/10 hover:bg-brand-primary text-brand-primary hover:text-white rounded-[20px] transition-all border border-brand-primary/20 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest group disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-brand-primary/5 active:scale-95"
+                       className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/10 flex items-center justify-center gap-2 text-[12px] font-bold disabled:opacity-50"
                      >
-                        {isEmailing ? <Loader className="w-4 h-4 animate-spin text-white" /> : <Mail className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                        <span>{isEmailing ? 'Dispatching...' : 'Email Report'}</span>
+                        {isEmailing ? <Loader className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                        <span>{isEmailing ? 'Sending...' : 'Email Report'}</span>
                      </button>
                      <button 
                        onClick={handlePrintLedger}
-                       className="flex-1 md:flex-none px-6 py-4 bg-white/5 hover:bg-white text-white hover:text-brand-dark rounded-[20px] transition-all border border-white/5 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest group shadow-xl active:scale-95"
+                       className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/10 flex items-center justify-center gap-2 text-[12px] font-bold"
                      >
-                        <Printer className="w-4 h-4 text-brand-primary group-hover:text-brand-dark group-hover:scale-110 transition-transform" />
+                        <Printer className="w-4 h-4" />
                         <span>Print Ledger</span>
                      </button>
-                     <button onClick={() => setIsLedgerOpen(false)} className="w-12 h-12 md:w-14 md:h-14 flex justify-center items-center bg-white/5 hover:bg-rose-500 rounded-[22px] transition-all border border-white/5 text-white/50 hover:text-white shadow-xl">
+                     <button onClick={() => setIsLedgerOpen(false)} className="w-12 h-12 md:w-14 md:h-14 flex justify-center items-center bg-white/10 hover:bg-rose-500 rounded-2xl transition-all border border-white/10 text-white">
                         <X className="w-6 h-6 md:w-7 md:h-7" />
                      </button>
                   </div>
@@ -1270,34 +1343,16 @@ const Doctors = () => {
                            { label: 'Period Payouts', val: periodPaid.toFixed(0), unit: 'INR', icon: <CreditCard className="w-5 h-5"/>, color: 'sky', help: { en: 'Total paid to doctor during these dates.', hi: 'इन तारीखों के दौरान किया गया भुगतान।' } },
                            { label: 'Net Outstanding', val: totalDue.toFixed(0), unit: 'INR', icon: <Activity className="w-5 h-5"/>, color: totalDue > 0 ? 'rose' : 'emerald', help: { en: 'Total absolute amount currently due.', hi: 'अभी देय कुल वास्तविक राशि।' } }
                         ].map((stat, i) => (
-                           <div key={i} className="bg-white p-5 md:p-6 rounded-[24px] border border-slate-100 shadow-[0_10px_40px_rgb(0,0,0,0.02)] transition-all hover:shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:-translate-y-1 group relative">
-                              {/* Decorative Blur Clipper */}
-                              <div className="absolute inset-0 rounded-[24px] overflow-hidden pointer-events-none">
-                                 <div className={`absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl -mr-10 -mt-10 transition-opacity opacity-0 group-hover:opacity-40 ${
-                                    stat.color === 'emerald' ? 'bg-emerald-500' : 
-                                    stat.color === 'sky' ? 'bg-sky-500' : 
-                                    stat.color === 'rose' ? 'bg-rose-500' : 'bg-brand-primary'
-                                 }`}></div>
-                              </div>
-                              
-                              <div className="relative flex items-center justify-between mb-4">
-                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 ${
-                                    stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-500' : 
-                                    stat.color === 'sky' ? 'bg-sky-50 text-sky-500' : 
-                                    stat.color === 'rose' ? 'bg-rose-50 text-rose-500' : 'bg-brand-light text-brand-primary'
-                                 }`}>
+                           <div key={i} className="bg-white p-5 md:p-6 rounded-[24px] border border-[#E5E7EB] shadow-sm transition-all hover:shadow-md group relative">
+                              <div className="flex items-center justify-between mb-4">
+                                 <div className={`p-2 rounded-xl bg-${stat.color === 'emerald' ? 'emerald' : stat.color === 'sky' ? 'sky' : 'rose'}-500/10 text-${stat.color === 'emerald' ? 'emerald' : stat.color === 'sky' ? 'sky' : 'rose'}-600`}>
                                     {stat.icon}
                                  </div>
-                                 <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest tabular-nums">{stat.unit}</div>
+                                 <span className="text-[10px] font-black text-[#98A2B3] uppercase tracking-wider">{stat.label}</span>
                               </div>
-
-                              <div className="relative">
-                                 <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{stat.label}</div>
-                                 <div className={`text-2xl font-black tabular-nums tracking-tighter ${
-                                    stat.color === 'emerald' ? 'text-emerald-500' : 
-                                    stat.color === 'sky' ? 'text-sky-500' : 
-                                    stat.color === 'rose' ? 'text-rose-500' : 'text-slate-900'
-                                 }`}>₹{stat.val}</div>
+                              <div className="flex items-baseline gap-1">
+                                 <span className="text-2xl font-bold text-[#1F2937]">{stat.val}</span>
+                                 <span className="text-[10px] font-bold text-[#7B8794] uppercase">{stat.unit}</span>
                               </div>
 
                               {/* Repositioned Info Button - Bottom Right */}
@@ -1359,20 +1414,20 @@ const Doctors = () => {
                         </div>
                         <form onSubmit={handleRecordPayment} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                            <div className="space-y-2">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Pay Amount (₹)</label>
-                              <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary placeholder:text-slate-200 rounded-xl font-black outline-none transition-all shadow-inner text-sm" placeholder="₹ 0.00" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: e.target.value})} />
+                              <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider ml-2">Pay Amount (₹)</label>
+                              <input required type="number" className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white focus:border-[#1E2A5A] placeholder:text-[#98A2B3] rounded-xl font-bold outline-none transition-all shadow-sm text-sm text-[#1F2937]" placeholder="₹ 0.00" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: e.target.value})} />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Payment Mode</label>
-                              <select className="w-full px-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary rounded-xl font-black outline-none appearance-none cursor-pointer shadow-inner text-sm" value={newPayment.method} onChange={e => setNewPayment({...newPayment, method: e.target.value})}>
+                              <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider ml-2">Payment Mode</label>
+                              <select className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white focus:border-[#1E2A5A] rounded-xl font-bold outline-none appearance-none cursor-pointer shadow-sm text-sm text-[#1F2937]" value={newPayment.method} onChange={e => setNewPayment({...newPayment, method: e.target.value})}>
                                  {['Cash', 'UPI / PhonePe', 'Bank Transfer', 'Cheque'].map(m => <option key={m}>{m}</option>)}
                               </select>
                            </div>
                            <div className="md:col-span-2 space-y-2">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Reference Note</label>
+                              <label className="text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider ml-2">Reference Note</label>
                               <div className="flex flex-col sm:flex-row gap-3">
-                                 <input type="text" className="flex-grow px-4 py-3 bg-slate-50 border border-transparent focus:bg-white focus:border-brand-primary rounded-xl font-bold outline-none transition-all shadow-inner text-sm" placeholder="Optional notes..." value={newPayment.notes} onChange={e => setNewPayment({...newPayment, notes: e.target.value})} />
-                                 <button type="submit" disabled={selectedBillIds.size === 0} className="w-full sm:w-auto px-6 py-3 bg-brand-dark text-brand-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">Save Payout</button>
+                                 <input type="text" className="flex-grow px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white focus:border-[#1E2A5A] rounded-xl font-bold outline-none transition-all shadow-sm text-sm text-[#1F2937]" placeholder="Optional notes..." value={newPayment.notes} onChange={e => setNewPayment({...newPayment, notes: e.target.value})} />
+                                 <button type="submit" disabled={selectedBillIds.size === 0} className="w-full sm:w-auto px-6 py-3 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold tracking-wide shadow-lg hover:bg-[#1E2A5A]/90 transition-all active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">Save Payout</button>
                               </div>
                            </div>
                         </form>
@@ -1433,25 +1488,25 @@ const Doctors = () => {
                            <>
                               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                                  <div className="flex items-center gap-6">
-                                    <h3 className="text-2xl font-black text-brand-dark tracking-tighter uppercase flex items-center gap-4">
-                                       <div className="w-8 h-8 bg-brand-light rounded-lg flex items-center justify-center text-brand-primary">
+                                    <h3 className="text-xl font-bold text-[#1F2937] flex items-center gap-3">
+                                       <div className="p-2 bg-[#F3F4F6] rounded-xl text-[#1E2A5A]">
                                           <Activity className="w-4 h-4" />
                                        </div>
                                        Referral History
                                     </h3>
                                     {showPaymentForm && dueBills.length > 0 && (
-                                       <button onClick={selectedBillIds.size === dueBills.length ? deselectAll : selectAllDue} className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white transition-all border border-brand-primary/20 shadow-sm">
+                                       <button onClick={selectedBillIds.size === dueBills.length ? deselectAll : selectAllDue} className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-[#1E2A5A]/10 text-[#1E2A5A] hover:bg-[#1E2A5A] hover:text-white transition-all border border-[#1E2A5A]/20">
                                           {selectedBillIds.size === dueBills.length ? 'Deselect All' : 'Select All Due'}
                                        </button>
                                     )}
                                  </div>
                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                                       <button onClick={() => setReferralStatusFilter('ALL')} className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${referralStatusFilter === 'ALL' ? 'bg-brand-dark text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark'}`}>All</button>
-                                       <button onClick={() => setReferralStatusFilter('PAID')} className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${referralStatusFilter === 'PAID' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-emerald-600'}`}>Paid</button>
-                                       <button onClick={() => setReferralStatusFilter('DUE')} className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${referralStatusFilter === 'DUE' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-amber-600'}`}>Due</button>
+                                    <div className="flex items-center bg-white border border-[#E5E7EB] rounded-xl p-1 shadow-sm">
+                                       <button onClick={() => setReferralStatusFilter('ALL')} className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${referralStatusFilter === 'ALL' ? 'bg-[#1E2A5A] text-white' : 'text-[#7B8794] hover:text-[#1F2937]'}`}>All</button>
+                                       <button onClick={() => setReferralStatusFilter('PAID')} className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${referralStatusFilter === 'PAID' ? 'bg-emerald-600 text-white' : 'text-[#7B8794] hover:text-emerald-600'}`}>Paid</button>
+                                       <button onClick={() => setReferralStatusFilter('DUE')} className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${referralStatusFilter === 'DUE' ? 'bg-amber-600 text-white' : 'text-[#7B8794] hover:text-amber-600'}`}>Due</button>
                                     </div>
-                                    <div className="text-[10px] px-4 py-2.5 bg-white border border-slate-100 rounded-lg text-slate-400 font-black uppercase tracking-widest shadow-[0_2px_10px_rgb(0,0,0,0.02)] hidden sm:block">
+                                    <div className="text-[10px] px-4 py-2 bg-white border border-[#E5E7EB] rounded-xl text-[#7B8794] font-bold uppercase tracking-wider shadow-sm hidden sm:block">
                                        {finalFilteredReferrals.length} Records
                                     </div>
                                  </div>
@@ -1459,14 +1514,14 @@ const Doctors = () => {
                               <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-[0_10px_40px_rgb(0,0,0,0.02)]">
                                  <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-slate-50">
-                                       <thead className="bg-slate-50/50">
+                                       <thead className="bg-[#F9FAFB]">
                                           <tr>
-                                             {showPaymentForm && <th className="pl-6 pr-2 py-6 text-center w-12"></th>}
-                                             <th className="px-8 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Patient / Date</th>
-                                             <th className="px-8 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Tests</th>
-                                             <th className="px-8 py-6 text-right text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Bill Amount</th>
-                                             <th className="px-8 py-6 text-right text-[11px] font-black text-brand-primary uppercase tracking-[0.2em]">Commission</th>
-                                             <th className="px-8 py-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                                             {showPaymentForm && <th className="pl-6 pr-2 py-5 text-center w-12"></th>}
+                                             <th className="px-8 py-5 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Patient / Date</th>
+                                             <th className="px-8 py-5 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Tests</th>
+                                             <th className="px-8 py-5 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Bill Amount</th>
+                                             <th className="px-8 py-5 text-right text-[10px] font-semibold text-[#1E2A5A] uppercase tracking-wider">Commission</th>
+                                             <th className="px-8 py-5 text-center text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Status</th>
                                           </tr>
                                        </thead>
                                        <tbody className="divide-y divide-slate-50">
@@ -1486,18 +1541,20 @@ const Doctors = () => {
                                                          )}
                                                       </td>
                                                    )}
-                                                   <td className="px-8 py-6">
-                                                      <div className="text-sm font-black text-brand-dark uppercase tracking-tight group-hover:text-brand-primary transition-colors">{b.patientName}</div>
-                                                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formatDate(b.createdAt)}</div>
+                                                   <td className="px-8 py-5">
+                                                      <div className="text-[14px] font-semibold text-[#1F2937] leading-tight mb-0.5">{b.patientName}</div>
+                                                      <div className="text-[11px] font-medium text-[#7B8794]">{formatDate(b.createdAt)}</div>
                                                    </td>
-                                                   <td className="px-8 py-6 min-w-[250px]">
-                                                      <div className="text-[11px] font-black text-slate-500 uppercase leading-relaxed tracking-tight break-words">{b.testNames}</div>
+                                                   <td className="px-8 py-5 min-w-[250px]">
+                                                      <div className="text-[12px] font-medium text-[#7B8794] leading-relaxed break-words">{b.testNames}</div>
                                                    </td>
-                                                   <td className="px-8 py-6 text-right tabular-nums text-sm font-black text-slate-400">₹{b.paidAmount}</td>
-                                                   <td className="px-8 py-6 text-right tabular-nums text-base font-black text-brand-dark">₹{calculateCommission(b, selectedDoc).toFixed(0)}</td>
-                                                   <td className="px-8 py-6 text-center">
-                                                      <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-md ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                                                         {isPaid ? '✔ PAID' : '⏳ DUE'}
+                                                   <td className="px-8 py-5 text-right font-bold text-[#1F2937] text-[14px]">₹{b.paidAmount}</td>
+                                                   <td className="px-8 py-5 text-right font-bold text-[#1E2A5A] text-[14px]">₹{calculateCommission(b, selectedDoc).toFixed(0)}</td>
+                                                   <td className="px-8 py-5 text-center">
+                                                      <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+                                                         isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                                      }`}>
+                                                         {isPaid ? 'Paid' : 'Due'}
                                                       </span>
                                                    </td>
                                                 </tr>
@@ -1523,8 +1580,8 @@ const Doctors = () => {
                   {/* Payouts Detailed History */}
                   <div className="space-y-8 pb-10">
                      <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-black text-brand-dark tracking-tighter uppercase flex items-center gap-4">
-                           <div className="w-8 h-8 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500">
+                        <h3 className="text-xl font-bold text-[#1F2937] flex items-center gap-3">
+                           <div className="p-2 bg-[#F3F4F6] rounded-xl text-[#1E2A5A]">
                               <IndianRupee className="w-4 h-4" />
                            </div>
                            Payout History
@@ -1535,7 +1592,7 @@ const Doctors = () => {
                                  Reset History
                               </button>
                            )}
-                           <div className="text-[10px] px-4 py-2 bg-white border border-slate-100 rounded-full text-slate-400 font-black uppercase tracking-widest shadow-sm">
+                           <div className="text-[10px] px-4 py-2 bg-white border border-[#E5E7EB] rounded-xl text-[#7B8794] font-bold uppercase tracking-wider shadow-sm">
                               {ledgerData.payments.length} Records
                            </div>
                         </div>
@@ -1545,22 +1602,22 @@ const Doctors = () => {
                            <table className="min-w-full divide-y divide-slate-50">
                               <thead className="bg-slate-50/50">
                                  <tr>
-                                    <th className="px-10 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
-                                    <th className="px-10 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Method / Notes</th>
-                                    <th className="px-10 py-6 text-right text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Amount Paid</th>
+                                    <th className="px-10 py-5 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Date</th>
+                                    <th className="px-10 py-5 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Method / Notes</th>
+                                    <th className="px-10 py-5 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Amount Paid</th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
                                  {ledgerData.payments.map((p, i) => (
                                  <tr key={i} className="hover:bg-slate-50 transition-colors group">
-                                    <td className="px-10 py-8 tabular-nums text-sm font-black text-brand-dark uppercase">
+                                    <td className="px-10 py-6 text-[14px] font-semibold text-[#1F2937]">
                                        {formatDate(p.date)}
                                     </td>
-                                    <td className="px-10 py-8">
-                                       <div className="text-sm font-black text-sky-500 uppercase tracking-tight group-hover:translate-x-1 transition-transform inline-block">{p.method}</div>
-                                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{p.notes || 'No Reference Provided'}</div>
+                                    <td className="px-10 py-6">
+                                       <div className="text-[14px] font-semibold text-[#1E2A5A] uppercase tracking-tight">{p.method}</div>
+                                       <div className="text-[11px] font-medium text-[#7B8794] mt-0.5">{p.notes || 'No Reference Provided'}</div>
                                     </td>
-                                    <td className="px-10 py-8 text-right tabular-nums text-base font-black text-slate-900 border-l border-slate-50">₹{p.amount.toFixed(0)}</td>
+                                    <td className="px-10 py-6 text-right font-bold text-[#1F2937] text-base">₹{p.amount.toFixed(0)}</td>
                                  </tr>
                                  ))}
                                  {ledgerData.payments.length === 0 && (
@@ -1588,16 +1645,18 @@ const Doctors = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center z-[300] p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[28px] shadow-2xl max-w-sm w-full p-8 animate-in underline-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-[28px] shadow-2xl max-w-sm w-full p-8 animate-in fade-in zoom-in duration-200">
             <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <Trash2 className="w-7 h-7 text-rose-500" />
             </div>
-            <h3 className="text-xl font-black text-center text-brand-dark tracking-tight mb-2">Delete Doctor?</h3>
-            <p className="text-sm text-slate-500 font-medium text-center mb-7">This action cannot be undone. All records for this doctor will be permanently removed from the registry.</p>
+            <h3 className="text-xl font-bold text-[#1F2937] text-center mb-2">Delete Doctor?</h3>
+            <p className="text-[#7B8794] text-center text-[13px] font-medium mb-8 leading-relaxed">
+              This will permanently remove <span className="font-bold text-[#1F2937]">{deleteConfirm.name}</span>. This action cannot be undone.
+            </p>
             <div className="flex gap-3">
-              <button
+              <button 
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+                className="flex-1 px-6 py-3 bg-[#F3F4F6] text-[#7B8794] rounded-2xl text-[12px] font-bold hover:bg-[#E5E7EB] hover:text-[#1F2937] transition-all"
               >
                 Cancel
               </button>

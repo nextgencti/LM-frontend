@@ -3,9 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Loader, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, Database, Pencil, IndianRupee, ShieldAlert, AlertTriangle, Zap } from 'lucide-react';
+import { Search, Plus, Loader, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, Database, Pencil, IndianRupee, ShieldAlert, AlertTriangle, Zap, Download, ChevronLeft, ChevronRight, Filter, Eye, Printer, MoreVertical, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import OutOfTokensModal from '../components/OutOfTokensModal';
+import ReportPreview from '../components/ReportPreview';
+import BookingForm from '../components/BookingForm';
 import { generateLabId, generateBatchIds } from '../utils/idGenerator';
 
 const Bookings = () => {
@@ -45,6 +47,18 @@ const Bookings = () => {
   const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // New Filters
+  const [paymentFilter, setPaymentFilter] = useState('All');
+
+  // UI State
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
+  const [previewReport, setPreviewReport] = useState(null);
+  const [isFetchingReport, setIsFetchingReport] = useState(null); // stores booking id being fetched
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const isEditMode = params.get('edit');
@@ -69,20 +83,23 @@ const Bookings = () => {
     }
   }, [location.search, activeLabId]);
 
-  // Handle URL Param for Auto-Opening New Booking with Patient
+  // Handle URL Param for Auto-Opening New Booking
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const shouldAutoOpen = params.get('autoOpen');
     const pid = params.get('patientId');
+    const isNew = params.get('new');
     
-    if (shouldAutoOpen === 'true' && pid && activeLabId) {
+    if ((shouldAutoOpen === 'true' && pid && activeLabId) || (isNew === 'true' && activeLabId)) {
       // --- PAY AS YOU GO ENFORCEMENT ---
       const isPayAsYouGo = subscription?.plan === 'pay_as_you_go';
       const balance = subscription?.tokenBalance || 0;
       if (isPayAsYouGo && balance <= 0) {
         setShowTokenModal(true);
       } else {
-        setNewBooking(prev => ({ ...prev, patientId: pid }));
+        if (pid) {
+          setNewBooking(prev => ({ ...prev, patientId: pid }));
+        }
         setIsEditing(false);
         setShowAddModal(true);
       }
@@ -109,6 +126,27 @@ const Bookings = () => {
       console.error("URL Edit load error:", e);
     }
   };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdownId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Handle ESC key to close overlays/modals
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        if (selectedTestsBooking) setSelectedTestsBooking(null);
+        else if (bookingToDelete) setBookingToDelete(null);
+        else if (previewReport) setPreviewReport(null);
+        else if (showTokenModal) setShowTokenModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [selectedTestsBooking, bookingToDelete, previewReport, showTokenModal]);
 
   const handleEditBooking = (booking) => {
     setNewBooking({
@@ -142,12 +180,11 @@ const Bookings = () => {
     }
   };
 
-  const confirmDeleteBooking = async () => {
+  const confirmCancelBooking = async () => {
     if (!bookingToDelete) return;
     
-    // GUARD: check for delete_records permission
-    if (!userData?.permissions?.can_delete_records && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') {
-      toast.error("Unauthorized: You do not have permission to delete records.");
+    if (!userData?.permissions?.can_edit_records && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') {
+      toast.error("Unauthorized: You do not have permission to cancel records.");
       setBookingToDelete(null);
       return;
     }
@@ -156,10 +193,16 @@ const Bookings = () => {
       const bId = bookingToDelete.id; 
       const bookingNo = bookingToDelete.bookingNo || bookingToDelete.bookingId || bookingToDelete.billId || bId; 
       
-      // Delete Booking
-      await deleteDoc(doc(db, 'bookings', bId));
+      // Update Booking Status to Cancelled & Reset Financials
+      await setDoc(doc(db, 'bookings', bId), { 
+        status: 'Cancelled',
+        totalAmount: 0,
+        paidAmount: 0,
+        balance: 0,
+        paymentStatus: 'Cancelled'
+      }, { merge: true });
       
-      // Attempt to delete cascade
+      // Attempt to cascade cancel to reports
       try {
         const qReports = query(
           collection(db, 'reports'), 
@@ -168,20 +211,26 @@ const Bookings = () => {
         );
         const snap = await getDocs(qReports);
         for (const rDoc of snap.docs) {
-            await deleteDoc(doc(db, 'reports', rDoc.id));
+            await setDoc(doc(db, 'reports', rDoc.id), { status: 'Cancelled' }, { merge: true });
         }
-        await deleteDoc(doc(db, 'bills', bId)); 
       } catch (e) {
-        console.warn("Cascade delete skipped or failed:", e);
+        console.warn("Cascade cancel skipped or failed:", e);
       }
       
-      setBookings(prev => prev.filter(r => r.id !== bId));
-      toast.success('Booking deleted permanently');
+      setBookings(prev => prev.map(r => r.id === bId ? { 
+        ...r, 
+        status: 'Cancelled',
+        totalAmount: 0,
+        paidAmount: 0,
+        balance: 0,
+        paymentStatus: 'Cancelled'
+      } : r));
+      toast.success('Booking cancelled successfully');
       if (sourcePage === 'reports') {
         navigate('/reports');
       }
     } catch (error) {
-      toast.error('Failed to delete booking: ' + error.message);
+      toast.error('Failed to cancel booking: ' + error.message);
     } finally {
       setBookingToDelete(null);
     }
@@ -214,11 +263,24 @@ const Bookings = () => {
       if (urgencyFilter !== 'All' && b.urgency !== urgencyFilter) return false;
 
       // 4. Status Filter
-      if (statusFilter === 'All') return true;
-      if (statusFilter === 'Active') return b.status !== 'Delivered';
-      return b.status === statusFilter;
+      const matchesStatus = () => {
+          if (statusFilter === 'All') return true;
+          if (statusFilter === 'Active') return b.status !== 'Delivered' && b.status !== 'Cancelled';
+          if (statusFilter === 'In Progress') return b.status === 'Processing' || b.status === 'In Progress' || b.status === 'Sample Collected';
+          if (statusFilter === 'Finalized') return b.status === 'Final' || b.status === 'Completed';
+          return b.status === statusFilter;
+      };
+      if (!matchesStatus()) return false;
+
+      // 5. Payment Filter
+      if (paymentFilter !== 'All') {
+          if (paymentFilter === 'Paid' && b.paymentStatus !== 'Paid') return false;
+          if (paymentFilter === 'Unpaid' && b.paymentStatus !== 'Unpaid') return false;
+      }
+
+      return true;
     });
-  }, [bookings, searchTerm, statusFilter, urgencyFilter, startDate, endDate]);
+  }, [bookings, searchTerm, statusFilter, urgencyFilter, paymentFilter, startDate, endDate]);
 
   const statusCounts = React.useMemo(() => {
     // We only filter counts by DATE, but not by SEARCH or STATUS button, 
@@ -233,15 +295,49 @@ const Bookings = () => {
       return bDate >= start && bDate <= end;
     });
 
-    const counts = { Pending: 0, 'Processing': 0, 'Final': 0, 'Delivered': 0, Total: dateFiltered.length };
+    const counts = { Pending: 0, 'Processing': 0, 'Final': 0, 'Delivered': 0, Cancelled: 0, Total: dateFiltered.length };
     dateFiltered.forEach(b => {
       if (b.status === 'Pending') counts.Pending++;
       else if (b.status === 'Processing' || b.status === 'In Progress' || b.status === 'Sample Collected') counts.Processing++;
       else if (b.status === 'Final' || b.status === 'Completed') counts.Final++;
       else if (b.status === 'Delivered') counts.Delivered++;
+      else if (b.status === 'Cancelled') counts.Cancelled++;
     });
     return counts;
   }, [bookings, startDate, endDate]);
+
+  const paginatedBookings = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredBookings.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredBookings, currentPage, rowsPerPage]);
+
+  const handleExportCSV = () => {
+    const headers = ["Booking ID", "Bill ID", "Patient Name", "Doctor Name", "Tests", "Status", "Amount", "Paid", "Balance", "Payment Status", "Date"];
+    const rows = filteredBookings.map(b => [
+      b.bookingId || '',
+      b.billId || '',
+      b.patientName || '',
+      b.doctorName || 'Self',
+      b.testNames || '',
+      b.status || '',
+      b.totalAmount || 0,
+      b.paidAmount || 0,
+      b.balance || 0,
+      b.paymentStatus || '',
+      b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().toLocaleString() : new Date(b.createdAt).toLocaleString()) : ''
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const fetchBookings = async () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
@@ -394,7 +490,7 @@ const Bookings = () => {
         testNames: testNames,
         tests_detail: booked_tests,
         labId: activeLabId,
-        status: newBooking.status,
+        status: 'Sample Collected',
         urgency: newBooking.urgency,
         notes: newBooking.notes,
         patientName: selectedPatient?.name || 'Unknown',
@@ -427,12 +523,16 @@ const Bookings = () => {
           patientAge: selectedPatient?.age || 0,
           patientGender: selectedPatient?.gender || 'Any',
           testName: test.testName,
-          status: 'Pending',
+          price: test.price || 0,
+          totalAmount: newBooking.totalAmount || 0,
+          status: 'Sample Collected',
           paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
           labId: activeLabId,
+          doctorName: selectedDoctor?.name || 'Self',
           reportLayout: test.reportLayout || 'Standard',
           results: [],
           registered_at: serverTimestamp(),
+          collected_at: serverTimestamp(),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -556,6 +656,7 @@ const Bookings = () => {
           status: inheritedRec ? 'In Progress' : (inheritedColl ? 'Sample Collected' : 'Pending'),
           paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
           labId: activeLabId,
+          doctorName: selectedDoctor?.name || 'Self',
           reportLayout: test.reportLayout || 'Standard',
           results: [],
           registered_at: serverTimestamp(),
@@ -601,6 +702,57 @@ const Bookings = () => {
   };
 
 
+  const handlePrintReport = async (booking) => {
+    if (!activeLabId || !booking.bookingNo) return;
+    
+    setIsFetchingReport(booking.id);
+    try {
+      const q = query(
+        collection(db, 'reports'), 
+        where('labId', '==', activeLabId), 
+        where('bookingNo', '==', booking.bookingNo)
+      );
+      const snap = await getDocs(q);
+      const reports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      if (reports.length === 0) {
+        toast.info("No reports found for this booking.");
+        return;
+      }
+
+      // Stable sort for tests (by creation time)
+      reports.sort((a, b) => {
+        const getTime = (v) => {
+          if (!v) return 0;
+          if (v.seconds) return v.seconds * 1000;
+          if (v.toDate) return v.toDate().getTime();
+          const d = new Date(v); return isNaN(d.getTime()) ? 0 : d.getTime();
+        };
+        return getTime(a.createdAt || 0) - getTime(b.createdAt || 0);
+      });
+
+      // Merge metadata from first test + results from all tests
+      const firstTest = reports[0];
+      const mergedReport = {
+        ...firstTest,
+        testName: reports.map(t => t.testName).join(', '),
+        results: reports.flatMap(t => (t.results || []).map(r => ({ ...r, _testName: t.testName }))),
+      };
+
+      setPreviewReport(mergedReport);
+    } catch (error) {
+      console.error("Error fetching reports for print:", error);
+      toast.error("Failed to load report for printing.");
+    } finally {
+      setIsFetchingReport(null);
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  };
+
   const getUrgencyStyles = (urgency) => {
     switch (urgency) {
       case 'STAT': return 'bg-rose-500 text-white border-rose-600 shadow-sm shadow-rose-100';
@@ -617,510 +769,400 @@ const Bookings = () => {
       case 'In Progress':
       case 'Processing': return 'bg-indigo-500 text-white border-indigo-600 shadow-sm shadow-indigo-100';
       case 'Sample Collected': return 'bg-violet-500 text-white border-violet-600 shadow-sm shadow-violet-100';
+      case 'Cancelled': return 'bg-slate-500 text-white border-slate-600 shadow-sm shadow-slate-100';
       default: return 'bg-orange-400 text-white border-orange-500 shadow-sm shadow-orange-100'; // Pending
     }
   };
 
+  const handleNewBooking = () => {
+    if (!activeLabId && userData?.role === 'SuperAdmin') {
+      toast.info("Super Admin: Please select a Laboratory from the top selection dropdown to create a booking.");
+      return;
+    }
+
+    // --- PAY AS YOU GO ENFORCEMENT ---
+    const isPayAsYouGo = subscription?.plan === 'pay_as_you_go';
+    const balance = subscription?.tokenBalance || 0;
+    if (isPayAsYouGo && balance <= 0) {
+      setShowTokenModal(true);
+      return;
+    }
+
+    setShowAddModal(true);
+  };
+
   return (
     <>
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-black text-brand-dark tracking-tighter flex items-center text-left leading-none">
-            <div className="p-2 sm:p-2.5 bg-brand-light rounded-2xl mr-4 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
-              <Calendar className="w-7 h-7 sm:w-8 sm:h-8 text-brand-primary" />
-            </div>
-            Bookings
-          </h1>
-          <p className="text-slate-500 mt-2 sm:mt-3 font-medium text-sm sm:text-base">Catalog and manage diagnostic orders.</p>
+      {showAddModal ? (
+        <div className="flex-grow flex flex-col bg-[#F0F7FF] -mx-4 sm:-mx-6 lg:-mx-8 -mb-3 animate-in fade-in slide-in-from-bottom-2 duration-500 min-h-[calc(100vh-100px)]">
+          <BookingForm 
+            isEditing={isEditing}
+            editingBookingId={editingBookingId}
+            patients={patients}
+            doctors={doctors}
+            tests={tests}
+            newBooking={newBooking}
+            setNewBooking={setNewBooking}
+            isSaving={isSaving}
+            onSave={isEditing ? handleUpdateBooking : handleAddBooking}
+            onClose={exitModal}
+            userData={userData}
+          />
         </div>
-        
-        <button 
-          onClick={() => {
-            if (!activeLabId && userData?.role === 'SuperAdmin') {
-              alert("Super Admin: Please select a Laboratory from the top navigation dropdown to create a booking.");
-              return;
-            }
+      ) : (
+        <div className="flex flex-col">
+          {/* 1. Page Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+            <div>
+              <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight flex items-center">
+                <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+                  <Calendar className="w-5 h-5 text-brand-primary" />
+                </div>
+                Bookings
+              </h1>
+              <p className="text-[11px] font-medium text-[#7B8794] mt-1 tracking-wide">Catalog and manage diagnostic orders and patient records.</p>
+            </div>
+            
+            <button 
+              onClick={handleNewBooking}
+              className="w-full md:w-auto bg-[#1E2A5A] text-white px-5 py-2.5 rounded-xl font-bold tracking-widest text-[10px] uppercase shadow-lg hover:shadow-[#1E2A5A]/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
+            >
+              <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-500" />
+              New Booking
+            </button>
+          </div>
 
-            // --- PAY AS YOU GO ENFORCEMENT ---
-            const isPayAsYouGo = subscription?.plan === 'pay_as_you_go';
-            const balance = subscription?.tokenBalance || 0;
-            if (isPayAsYouGo && balance <= 0) {
-              setShowTokenModal(true);
-              return;
-            }
-
-            setShowAddModal(true);
-          }}
-          disabled={!activeLabId && userData?.role === 'SuperAdmin'}
-          className={`w-full md:w-auto flex items-center justify-center px-8 py-4.5 rounded-2xl font-black tracking-widest text-[11px] uppercase shadow-xl transition-all duration-300 group active:scale-95 ${
-            (!activeLabId && userData?.role === 'SuperAdmin') 
-            ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60' 
-            : 'bg-brand-dark text-white hover:shadow-brand-dark/20 hover:-translate-y-1'
-          }`}
-        >
-          <Plus className="w-5 h-5 mr-3 group-hover:rotate-90 transition-transform duration-300 text-brand-primary" />
-          New Booking
-        </button>
-      </div>
-
-      {/* Sticky Filters Header */}
-      <div className="sticky top-0 z-[40] -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-[#F8FAFC]/80 backdrop-blur-xl border-b border-slate-100 mb-8 transition-all">
-        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start lg:items-center">
-          
-          {/* Left Side: Search & Dates Below */}
-          <div className="flex flex-col gap-3.5 w-full lg:max-w-xl xl:max-w-2xl">
+          {/* 2. Compact Filter Row (Billing Style) */}
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             {/* Search Bar */}
-            <div className="relative w-full group">
-              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
-              </div>
-              <input type="text"
-                className="block w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[22px] focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 text-sm font-bold text-brand-dark outline-none transition-all placeholder:text-slate-300 shadow-sm"
-                placeholder="Search by patient or booking ID..." value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)} />
+            <div className="flex-1 min-w-[280px] relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+              <input 
+                type="text" 
+                className="w-full h-10 pl-11 pr-4 bg-white border border-[#E5E7EB] rounded-[5px] focus:ring-4 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A] transition-all font-bold text-[13px] text-[#1F2937] outline-none placeholder:text-slate-300 shadow-sm"
+                placeholder="Search by patient name, ID or booking ID..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
 
-            {/* Date Filters - Moved under search bar */}
-            <div className="flex items-center gap-4 bg-white/50 px-5 py-2.5 rounded-[20px] border border-slate-200 w-fit">
-               <div className="flex items-center gap-2.5">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">From</span>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                    className="bg-transparent border-none text-[12px] font-black text-brand-dark focus:ring-0 outline-none cursor-pointer" />
-               </div>
-               <div className="text-slate-200 font-bold">/</div>
-               <div className="flex items-center gap-2.5">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">To</span>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                    className="bg-transparent border-none text-[12px] font-black text-brand-dark focus:ring-0 outline-none cursor-pointer" />
-               </div>
+            {/* Date Filters */}
+            <div className="flex items-center gap-2 p-1 bg-white border border-[#E5E7EB] rounded-[5px] shadow-sm h-10">
+              <div className="flex items-center gap-2 px-3">
+                <Calendar className="w-4 h-4 text-[#98A2B3]" />
+                <div className="flex items-center gap-1.5">
+                  <input 
+                    type="date" 
+                    className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] focus:ring-0 p-0 w-[100px] cursor-pointer"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <span className="text-[10px] font-bold text-[#98A2B3] uppercase tracking-widest">To</span>
+                  <input 
+                    type="date" 
+                    className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] focus:ring-0 p-0 w-[100px] cursor-pointer"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Priority Filter */}
+            <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E5E7EB] rounded-[5px] shadow-sm h-10">
+              {['All', 'STAT', 'Urgent'].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setUrgencyFilter(p)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                    urgencyFilter === p 
+                      ? 'bg-[#1E2A5A] text-white shadow-sm' 
+                      : 'text-[#64748B] hover:bg-[#F8FAFC]'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            {/* Reset & Export Group */}
+            <div className="flex items-center gap-2 ml-auto">
+              <button 
+                onClick={() => {
+                  setSearchTerm('');
+                  setStartDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+                  setEndDate(new Date().toISOString().split('T')[0]);
+                  setStatusFilter('Active');
+                  setUrgencyFilter('All');
+                  setPaymentFilter('All');
+                }}
+                className="w-10 h-10 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-xl text-[#64748B] hover:text-[#1E2A5A] hover:bg-[#F8FAFC] transition-all shadow-sm group"
+                title="Reset Filters"
+              >
+                <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+              </button>
+
+              <button 
+                onClick={handleExportCSV}
+                className="flex items-center gap-2 px-4 h-10 bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl text-[10px] font-bold text-[#1F2937] hover:bg-[#1E2A5A] hover:text-white transition-all uppercase tracking-widest shadow-sm active:scale-95 group"
+              >
+                <Download className="w-3.5 h-3.5 text-[#1E2A5A] group-hover:text-white transition-colors" />
+                CSV
+              </button>
             </div>
           </div>
 
-          {/* Quick Filter Buttons & Urgency */}
-          <div className="flex flex-col md:flex-row xl:flex-row flex-wrap items-center gap-4 flex-grow lg:justify-end w-full lg:w-auto">
-            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-slate-200 rounded-[24px] shadow-sm overflow-x-auto no-scrollbar">
+          {/* Quick Status Chips (Billing Style) */}
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 -mb-1 mb-6">
+            <div className="flex items-center gap-1 p-1 bg-white border border-[#E5E7EB] rounded-[5px] shadow-sm h-10 shrink-0">
               {[
-                { id: 'Active', label: 'Active', color: 'bg-brand-primary', count: (statusCounts.Total || 0) - (statusCounts.Delivered || 0) },
-                { id: 'Pending', label: 'Pending', color: 'bg-amber-500', count: statusCounts.Pending },
-                { id: 'Processing', label: 'In Progress', color: 'bg-indigo-500', count: statusCounts.Processing },
-                { id: 'Final', label: 'Finalized', color: 'bg-emerald-500', count: statusCounts.Final },
+                { id: 'All', label: 'All', color: 'bg-slate-400', count: statusCounts.Total },
+                { id: 'Active', label: 'Active', color: 'bg-blue-500', count: statusCounts.Total - statusCounts.Delivered - statusCounts.Cancelled },
+                { id: 'Pending', label: 'Pending', color: 'bg-orange-400', count: statusCounts.Pending },
+                { id: 'In Progress', label: 'Processing', color: 'bg-indigo-500', count: statusCounts.Processing },
+                { id: 'Finalized', label: 'Ready', color: 'bg-emerald-500', count: statusCounts.Final },
                 { id: 'Delivered', label: 'Delivered', color: 'bg-sky-500', count: statusCounts.Delivered },
-                { id: 'All', label: 'All', color: 'bg-slate-400', count: statusCounts.Total }
+                { id: 'Cancelled', label: 'Cancelled', color: 'bg-rose-500', count: statusCounts.Cancelled }
               ].map((btn) => (
                 <button
                   key={btn.id}
                   onClick={() => setStatusFilter(btn.id)}
-                  className={`flex items-center gap-2.5 px-4 py-2 rounded-[18px] transition-all whitespace-nowrap group/btn ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap h-full ${
                     statusFilter === btn.id 
-                      ? 'bg-brand-dark text-white shadow-lg scale-[1.05]' 
-                      : 'text-slate-500 hover:bg-slate-50'
+                      ? 'bg-[#1E2A5A] text-white shadow-sm' 
+                      : 'text-[#64748B] hover:bg-[#F8FAFC]'
                   }`}
                 >
                   <div className={`w-1.5 h-1.5 rounded-full ${statusFilter === btn.id ? 'bg-white' : btn.color}`}></div>
-                  <span className="text-[11px] font-black uppercase tracking-wider">{btn.label}</span>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg tabular-nums ${
-                    statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{btn.label}</span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md tabular-nums ${
+                    statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
                   }`}>
                     {btn.count}
                   </span>
                 </button>
               ))}
-              
-              <div className="w-[1px] h-6 bg-slate-100 mx-1 hidden xl:block"></div>
-              
-              <div className="flex items-center gap-2 px-3">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Priority</span>
-                <select className="bg-transparent border-none py-1 text-[11px] font-bold text-brand-dark outline-none cursor-pointer"
-                  value={urgencyFilter} onChange={(e) => setUrgencyFilter(e.target.value)}>
-                  <option value="All">All Priority</option>
-                  <option value="Routine">Routine</option>
-                  <option value="Urgent">Urgent</option>
-                  <option value="STAT">STAT</option>
-                </select>
-              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[32px] shadow-sm border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 360px)' }}>
-        <table className="min-w-full divide-y divide-slate-100">
-          <thead className="bg-[#f1f5f9] sticky top-0 z-[10] border-b border-slate-200">
-              <tr>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Booking ID</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Patient / Doctor</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Tests</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Status</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Amount</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Date</th>
-                <th className="px-8 py-5 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-50">
-              {loading ? (
-                <tr>
-                  <td colSpan="7" className="px-8 py-24 text-center">
-                    <Loader className="h-10 w-10 animate-spin text-brand-primary mx-auto mb-4" />
-                    <p className="text-slate-400 font-black uppercase text-[12px] tracking-widest">Loading...</p>
-                  </td>
+          <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-[#E5E7EB] relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Booking ID</th>
+                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Patient / Doctor</th>
+                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Tests</th>
+                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Status</th>
+                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Amount</th>
+                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Date</th>
+                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Actions</th>
                 </tr>
-              ) : filteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-8 py-24 text-center">
-                    <div className="w-20 h-20 bg-slate-50 rounded-[32px] flex items-center justify-center mx-auto mb-6 text-slate-300">
-                      <Calendar className="w-10 h-10" />
-                    </div>
-                    <p className="text-brand-dark/40 font-black uppercase text-[12px] tracking-widest">No bookings found.</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredBookings.map((b) => (
-                  <tr key={b.id} className="hover:bg-brand-light/10 transition-all group relative hover:z-20">
-                    <td className="px-8 py-7">
-                      <div className="text-[12px] font-black text-brand-dark tracking-tighter bg-brand-light/50 px-3 py-1.5 rounded-xl border border-brand-primary/10 w-fit tabular-nums transition-colors group-hover:bg-brand-primary/20 group-hover:border-brand-primary/30">
-                        {b.bookingId || b.billId}
-                      </div>
-                    </td>
-                    <td className="px-8 py-7">
-                      <div className="text-base font-black text-brand-dark tracking-tight mb-1">{b.patientName}</div>
-                      <div className="text-[10px] font-bold text-slate-400 flex items-center uppercase tracking-widest">
-                        <div className="w-1.5 h-1.5 rounded-full bg-brand-secondary/40 mr-2"></div>
-                        {b.doctorName || 'DIRECT VISIT'}
-                      </div>
-                    </td>
-                    <td className="px-8 py-7">
-                      {(() => {
-                        const namesStr = b.testNames || b.testName || '';
-                        if (!namesStr) return <span className="text-slate-300 italic font-medium uppercase text-[11px] tracking-widest">Unassigned</span>;
-                        
-                        const names = namesStr.split(',').map(n => n.trim());
-                        if (names.length <= 1) return (
-                          <div className="text-sm font-black text-brand-secondary uppercase">{names[0]}</div>
-                        );
-                        
-                        return (
-                          <div className="flex flex-col">
-                            <span className="text-sm font-black text-brand-dark uppercase tracking-tight">{names[0]}</span>
-                            <button 
-                              onClick={() => setSelectedTestsBooking(b)}
-                              className="text-[10px] text-brand-primary font-black mt-1.5 bg-brand-primary/10 px-3 py-1 rounded-full w-fit border border-brand-primary/20 uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-all duration-300 shadow-sm active:scale-95"
-                            >
-                              +{names.length - 1} MORE ITEMS
-                            </button>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-8 py-7">
-                      <div className="flex flex-col gap-2">
-                         <span className={`px-4 py-1.5 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] border flex items-center w-fit shadow-sm transition-all ${
-                            ['Completed', 'Final', 'Delivered'].includes(b.status) ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                            b.status === 'Processing' ? 'bg-brand-secondary/10 text-brand-secondary border-brand-secondary/20' :
-                            'bg-amber-50 text-amber-600 border-amber-100'
-                         }`}>
-                           <div className={`w-1.5 h-1.5 rounded-full mr-2 ${['Completed', 'Final', 'Delivered'].includes(b.status) ? 'bg-emerald-500 animate-pulse' : 'bg-current'}`}></div>
-                           {b.status}
-                         </span>
-                         <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${
-                            b.urgency === 'STAT' ? 'bg-rose-50 text-rose-500 border-rose-100' :
-                            b.urgency === 'Urgent' ? 'bg-amber-50 text-amber-500 border-amber-100' :
-                            'bg-slate-50 text-slate-400 border-slate-100'
-                         }`}>
-                            PRIORITY: {b.urgency || 'ROUTINE'}
-                         </span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-7">
-                      <div className="text-lg font-black text-brand-dark tracking-tighter tabular-nums">₹{b.totalAmount}</div>
-                      <div className={`text-[12px] font-black uppercase tracking-widest mt-1.5 flex items-center ${b.totalAmount - (b.paidAmount || 0) > 0 ? 'text-rose-500' : 'text-brand-primary'}`}>
-                        <div className={`w-1 h-1 rounded-full mr-1.5 ${b.totalAmount - (b.paidAmount || 0) > 0 ? 'bg-rose-500' : 'bg-brand-primary'}`}></div>
-                        {b.totalAmount - (b.paidAmount || 0) > 0 ? `DUE: ₹${b.totalAmount - (b.paidAmount || 0)}` : 'PAID'}
-                      </div>
-                    </td>
-                    <td className="px-8 py-7 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <div className="text-[12px] font-black text-brand-dark/70 tracking-tighter tabular-nums uppercase">
-                          {(() => {
-                            if (!b.createdAt) return 'DATE N/A';
-                            let d = null;
-                            if (b.createdAt.toDate) d = b.createdAt.toDate();
-                            else if (b.createdAt.seconds) d = new Date(b.createdAt.seconds * 1000);
-                            else d = new Date(b.createdAt);
-
-                            if (!d || isNaN(d.getTime())) return 'DATE N/A';
-                            
-                            const day = d.getDate().toString().padStart(2, '0');
-                            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-                            const year = d.getFullYear();
-                            return `${day}/${month}/${year}`;
-                          })()}
-                        </div>
-                        <div className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
-                          {(() => {
-                             if (!b.createdAt) return '';
-                             let d = null;
-                             if (b.createdAt.toDate) d = b.createdAt.toDate();
-                             else if (b.createdAt.seconds) d = new Date(b.createdAt.seconds * 1000);
-                             else d = new Date(b.createdAt);
-                             return d?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-                          })()}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-7 text-right">
-                      <div className="flex justify-end gap-3 transition-all">
-                        <button 
-                          onClick={() => handleEditBooking(b)}
-                          className="p-3 bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white rounded-2xl transition-all shadow-sm border border-amber-100" title="Edit Booking">
-                          <Pencil className="w-5 h-5" />
-                        </button>
-                        <button className="p-3 bg-brand-light/50 text-brand-dark hover:bg-brand-primary hover:text-white rounded-2xl transition-all shadow-sm border border-brand-primary/10" title="Print Invoice">
-                          <FileText className="w-5 h-5" />
-                        </button>
-                        {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_delete_records) && (
-                          <button 
-                            onClick={() => setBookingToDelete(b)}
-                            className="p-3 bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm border border-rose-100" title="Delete Booking">
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-[#F3F4F6]">
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="py-24 text-center">
+                       <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-5" />
+                       <p className="text-[14px] font-medium text-[#7B8794]">Synchronizing Records...</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-      </div>
-    </div>
-
-      {/* Modern Booking Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-brand-dark/80 flex items-center justify-center p-2 sm:p-4 z-[200] backdrop-blur-3xl animate-in fade-in duration-300">
-          <div className="bg-white rounded-[28px] sm:rounded-[40px] shadow-3xl max-w-5xl w-full p-4 sm:p-8 overflow-hidden relative border border-white/20 flex flex-col max-h-[96vh]">
-            <button onClick={exitModal} className="absolute top-3 sm:top-6 right-3 sm:right-6 p-2 sm:p-2 text-slate-300 hover:text-brand-dark hover:bg-brand-light rounded-2xl rotate-90 hover:rotate-180 transition-all duration-500 z-10">
-              <X className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-            
-            <div className="mb-4 sm:mb-8 flex items-center gap-3 sm:gap-5 shrink-0">
-              <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-[22px] flex items-center justify-center shadow-xl rotate-6 shrink-0 transition-all ${isEditing ? 'bg-amber-500 shadow-amber-500/20' : 'bg-brand-primary shadow-brand-primary/20'}`}>
-                {isEditing ? <Pencil className="w-5 h-5 sm:w-7 sm:h-7 text-white" /> : <Calendar className="w-5 h-5 sm:w-7 sm:h-7 text-white" />}
-              </div>
-              <div>
-                <h2 className="text-xl sm:text-3xl font-black text-brand-dark tracking-tighter uppercase leading-none">
-                  {isEditing ? 'Modify Booking' : 'New Entry'}
-                </h2>
-                <p className="text-slate-400 font-bold text-[9px] sm:text-[12px] uppercase tracking-[0.2em] mt-1.5 sm:mt-1.5 leading-none">
-                  {isEditing ? `Editing Order: ${editingBookingId}` : `${userData?.labId} Standard Order`}
-                </p>
-              </div>
-            </div>
-            
-            <form onSubmit={isEditing ? handleUpdateBooking : handleAddBooking} className="flex flex-col lg:flex-row gap-3 sm:gap-6 max-h-[85vh] min-h-[400px]">
-              {/* Left Column: Inputs */}
-              <div className="flex-[1.4] space-y-3 sm:space-y-5 overflow-y-auto custom-scrollbar pr-2 sm:pr-6 pb-6 lg:border-r border-slate-50">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
-                  <div className="md:col-span-2">
-                    <label className="block text-[10px] sm:text-[11px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-1 sm:mb-1.5 ml-2">1. Select Patient</label>
-                    <div className="relative group">
-                      <select 
-                        required 
-                        disabled={isEditing}
-                        className={`w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300 ${isEditing ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
-                        value={newBooking.patientId} 
-                        onChange={e => !isEditing && setNewBooking({...newBooking, patientId: e.target.value})}
-                      >
-                        <option value="">Search Patient Archive...</option>
-                        {patients.map(p => <option key={p.id} value={p.id}>{p.name} — {p.phone || 'NO CONTACT'}</option>)}
-                      </select>
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-primary transition-colors">
-                        <User className="w-5 h-5" />
+                ) : filteredBookings.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-32 text-center">
+                       <div className="w-20 h-20 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 transition-transform hover:rotate-12">
+                         <Database className="w-8 h-8 text-slate-200" />
+                       </div>
+                       <p className="text-[16px] font-medium text-[#98A2B3]">Zero Matching Records Found</p>
+                    </td>
+                  </tr>
+                ) : paginatedBookings.map((b) => (
+                  <tr key={b.id} className={`hover:bg-[#F9FAFB] transition-colors group border-b border-[#F3F4F6] ${activeDropdownId === b.id ? 'z-50' : 'z-auto'}`}>
+                    <td className="px-6 py-2.5">
+                      <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${b.balance > 0 ? 'bg-rose-600 text-white shadow-sm' : 'text-[#1E2A5A] bg-slate-100'}`}>
+                        {b.billId || b.bookingId}
                       </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] sm:text-[11px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-1 sm:mb-1.5 ml-2">2. Referrer</label>
-                    <div className="relative group">
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
-                        value={newBooking.doctorId} onChange={e => setNewBooking({...newBooking, doctorId: e.target.value})}
-                      >
-                        <option value="">SELF / DIRECT VISIT</option>
-                        {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-secondary transition-colors">
-                        <User className="w-5 h-5" />
+                    </td>
+                    <td className="px-6 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-[#F1F5F9] flex items-center justify-center text-[#1E2A5A] font-bold text-xs border border-[#E5E7EB] shadow-sm group-hover:scale-110 transition-transform">
+                          {getInitials(b.patientName)}
+                        </div>
+                        <div>
+                          <div className="text-[14px] font-semibold text-[#1F2937] leading-tight group-hover:text-brand-primary transition-colors">{b.patientName}</div>
+                          <div className="text-[11px] font-medium text-[#7B8794] mt-0.5 uppercase tracking-wider">Dr. {b.doctorName || 'DIRECT VISIT'}</div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] sm:text-[11px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-1 sm:mb-1.5 ml-2">3. Priority</label>
-                    <div className="relative group">
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-[13px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-300"
-                        value={newBooking.urgency} onChange={e => setNewBooking({...newBooking, urgency: e.target.value})}
-                      >
-                        <option>Routine</option>
-                        <option>Urgent</option>
-                        <option>STAT</option>
-                      </select>
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-amber-500 transition-colors">
-                        <Clock className="w-5 h-5" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-              <div className="lg:col-span-2">
-                <label className="block text-[11px] sm:text-[12px] font-black text-brand-dark/60 uppercase tracking-[0.2em] mb-2 sm:mb-3 ml-2">4. Select Tests</label>
-                <div className="mb-2 sm:mb-3 relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 sm:pl-5 flex items-center pointer-events-none group-focus-within:text-brand-primary transition-colors text-slate-400">
-                    <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="Search master catalog..." 
-                    value={testSearchQuery}
-                    onChange={(e) => setTestSearchQuery(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-[12px] sm:rounded-[14px] pl-10 sm:pl-12 pr-4 sm:pr-5 py-1.5 sm:py-2 text-xs sm:text-[13px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all placeholder:text-slate-400 shadow-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-1.5 sm:gap-2 p-2 sm:p-2.5 min-h-[140px] max-h-[180px] overflow-y-auto bg-slate-50/30 rounded-[16px] sm:rounded-[22px] border border-slate-100 shadow-inner">
-                  {tests.filter(t => t.testName?.toLowerCase().includes(testSearchQuery.toLowerCase())).map(t => (
-                    <label key={t.id} className={`flex items-center p-2 sm:p-2.5 rounded-[12px] sm:rounded-[14px] border-2 transition-all cursor-pointer group relative overflow-hidden ${newBooking.testIds.includes(t.id) ? 'bg-brand-dark border-brand-dark text-white shadow-xl shadow-brand-dark/30' : 'bg-white border-transparent text-slate-600 hover:border-brand-primary/30 shadow-sm'}`}>
-                      <input 
-                        type="checkbox" 
-                        className="hidden"
-                        checked={newBooking.testIds.includes(t.id)}
-                        onChange={(e) => {
-                          const ids = e.target.checked 
-                            ? [...newBooking.testIds, t.id]
-                            : newBooking.testIds.filter(id => id !== t.id);
-                          calculateTotal(ids);
-                        }}
-                      />
-                      <span className="text-[10px] font-black uppercase tracking-tight relative z-10">{t.testName}</span>
-                      <div className="ml-auto mr-4 text-[10px] font-black opacity-70 relative z-10 tabular-nums">₹{t.price}</div>
-                      {newBooking.testIds.includes(t.id) && <div className="absolute top-0 right-0 w-6 h-6 bg-brand-primary rounded-bl-[16px] flex items-center justify-center p-1 shadow-lg"><CheckCircle className="w-3 h-3 text-white relative -top-0.5 -right-0.5" /></div>}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Billing & Notes Sidebar */}
-              <div className="flex-1 flex flex-col gap-3 sm:gap-4">
-                <div className="bg-brand-dark p-4 sm:p-5 rounded-[24px] sm:rounded-[28px] space-y-2.5 sm:space-y-3 shadow-3xl shadow-brand-dark/20 relative overflow-hidden shrink-0">
-                  <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-brand-primary/10 blur-[60px] sm:blur-[80px] rounded-full"></div>
-                  <div className="relative z-10">
-                    <div className="flex justify-between items-center mb-1.5 sm:mb-3">
-                      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Subtotal</span>
-                      <span className="font-black text-brand-light text-base sm:text-base tabular-nums">₹{newBooking.subtotal || 0}</span>
-                    </div>
-                    <div className="space-y-0.5 mb-2 sm:mb-4">
-                      <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-0.5">Discount (₹)</label>
-                      <input 
-                        type="number" 
-                        disabled={!userData?.permissions?.can_apply_discounts && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin'}
-                        className={`w-full bg-white/5 border border-white/10 rounded-[10px] sm:rounded-[14px] p-2 sm:p-2.5 text-[13px] sm:text-[13px] font-black text-white outline-none focus:ring-4 focus:ring-brand-primary/30 transition-all tabular-nums ${(!userData?.permissions?.can_apply_discounts && userData?.role !== 'LabAdmin' && userData?.role !== 'SuperAdmin') ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        placeholder="0"
-                        value={newBooking.discount} onChange={e => handleDiscountChange(e.target.value)}
-                      />
-                    </div>
-                    <div className="pt-2 sm:pt-3 border-t border-white/10 flex justify-between items-end">
-                      <div className="text-left py-0.5 sm:py-0.5">
-                        <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-0.5 sm:mb-0.5">Total</p>
-                        <p className="text-lg sm:text-xl font-black text-white tracking-tighter tabular-nums">₹{newBooking.totalAmount || 0}</p>
-                      </div>
-                      <div className="text-right flex flex-col items-end gap-0.5 sm:gap-0.5">
-                         <p className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">Paid</p>
-                         <input type="number" 
-                           className="w-16 sm:w-20 bg-transparent border-b-2 border-brand-primary py-0 text-right text-base sm:text-lg font-black text-brand-primary outline-none focus:bg-brand-primary/10 transition-all tabular-nums"
-                           value={newBooking.paidAmount} onChange={e => setNewBooking({...newBooking, paidAmount: parseFloat(e.target.value) || 0})}
-                         />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-brand-light/20 p-3 sm:p-4 rounded-[20px] sm:rounded-[24px] border border-brand-primary/10 space-y-1 sm:space-y-1 shrink-0">
-                   <label className="block text-[10px] font-black text-brand-dark/50 uppercase tracking-[0.3em] ml-2">Observations & History</label>
-                   <textarea 
-                     className="w-full bg-white/60 border border-slate-100 rounded-[12px] sm:rounded-[16px] p-2.5 sm:p-3 text-[12px] font-bold text-brand-dark outline-none focus:ring-8 focus:ring-brand-primary/5 h-12 sm:h-16 resize-none shadow-inner transition-all"
-                     placeholder="Notes, symptoms..."
-                     value={newBooking.notes} onChange={e => setNewBooking({...newBooking, notes: e.target.value})}
-                   ></textarea>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:gap-2.5 mt-auto pt-1">
-                    <button 
-                      type="submit" 
-                      disabled={isSaving} 
-                      className={`w-full py-2.5 sm:py-3.5 rounded-[16px] sm:rounded-[20px] text-[11px] font-black uppercase tracking-[0.3em] transition-all border border-white/10 group flex items-center justify-center gap-3 ${
-                        isSaving 
-                          ? 'bg-brand-dark/80 cursor-not-allowed text-white/50' 
-                          : isEditing 
-                            ? 'bg-amber-500 text-white hover:bg-amber-600 hover:shadow-2xl hover:shadow-amber-500/30 active:scale-95'
-                            : 'bg-brand-dark text-white hover:shadow-2xl hover:shadow-brand-dark/30 active:scale-95'
-                      }`}
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-brand-primary" />
-                          {isEditing ? 'Updating...' : 'Saving...'}
-                        </>
-                      ) : (
-                        <>
-                          {isEditing ? 'Update Booking' : 'Save Booking'}
-                          {isEditing ? (
-                            <Pencil className="inline w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1 text-white hover:rotate-12 transition-transform" />
-                          ) : (
-                            <Plus className="inline w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1 text-brand-primary group-hover:rotate-90 transition-transform" />
-                          )}
-                        </>
-                      )}
-                    </button>
-                    <button type="button" onClick={exitModal} className="w-full py-2 sm:py-2.5 bg-slate-50 text-slate-400 rounded-[12px] sm:rounded-[14px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">Cancel Order</button>
-                </div>
-              </div>
-            </form>
+                    </td>
+                    <td className="px-6 py-2.5 max-w-[200px]">
+                      <div className="text-[11px] font-medium text-[#4B5563] leading-tight mb-0.5">{b.testIds?.length} Tests</div>
+                      <div className="text-[11px] font-medium text-[#7B8794] truncate" title={b.testNames}>{b.testNames}</div>
+                    </td>
+                    <td className="px-6 py-2.5">
+                       <div className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm border ${getStatusStyles(b.status || 'Pending')}`}>
+                         <div className="w-1 h-1 rounded-full bg-white opacity-60" />
+                         {b.status}
+                       </div>
+                    </td>
+                    <td className="px-6 py-2.5">
+                       <div className={`text-[13px] font-bold tracking-tight mb-0.5 tabular-nums ${b.status === 'Cancelled' ? 'text-slate-400 line-through opacity-50' : 'text-[#1F2937]'}`}>
+                         ₹{b.totalAmount}
+                       </div>
+                       <div className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 ${b.status === 'Cancelled' ? 'text-slate-400' : b.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                         <div className={`w-0.5 h-0.5 rounded-full ${b.status === 'Cancelled' ? 'bg-slate-400' : b.paymentStatus === 'Paid' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                         {b.status === 'Cancelled' ? 'Cancelled' : b.paymentStatus}
+                       </div>
+                    </td>
+                    <td className="px-6 py-2.5 whitespace-nowrap">
+                       <div className="text-[11px] font-semibold text-[#374151] tracking-tight mb-0.5 whitespace-nowrap tabular-nums">
+                         {b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date(b.createdAt).toLocaleDateString('en-GB')) : 'N/A'}
+                       </div>
+                       <div className="text-[10px] font-medium text-[#98A2B3] tabular-nums">
+                         {b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : new Date(b.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })) : '--:--'}
+                       </div>
+                    </td>
+                    <td className="px-6 py-2.5 text-right">
+                       <div className="flex items-center justify-end gap-1 isolate">
+                         <button 
+                           onClick={() => setSelectedTestsBooking(b)}
+                            className="p-2 text-slate-400 hover:text-[#1E2A5A] hover:bg-[#F1F5F9] rounded-xl transition-all"
+                            title="View Full Details"
+                          >
+                           <Eye className="w-4 h-4" />
+                         </button>
+                         {['Final', 'Completed', 'Finalized', 'Delivered'].includes(b.status) && (
+                           <button 
+                             onClick={() => handlePrintReport(b)}
+                             disabled={isFetchingReport === b.id}
+                             className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all disabled:opacity-50" 
+                             title="Print Report"
+                           >
+                             {isFetchingReport === b.id ? (
+                               <Loader className="w-4 h-4 animate-spin text-emerald-600" />
+                             ) : (
+                               <Printer className="w-4 h-4" />
+                             )}
+                           </button>
+                         )}
+                         <button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             handleEditBooking(b);
+                           }}
+                           className="p-2 text-slate-400 hover:text-[#1E2A5A] hover:bg-[#F1F5F9] rounded-xl transition-all"
+                           title="Edit Booking"
+                         >
+                           <Pencil className="w-4 h-4" />
+                         </button>
+                         <button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setBookingToDelete(b);
+                           }}
+                           className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                           title="Cancel Booking"
+                         >
+                           <X className="w-4 h-4" />
+                         </button>
+                       </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+
+          {/* 6. Professional Pagination Footer */}
+          <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 px-6 pb-6">
+            <div className="flex items-center gap-4">
+              <p className="text-[11px] font-medium text-[#7B8794] uppercase tracking-wider">
+                Records <span className="text-[#1F2937] font-bold px-1">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredBookings.length)}</span> of <span className="text-[#1F2937] font-bold">{filteredBookings.length}</span>
+              </p>
+              <div className="h-3 w-[1px] bg-[#E5E7EB] hidden md:block" />
+              <select 
+                 className="bg-[#F8FAFC] border border-[#E5E7EB] px-3 py-1.5 rounded-[5px] text-[11px] font-bold text-[#1F2937] outline-none cursor-pointer hover:bg-white transition-all uppercase tracking-wider"
+                 value={rowsPerPage}
+                 onChange={e => {
+                    setRowsPerPage(parseInt(e.target.value));
+                    setCurrentPage(1);
+                 }}
+               >
+                 <option value={5}>5 / page</option>
+                 <option value={10}>10 / page</option>
+                 <option value={20}>20 / page</option>
+                 <option value={50}>50 / page</option>
+               </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-10 h-10 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-xl text-[#64748B] hover:text-[#1E2A5A] hover:bg-[#F8FAFC] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <div className="flex items-center gap-1.5">
+                {[...Array(Math.ceil(filteredBookings.length / rowsPerPage))].map((_, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-10 h-10 rounded-xl text-[11px] font-bold transition-all duration-200 ${
+                      currentPage === i + 1 
+                        ? 'bg-[#1E2A5A] text-white shadow-md' 
+                        : 'bg-white text-[#64748B] hover:bg-[#F8FAFC] border border-[#E5E7EB]'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredBookings.length / rowsPerPage), p + 1))}
+                disabled={currentPage === Math.ceil(filteredBookings.length / rowsPerPage)}
+                className="w-10 h-10 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-xl text-[#64748B] hover:text-[#1E2A5A] hover:bg-[#F8FAFC] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>  
       )}
-      {/* Delete Confirmation Modal */}
+
+      {/* Cancel Confirmation Modal */}
       {bookingToDelete && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-3xl animate-in fade-in" onClick={() => setBookingToDelete(null)}></div>
           <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-rose-50 px-8 py-6 border-b border-rose-100 flex items-center gap-4">
                <div className="p-3 bg-rose-100 rounded-2xl text-rose-600">
-                  <Trash2 className="w-8 h-8" />
+                  <X className="w-8 h-8" />
                </div>
                <div>
-                  <h3 className="text-xl font-black text-rose-600 uppercase tracking-tight">Delete Booking</h3>
+                  <h3 className="text-xl font-bold text-rose-600 uppercase tracking-tight">Cancel Booking</h3>
                   <p className="text-sm font-bold text-rose-400/80 uppercase tracking-widest mt-1">{bookingToDelete.bookingId || bookingToDelete.billId || 'Unknown ID'}</p>
                </div>
             </div>
             <div className="p-8">
                <p className="text-[14px] text-slate-500 font-medium leading-relaxed">
-                  Are you sure you want to permanently delete the booking for <strong className="text-brand-dark uppercase">{bookingToDelete.patientName}</strong>? This will also delete any generated bills and reports. This action cannot be undone.
+                  Are you sure you want to cancel the booking for <strong className="text-brand-dark uppercase">{bookingToDelete.patientName}</strong>? This will also cancel any generated bills and reports.
                </p>
                
                <div className="mt-8 flex gap-4 pt-6 border-t border-slate-100">
                  <button 
                    onClick={() => setBookingToDelete(null)}
-                   className="flex-1 px-6 py-3.5 bg-slate-50 text-slate-500 font-black uppercase tracking-widest text-[12px] rounded-2xl hover:bg-slate-100 transition-colors border border-slate-200"
+                   className="flex-1 px-6 py-3.5 bg-slate-50 text-slate-500 font-bold uppercase tracking-widest text-[12px] rounded-2xl hover:bg-slate-100 transition-colors border border-slate-200"
                  >
-                   Cancel
+                   Keep Booking
                  </button>
                  <button 
-                   onClick={confirmDeleteBooking}
-                   className="flex-1 px-6 py-3.5 bg-rose-500 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 hover:shadow-rose-500/40 active:scale-95"
+                   onClick={confirmCancelBooking}
+                   className="flex-1 px-6 py-3.5 bg-rose-500 text-white font-bold uppercase tracking-widest text-[12px] rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 hover:shadow-rose-500/40 active:scale-95"
                  >
-                   Yes, Delete
+                   Yes, Cancel
                  </button>
                </div>
             </div>
@@ -1143,25 +1185,25 @@ const Bookings = () => {
                   <Database className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-brand-dark">Test Panel</h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{selectedTestsBooking.patientName}</p>
+                  <h3 className="text-xl font-bold text-brand-dark">Test Panel</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedTestsBooking.patientName}</p>
                 </div>
               </div>
 
               <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-2 mb-6">
                 {(selectedTestsBooking.testNames || "").split(',').map((name, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:bg-brand-primary/5 hover:border-brand-primary/20 transition-all">
-                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[10px] font-black text-brand-primary shadow-sm group-hover:bg-brand-primary group-hover:text-white transition-all">
+                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[10px] font-bold text-brand-primary shadow-sm group-hover:bg-brand-primary group-hover:text-white transition-all">
                       {String(idx + 1).padStart(2, '0')}
                     </div>
-                    <span className="text-sm font-black text-brand-dark uppercase tracking-tight">{name.trim()}</span>
+                    <span className="text-sm font-bold text-brand-dark uppercase tracking-tight">{name.trim()}</span>
                   </div>
                 ))}
               </div>
 
               <button 
                 onClick={() => setSelectedTestsBooking(null)}
-                className="w-full py-4 bg-brand-dark text-white rounded-[18px] text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-brand-dark/20 hover:scale-[1.02] transition-all active:scale-95"
+                className="w-full py-4 bg-brand-dark text-white rounded-[18px] text-[11px] font-bold uppercase tracking-[0.2em] shadow-lg shadow-brand-dark/20 hover:scale-[1.02] transition-all active:scale-95"
               >
                 Close Details
               </button>
@@ -1172,6 +1214,13 @@ const Bookings = () => {
         isOpen={showTokenModal} 
         onClose={() => setShowTokenModal(false)} 
       />
+      {previewReport && (
+        <ReportPreview 
+          report={previewReport} 
+          onClose={() => setPreviewReport(null)} 
+        />
+      )}
+    </div>
     </>
   );
 };
