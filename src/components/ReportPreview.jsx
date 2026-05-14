@@ -20,6 +20,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
   const [isQuickPaying, setIsQuickPaying] = useState(false);
   const [pdfData, setPdfData] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [quickDiscount, setQuickDiscount] = useState(0);
 
   useEffect(() => {
     if (report) {
@@ -263,6 +264,44 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
     }
   }, [loading, reportData, labProfile, patientData, isPublicView, qrUrl, currentUser, doctorData]);
 
+  const handleMarkDelivered = async () => {
+    // Only if currently not delivered and is finalized
+    if (!bookingData || bookingData.status === 'Delivered' || isPublicView) return;
+    
+    try {
+      const batch = writeBatch(db);
+      
+      // Update booking
+      batch.update(doc(db, 'bookings', bookingData.id), { 
+        status: 'Delivered', 
+        deliveredAt: serverTimestamp(),
+        updatedAt: serverTimestamp() 
+      });
+      
+      // Update all reports for this booking to Delivered
+      const q = query(
+        collection(db, 'reports'), 
+        where('labId', '==', bookingData.labId), 
+        where('bookingNo', '==', bookingData.bookingNo)
+      );
+      const snap = await getDocs(q);
+      snap.forEach(rDoc => {
+        if (rDoc.data().status !== 'Delivered') {
+          batch.update(rDoc.ref, { 
+            status: 'Delivered', 
+            deliveredAt: serverTimestamp(),
+            updatedAt: serverTimestamp() 
+          });
+        }
+      });
+      
+      await batch.commit();
+      setBookingData(prev => ({ ...prev, status: 'Delivered' }));
+    } catch (err) {
+      console.error("Error updating status to Delivered:", err);
+    }
+  };
+
   const handleEmailReport = async () => {
     if (!checkFeature('Email Support')) { toast.info('🚀 Upgrade to enable Email Support.'); return; }
     if (emailSending || !pdfData) return;
@@ -289,6 +328,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
           });
           if (!res.ok) throw new Error('Email failed');
           toast.success('Professional PDF emailed successfully!');
+          handleMarkDelivered();
         } catch (error) {
           toast.error('Email failed: ' + error.message);
         } finally {
@@ -445,7 +485,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
           {/* PDF Viewer Content Area - SEPARATE CARD */}
           <div className={`flex-1 flex flex-col bg-white ${isPublicView ? '' : 'rounded-[5px] shadow-3xl border border-slate-100'} overflow-hidden`}>
-            <ReportPdfViewer pdfBuffer={pdfData} onClose={onClose} onEmail={!isPublicView ? handleEmailReport : null} isEmailing={emailSending} fileName={`${reportData.patientName || 'Patient'}_Report.pdf`} isPublic={isPublicView} />
+            <ReportPdfViewer pdfBuffer={pdfData} onClose={onClose} onEmail={!isPublicView ? handleEmailReport : null} onDeliver={!isPublicView ? handleMarkDelivered : null} isEmailing={emailSending} fileName={`${reportData.patientName || 'Patient'}_Report.pdf`} isPublic={isPublicView} isRestricted={labProfile?.reportSettings?.restrictUnpaidReports && bookingData?.paymentStatus !== 'Paid'} onRestrict={() => setShowQuickPay(true)} />
           </div>
         </div>
       )}
@@ -481,9 +521,27 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Amount to Recieve (₹)</label>
-                <input type="number" id="preview-pay-amount" className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-6 text-2xl font-black text-brand-dark outline-none" defaultValue={bookingData.balance} autoFocus />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Discount (₹)</label>
+                  <input 
+                    type="number" 
+                    id="preview-pay-discount" 
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-6 text-xl font-black text-rose-500 outline-none" 
+                    value={quickDiscount}
+                    onChange={(e) => {
+                      const disc = parseFloat(e.target.value) || 0;
+                      setQuickDiscount(disc);
+                      // Update amount input as well
+                      const amountInput = document.getElementById('preview-pay-amount');
+                      if (amountInput) amountInput.value = Math.max((bookingData.balance || 0) - disc, 0);
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">To Receive (₹)</label>
+                  <input type="number" id="preview-pay-amount" className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-6 text-xl font-black text-brand-dark outline-none" defaultValue={Math.max((bookingData.balance || 0) - quickDiscount, 0)} />
+                </div>
               </div>
 
               <div className="flex gap-2">
@@ -496,24 +554,40 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
               </div>
 
               <button disabled={isQuickPaying} onClick={async () => {
-                const amount = parseFloat(document.getElementById('preview-pay-amount').value);
+                const amount = parseFloat(document.getElementById('preview-pay-amount').value) || 0;
+                const discount = quickDiscount;
                 const method = document.querySelector('.preview-pay-mode.bg-brand-dark').innerText;
-                if (!amount || amount <= 0) { toast.error("Enter valid amount"); return; }
+                
+                if (amount < 0 || discount < 0) { toast.error("Invalid values"); return; }
+                if (amount === 0 && discount === 0) { toast.error("Enter amount or discount"); return; }
+                
                 setIsQuickPaying(true);
                 try {
+                  const newTotal = Math.max((parseFloat(bookingData.totalAmount) || 0) - discount, 0);
+                  const newDiscount = (parseFloat(bookingData.discount) || 0) + discount;
                   const newPaid = (parseFloat(bookingData.paidAmount) || 0) + amount;
-                  const newBalance = Math.max((parseFloat(bookingData.totalAmount) || 0) - newPaid, 0);
+                  const newBalance = Math.max(newTotal - newPaid, 0);
                   const newStatus = newBalance <= 0 ? 'Paid' : 'Unpaid';
+                  
                   const batch = writeBatch(db);
-                  batch.update(doc(db, 'bookings', bookingData.id), { paidAmount: newPaid, balance: newBalance, paymentStatus: newStatus, paymentHistory: [...(bookingData.paymentHistory || []), { amount, method, date: new Date() }], updatedAt: serverTimestamp() });
+                  batch.update(doc(db, 'bookings', bookingData.id), { 
+                    totalAmount: newTotal,
+                    discount: newDiscount,
+                    paidAmount: newPaid, 
+                    balance: newBalance, 
+                    paymentStatus: newStatus, 
+                    paymentHistory: [...(bookingData.paymentHistory || []), { amount, method, discount, date: new Date() }], 
+                    updatedAt: serverTimestamp() 
+                  });
                   
                   const qSync = query(collection(db, 'reports'), where('labId', '==', bookingData.labId), where('bookingNo', '==', bookingData.bookingNo));
                   const sSnap = await getDocs(qSync);
                   sSnap.forEach(rDoc => batch.update(rDoc.ref, { paymentStatus: newStatus, updatedAt: serverTimestamp() }));
                   
                   await batch.commit();
-                  toast.success(`Success! Received ₹${amount}`);
-                  setBookingData(prev => ({ ...prev, paidAmount: newPaid, balance: newBalance, paymentStatus: newStatus }));
+                  toast.success(`Success! Received ₹${amount}${discount > 0 ? ` with ₹${discount} discount` : ''}`);
+                  setBookingData(prev => ({ ...prev, totalAmount: newTotal, discount: newDiscount, paidAmount: newPaid, balance: newBalance, paymentStatus: newStatus }));
+                  setQuickDiscount(0);
                   setShowQuickPay(false);
                 } catch (err) { toast.error("Payment failed: " + err.message); } finally { setIsQuickPaying(false); }
               }} className="w-full py-4 bg-rose-600 text-white rounded-[5px] text-sm font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3">

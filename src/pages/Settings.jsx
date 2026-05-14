@@ -7,6 +7,7 @@ import {
   User, 
   FileText, 
   Shield, 
+  ShieldCheck,
   Image as ImageIcon, 
   Type, 
   Trash2, 
@@ -107,12 +108,43 @@ const Settings = () => {
       const docSnap = await getDoc(doc(db, 'labs', targetLabId));
       if (docSnap.exists()) {
         const data = docSnap.data();
+        
+        // Ensure reportSettings exists
+        if (!data.reportSettings) {
+          data.reportSettings = {
+            headerMode: 'text',
+            footerMode: 'text',
+            useCustomHeader: false,
+            useCustomFooter: false
+          };
+        }
+
         // Initialize 3-mode branding if missing
         if (!data.reportSettings.headerMode) {
           data.reportSettings.headerMode = data.reportSettings.useCustomHeader ? 'custom' : 'text';
         }
         if (!data.reportSettings.footerMode) {
           data.reportSettings.footerMode = data.reportSettings.useCustomFooter ? 'custom' : 'text';
+        }
+
+        // Ensure watermark structure exists
+        if (!data.reportSettings.watermark) {
+          data.reportSettings.watermark = {
+            enabled: false,
+            type: 'text',
+            text: '',
+            opacity: 0.1,
+            rotation: -45
+          };
+        }
+
+        // Ensure dailyReport structure exists
+        if (!data.reportSettings.dailyReport) {
+          data.reportSettings.dailyReport = {
+            enabled: false,
+            time: '20:00',
+            notificationEmail: ''
+          };
         }
 
         setLabData(data);
@@ -219,16 +251,20 @@ const Settings = () => {
       
       const url = data.url;
       
-      setLabData(prev => ({
-        ...prev,
-        reportSettings: {
-          ...prev.reportSettings,
-          [field]: url,
-          ...(field === 'headerImage' ? { useCustomHeader: true } : 
-              field === 'footerImage' ? { useCustomFooter: true } : 
-              field === 'watermarkImage' ? { watermark: { ...prev.reportSettings.watermark, image: url, type: 'image' }} : {})
-        }
-      }));
+      if (field === 'pathologistSignature') {
+        setLabData(prev => ({ ...prev, [field]: url }));
+      } else {
+        setLabData(prev => ({
+          ...prev,
+          reportSettings: {
+            ...prev.reportSettings,
+            [field]: url,
+            ...(field === 'headerImage' ? { useCustomHeader: true } : 
+                field === 'footerImage' ? { useCustomFooter: true } : 
+                field === 'watermarkImage' ? { watermark: { ...prev.reportSettings.watermark, image: url, type: 'image' }} : {})
+          }
+        }));
+      }
       toast.success(`${field.replace('Image', '')} uploaded!`);
     } catch (error) {
       console.error("Upload error:", error);
@@ -365,6 +401,66 @@ const Settings = () => {
                       onChange={e => setLabData({...labData, phone: e.target.value})}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
                     />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex items-center gap-2 mb-2">
+                   <div className="w-1 h-5 bg-emerald-500 rounded-full"></div>
+                   <h3 className="text-[16px] font-bold text-[#1F2937]">Pathologist Details</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Pathologist Name</label>
+                    <input 
+                      type="text" 
+                      value={labData?.pathologistName || ''} 
+                      onChange={e => setLabData({...labData, pathologistName: e.target.value})}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm placeholder:text-slate-300 placeholder:font-medium"
+                      placeholder="Enter pathologist name"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Pathologist Designation</label>
+                    <input 
+                      type="text" 
+                      value={labData?.pathologistDesignation || ''} 
+                      onChange={e => setLabData({...labData, pathologistDesignation: e.target.value})}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm placeholder:text-slate-300 placeholder:font-medium"
+                      placeholder="Enter designation"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-2 space-y-1.5">
+                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Electronic Signature</label>
+                    <div className="flex items-center gap-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl border-dashed">
+                      <div className="w-40 h-20 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden">
+                        {labData?.pathologistSignature ? (
+                          <img src={labData.pathologistSignature} alt="Pathologist Signature" className="max-h-full max-w-full object-contain p-2" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1 opacity-20">
+                            <ImageIcon className="w-8 h-8" />
+                            <span className="text-[8px] font-bold uppercase tracking-widest text-center">No Signature</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="px-4 py-2 bg-[#1E2A5A] text-white rounded-lg text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-brand-secondary transition-all flex items-center gap-2">
+                          <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'pathologistSignature')} />
+                          <ImageIcon className="w-3 h-3" /> {labData?.pathologistSignature ? 'Change Signature' : 'Upload Signature'}
+                        </label>
+                        {labData?.pathologistSignature && (
+                          <button 
+                            onClick={() => setLabData({...labData, pathologistSignature: null})}
+                            className="px-4 py-2 bg-white text-rose-500 border border-rose-100 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center gap-2"
+                          >
+                            <Trash2 className="w-3 h-3" /> Remove
+                          </button>
+                        )}
+                        <p className="text-[9px] text-[#98A2B3] font-medium leading-relaxed max-w-[200px]">
+                          Upload a transparent PNG signature for best results on reports.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -836,7 +932,30 @@ const Settings = () => {
                          </div>
                          <p className="text-[11px] font-medium text-[#7B8794] leading-tight mt-1">Automatically notify patient when report is finalized.</p>
                          <div className={`mt-3 inline-flex items-center px-2 py-1 rounded text-[9px] font-bold uppercase tracking-widest border ${labData?.reportSettings?.autoEmailNotify ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
-                           {labData?.reportSettings?.autoEmailNotify ? 'Automation Active' : 'Automation Disabled'}
+                         </div>
+                      </div>
+                   </div>
+                   
+                   <div className={`p-5 bg-white border rounded-2xl flex items-start gap-4 group transition-all hover:shadow-md ${labData?.reportSettings?.restrictUnpaidReports ? 'border-rose-500/40 bg-rose-500/5' : 'border-slate-100 bg-slate-50'}`}>
+                      <div className={`p-2.5 bg-white rounded-xl shadow-sm transition-colors ${labData?.reportSettings?.restrictUnpaidReports ? 'text-rose-500' : 'text-slate-300'}`}>
+                         <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                         <div className="flex justify-between items-center mb-1">
+                            <p className="text-[12px] font-bold text-[#1F2937] uppercase tracking-wider">Restrict Unpaid Reports</p>
+                            <button 
+                               onClick={() => setLabData({
+                                  ...labData,
+                                  reportSettings: { ...labData.reportSettings, restrictUnpaidReports: !labData.reportSettings.restrictUnpaidReports }
+                               })}
+                               className={`w-10 h-5 rounded-full relative transition-all duration-300 ${labData?.reportSettings?.restrictUnpaidReports ? 'bg-rose-500' : 'bg-slate-200'}`}
+                            >
+                               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${labData?.reportSettings?.restrictUnpaidReports ? 'left-5' : 'left-1'}`}></div>
+                            </button>
+                         </div>
+                         <p className="text-[11px] font-medium text-[#7B8794] leading-tight mt-1">Block Print/Download/Email buttons if payment is pending.</p>
+                         <div className={`mt-3 inline-flex items-center px-2 py-1 rounded text-[9px] font-bold uppercase tracking-widest border ${labData?.reportSettings?.restrictUnpaidReports ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                           {labData?.reportSettings?.restrictUnpaidReports ? 'Restriction Active' : 'Restriction Disabled'}
                          </div>
                       </div>
                    </div>
@@ -1020,7 +1139,7 @@ const Settings = () => {
                            <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm">
                               <div className="flex justify-between items-center mb-4">
                                  <span className="text-[10px] font-bold text-brand-primary uppercase tracking-widest">Staff Usage Status</span>
-                                 <span className="text-[10px] font-bold text-brand-primary uppercase tracking-widest">{staffUsers.length} / {allPlans.find(p => p.id === (subData.plan || 'basic'))?.maxUsers || '∞'} Users</span>
+                                 <span className="text-[10px] font-bold text-brand-primary uppercase tracking-widest">{staffUsers.length} / {allPlans.find(p => p.id === (subData.plan === 'demo' ? 'pro' : (subData.plan || 'basic')))?.maxUsers || '∞'} Users</span>
                               </div>
                               
                               <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">

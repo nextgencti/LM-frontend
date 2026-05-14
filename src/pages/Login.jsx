@@ -89,8 +89,10 @@ const Login = () => {
           </div>
 
           <div>
-            <Label>Access Key (Password)</Label>
-            <div className="relative group">
+            <div className="flex justify-between items-center mb-2.5">
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Access Key (Password)</label>
+            </div>
+            <div className="relative group mb-3">
               <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-slate-300 group-focus-within:text-brand-primary transition-colors" />
               </div>
@@ -103,6 +105,7 @@ const Login = () => {
                 placeholder="••••••••"
               />
             </div>
+            <Link to="/forgot-password" className="inline-block text-[9px] font-black uppercase tracking-[0.2em] text-brand-primary hover:underline ml-2">Forgot Password?</Link>
           </div>
 
           <button

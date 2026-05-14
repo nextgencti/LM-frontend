@@ -250,14 +250,14 @@ const Patients = () => {
 
   return (
     <>
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
+    <div className="max-w-[1400px] mx-auto px-3 sm:px-4 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div>
           <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight flex items-center">
-            <div className="p-2 bg-[#F3F4F6] rounded-xl mr-3 shadow-sm border border-[#E5E7EB] transition-transform hover:scale-110">
-              <Users className="w-5 h-5 text-[#1E2A5A]" />
+            <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+              <Users className="w-5 h-5 text-brand-primary" />
             </div>
             Patients
           </h1>
@@ -346,15 +346,15 @@ const Patients = () => {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Patient Name</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Age & Gender</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Phone No.</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Email</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Address</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Patient Name</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Age & Gender</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Phone No.</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Email</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Address</th>
               {isSuperAdmin && !activeLabId && (
-                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Hosting Lab</th>
+                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Hosting Lab</th>
               )}
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Actions</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -377,7 +377,7 @@ const Patients = () => {
               ) : (
                 paginatedPatients.map((patient) => (
                   <tr key={patient.id} className="hover:bg-slate-50/40 transition-all group relative">
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#1E2A5A] font-black text-xs border border-[#E5E7EB] shadow-sm group-hover:scale-110 transition-transform">
                           {patient.name?.charAt(0).toUpperCase()}
@@ -388,7 +388,7 @@ const Patients = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="flex flex-col">
                         <span className="text-[11px] font-semibold text-[#374151] tabular-nums">{patient.age} {patient.ageUnit}</span>
                         <div className="flex mt-0.5">
@@ -400,23 +400,23 @@ const Patients = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="text-[11px] font-semibold text-[#374151] tabular-nums">{patient.phone || <span className="text-[#98A2B3]">--</span>}</div>
                     </td>
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="text-[11px] font-medium text-[#7B8794]">{patient.email ? <a href={`mailto:${patient.email}`} className="hover:text-brand-primary transition-colors">{patient.email}</a> : <span className="text-[#98A2B3]">--</span>}</div>
                     </td>
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="text-[11px] text-[#7B8794] font-medium truncate max-w-[150px]" title={patient.address || 'No address provided'}>{patient.address || '--'}</div>
                     </td>
                     {isSuperAdmin && !activeLabId && (
-                      <td className="px-6 py-2.5">
+                      <td className="px-4 py-2.5">
                         <span className="px-2 py-0.5 bg-[#F1F5F9] text-[#64748B] rounded-md text-[9px] font-bold uppercase tracking-wider border border-[#E5E7EB]">
                           {labs.find(l => l.labId === patient.labId)?.labName || patient.labId}
                         </span>
                       </td>
                     )}
-                    <td className="px-6 py-2.5 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1 isolate">
                         <button 
                           onClick={() => handleEdit(patient)}
@@ -593,7 +593,13 @@ const Patients = () => {
                         placeholder="00"
                         className="w-2/3 px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3]"
                         value={newPatient.age} 
-                        onChange={e => setNewPatient({...newPatient, age: e.target.value})}
+                        onChange={e => {
+                          const val = e.target.value.toString().slice(0, 2);
+                          setNewPatient({...newPatient, age: val});
+                        }}
+                        onInput={(e) => {
+                          if (e.target.value.length > 2) e.target.value = e.target.value.slice(0, 2);
+                        }}
                       />
                       <select 
                         className="w-1/3 px-3 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none cursor-pointer text-sm"

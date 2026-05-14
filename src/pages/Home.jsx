@@ -77,7 +77,7 @@ const Home = () => {
         <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-brand-primary/30 selection:text-brand-dark">
             
             {/* Navigation */}
-            <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'py-4 bg-white/80 backdrop-blur-xl shadow-lg border-b border-slate-100' : 'py-6 bg-transparent'}`}>
+            <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'py-3 bg-white/80 backdrop-blur-xl shadow-lg border-b border-slate-100' : 'py-4 bg-transparent'}`}>
                 <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
                     <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/')}>
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden flex items-center justify-center p-1 transition-transform group-hover:scale-110">
@@ -183,35 +183,35 @@ const Home = () => {
             )}
 
             {/* Hero Section */}
-            <section className="relative pt-48 pb-32 overflow-hidden">
+            <section className="relative pt-32 lg:pt-36 pb-12 overflow-hidden">
                 <div className="absolute top-0 right-0 -z-10 w-2/3 h-full bg-brand-light/20 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2 animate-float"></div>
                 <div className="absolute bottom-0 left-0 -z-10 w-1/3 h-1/2 bg-brand-primary/10 blur-[100px] rounded-full -translate-x-1/2 translate-y-1/2 animate-float" style={{ animationDelay: '2s' }}></div>
                 
                 <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
                     <div className="animate-in fade-in slide-in-from-left-10 duration-1000">
-                        <div className="inline-flex items-center gap-2 bg-brand-light px-4 py-2 rounded-full border border-brand-primary/20 mb-8">
+                        <div className="inline-flex items-center gap-2 bg-brand-light px-4 py-2 rounded-full border border-brand-primary/20 mb-6">
                             <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
                             </span>
                             <span className="text-[11px] font-black uppercase tracking-widest text-brand-dark">V2.0 Now Live - Multi-Branch Sync</span>
                         </div>
-                        <h2 className="text-4xl sm:text-5xl md:text-7xl font-black text-brand-dark leading-[1.1] md:leading-[1.05] tracking-tighter mb-8 animate-in slide-in-from-bottom duration-700 delay-200">
+                        <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-brand-dark leading-[1.1] md:leading-[1.05] tracking-tighter mb-6 animate-in slide-in-from-bottom duration-700 delay-200">
                             Pathology <span className="text-brand-primary italic text-[0.85em]">Simplified.</span> <br />
                             Precision <span className="text-brand-secondary text-[0.85em]">Guaranteed.</span>
                         </h2>
-                        <p className="text-xl text-slate-500 font-bold leading-relaxed mb-10 max-w-xl">
+                        <p className="text-lg text-slate-500 font-bold leading-relaxed mb-8 max-w-xl">
                             The all-in-one cloud platform designed for modern laboratories. From booking to reporting, manage your entire pathology workflow with surgical precision.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 animate-in slide-in-from-bottom duration-700 delay-300">
-                            <Link to="/signup" className="px-10 py-5 bg-brand-dark text-white text-lg font-black rounded-[28px] shadow-2xl shadow-brand-dark/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3">
+                            <Link to="/signup" className="px-8 py-4 bg-brand-dark text-white text-base font-black rounded-[24px] shadow-2xl shadow-brand-dark/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3">
                                 Start Free Trial <ArrowRight className="w-5 h-5 text-brand-primary" />
                             </Link>
-                            <button className="px-10 py-5 bg-white border-2 border-slate-100 text-brand-dark text-lg font-black rounded-[28px] shadow-lg hover:bg-slate-50 transition-all active:scale-95">
+                            <button className="px-8 py-4 bg-white border-2 border-slate-100 text-brand-dark text-base font-black rounded-[24px] shadow-lg hover:bg-slate-50 transition-all active:scale-95">
                                 Request Demo
                             </button>
                         </div>
-                        <div className="mt-12 flex items-center gap-6">
+                        <div className="mt-8 flex items-center gap-6">
                             <div className="flex -space-x-3">
                                 {[1,2,3,4].map(i => (
                                     <div key={i} className={`w-12 h-12 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center overflow-hidden`}>
@@ -293,7 +293,7 @@ const Home = () => {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-12 text-center">
                         {stats.map((s, i) => (
                             <div key={i} className="flex flex-col">
-                                <div className="text-5xl md:text-6xl font-black text-brand-primary mb-3 tracking-tighter transition-transform hover:scale-110 duration-500 cursor-default">{s.value}</div>
+                                <div className="text-4xl md:text-5xl font-black text-brand-primary mb-3 tracking-tighter transition-transform hover:scale-110 duration-500 cursor-default">{s.value}</div>
                                 <div className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">{s.label}</div>
                             </div>
                         ))}
@@ -312,7 +312,7 @@ const Home = () => {
                            <Activity className="w-4 h-4 text-brand-primary" />
                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-dark">Investment Models</span>
                         </div>
-                        <h2 className="text-4xl md:text-6xl font-black text-brand-dark mb-6 tracking-tighter leading-none">
+                        <h2 className="text-3xl md:text-5xl font-black text-brand-dark mb-6 tracking-tighter leading-none">
                            Plans for every <span className="text-brand-primary underline decoration-brand-primary/30 underline-offset-8">Scale</span>.
                         </h2>
                         <p className="text-lg text-slate-500 font-bold leading-relaxed">
@@ -320,19 +320,19 @@ const Home = () => {
                         </p>
                         
                         {/* THE TOGGLE - High Fidelity */}
-                        <div className="mt-12 inline-flex items-center p-1.5 bg-slate-100/80 rounded-[28px] border border-slate-200 shadow-inner group">
+                        <div className="mt-8 inline-flex items-center p-1.5 bg-slate-100/80 rounded-[22px] border border-slate-200 shadow-inner group">
                            <button 
                               onClick={() => setBillingType('fixed')}
-                              className={`px-8 py-3.5 rounded-[22px] text-[11px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-3 ${billingType === 'fixed' ? 'bg-white text-brand-dark shadow-xl ring-1 ring-black/5' : 'text-slate-400 hover:text-slate-600'}`}
+                              className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${billingType === 'fixed' ? 'bg-white text-brand-dark shadow-lg ring-1 ring-black/5' : 'text-slate-400 hover:text-slate-600'}`}
                            >
-                              <Shield className={`w-4 h-4 ${billingType === 'fixed' ? 'text-brand-primary' : ''}`} />
+                              <Shield className={`w-3.5 h-3.5 ${billingType === 'fixed' ? 'text-brand-primary' : ''}`} />
                               Fixed Subscriptions
                            </button>
                            <button 
                               onClick={() => setBillingType('flexible')}
-                              className={`px-8 py-3.5 rounded-[22px] text-[11px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-3 ${billingType === 'flexible' ? 'bg-brand-dark text-brand-primary shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
+                              className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${billingType === 'flexible' ? 'bg-brand-dark text-brand-primary shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                            >
-                              <Zap className={`w-4 h-4 ${billingType === 'flexible' ? 'text-brand-primary' : ''}`} />
+                              <Zap className={`w-3.5 h-3.5 ${billingType === 'flexible' ? 'text-brand-primary' : ''}`} />
                               Flexible (Tokens)
                            </button>
                         </div>
@@ -353,7 +353,7 @@ const Home = () => {
                             const maxWidth = colCount === 1 ? 'max-w-md' : (colCount === 2 ? 'max-w-5xl' : 'max-w-7xl');
 
                             return (
-                                <div className={`grid gap-10 w-full items-stretch md:grid-cols-2 lg:grid-cols-${colCount} ${maxWidth}`}>
+                                <div className={`grid gap-6 w-full items-stretch md:grid-cols-2 lg:grid-cols-${colCount} ${maxWidth}`}>
                                     {filteredPlans.map((plan) => {
                                     const isPro = plan.id === 'pro';
                                     const isFlexible = plan.id === 'pay_as_you_go';
@@ -362,7 +362,7 @@ const Home = () => {
                                        return (
                                           <React.Fragment key={plan.id}>
                                              {/* Explanation Card for Tokens */}
-                                             <div className="lg:col-span-1 p-10 bg-slate-900 rounded-[50px] text-white overflow-hidden relative group border border-white/5 order-1">
+                                             <div className="lg:col-span-1 p-8 bg-slate-900 rounded-[32px] text-white overflow-hidden relative group border border-white/5 order-1">
                                                 <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
                                                 <h4 className="text-2xl font-black mb-6 tracking-tighter uppercase">How it <span className="text-brand-primary">Works</span></h4>
                                                 <div className="space-y-8 relative z-10">
@@ -391,7 +391,7 @@ const Home = () => {
                                              </div>
 
                                              {/* The Flexible Plan Card */}
-                                             <div className="lg:col-span-2 p-12 bg-white rounded-[60px] border border-slate-100 shadow-[0_40px_100px_-20px_rgba(45,50,80,0.08)] flex flex-col md:flex-row gap-12 relative overflow-hidden group order-2 animate-in zoom-in-95 duration-700">
+                                             <div className="lg:col-span-2 p-10 bg-white rounded-[40px] border border-slate-100 shadow-[0_40px_100px_-20px_rgba(45,50,80,0.08)] flex flex-col md:flex-row gap-12 relative overflow-hidden group order-2 animate-in zoom-in-95 duration-700">
                                                 <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 blur-[100px] rounded-full -mr-48 -mt-48 transition-all group-hover:bg-amber-500/10"></div>
                                                 
                                                 <div className="flex-1 z-10">
@@ -415,7 +415,7 @@ const Home = () => {
                                                 <div className="md:w-72 flex flex-col items-center justify-center p-10 bg-slate-50 rounded-[40px] border border-slate-100 relative z-10">
                                                    <div className="text-center mb-8">
                                                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Starts from</p>
-                                                      <div className="text-6xl font-black text-brand-dark tabular-nums tracking-tighter">
+                                                      <div className="text-4xl font-black text-brand-dark tabular-nums tracking-tighter">
                                                          ₹{plan.price}
                                                       </div>
                                                       <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 mt-1">Per Atom</p>
@@ -435,7 +435,7 @@ const Home = () => {
                                     return (
                                         <div 
                                             key={plan.id}
-                                            className={`p-10 rounded-[50px] flex flex-col transition-all duration-700 relative overflow-hidden group border animate-in slide-in-from-bottom duration-500 delay-${(plan.order || 0) * 100} ${
+                                            className={`p-8 rounded-[32px] flex flex-col transition-all duration-700 relative overflow-hidden group border animate-in slide-in-from-bottom duration-500 delay-${(plan.order || 0) * 100} ${
                                                 isPro 
                                                 ? 'bg-brand-dark border-white/5 hover:translate-y-[-16px] hover:shadow-[0_64px_128px_-20px_rgba(151,250,11,0.3)] shadow-2xl' 
                                                 : 'bg-white border-slate-200 hover:translate-y-[-12px] hover:shadow-[0_48px_80px_-15px_rgba(45,50,80,0.15)] shadow-xl'
@@ -471,11 +471,11 @@ const Home = () => {
                                                 ? 'bg-white/5 border-white/5 backdrop-blur-md shadow-inner' 
                                                 : 'bg-slate-50 border-slate-50'
                                             }`}>
-                                                <span className={`text-6xl font-black tabular-nums tracking-tighter ${isPro ? 'text-brand-primary' : 'text-brand-dark'}`}>
+                                                <span className={`text-4xl font-black tabular-nums tracking-tighter ${isPro ? 'text-brand-primary' : 'text-brand-dark'}`}>
                                                     {formatPrice(plan.price)}
                                                 </span>
                                                 <span className={`text-sm font-black uppercase tracking-widest ml-3 ${isPro ? 'text-slate-400' : 'text-slate-400'}`}>
-                                                    / {plan.period}
+                                                    {plan.period}
                                                 </span>
                                             </div>
                                             
@@ -515,32 +515,33 @@ const Home = () => {
             </section>
 
             {/* Premium Footer */}
-            <footer className="bg-white pt-32 pb-12 border-t border-slate-100 relative overflow-hidden">
+            <footer className="bg-slate-950 pt-20 pb-8 border-t border-white/5 relative overflow-hidden">
                 {/* Decorative background elements */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-primary/5 rounded-full blur-[120px] -mr-48 -mt-48 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-brand-secondary/5 rounded-full blur-[120px] -ml-48 -mb-48 pointer-events-none"></div>
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-primary/10 rounded-full blur-[150px] -mr-48 -mt-48 pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-brand-primary/5 rounded-full blur-[120px] -ml-48 -mb-48 pointer-events-none"></div>
+                <div className="absolute inset-0 pattern-grid opacity-[0.03] pointer-events-none"></div>
 
                 <div className="max-w-7xl mx-auto px-6 relative z-10">
-                    <div className="grid lg:grid-cols-12 gap-16 mb-24">
+                    <div className="grid lg:grid-cols-12 gap-10 mb-12">
                         {/* Brand Section */}
                         <div className="lg:col-span-4 space-y-10">
                             <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/')}>
-                                <div className="w-12 h-12 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden flex items-center justify-center p-1.5 transition-transform group-hover:scale-110">
+                                <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden flex items-center justify-center p-1.5 transition-all group-hover:scale-110 group-hover:border-brand-primary/50">
                                     <img src="/favicon.png" alt="LabMitra Logo" className="w-full h-full object-contain" />
                                 </div>
-                                <h1 className="text-2xl font-black text-brand-dark tracking-tighter uppercase">Lab <span className="text-brand-primary">Mitra</span></h1>
+                                <h1 className="text-2xl font-black text-white tracking-tighter uppercase">Lab <span className="text-brand-primary">Mitra</span></h1>
                             </div>
-                            <p className="text-lg text-slate-500 font-bold leading-relaxed max-w-sm">
+                            <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-sm">
                                 The definitive cloud infrastructure for modern diagnostic excellence. Precision synchronized across your entire clinical workflow.
                             </p>
-                            <div className="flex gap-5">
+                            <div className="flex gap-4">
                                 {[
                                     { icon: <Globe className="w-5 h-5" />, href: "#" },
                                     { icon: <Zap className="w-5 h-5" />, href: "#" },
                                     { icon: <MessageCircle className="w-5 h-5" />, href: "#" },
                                     { icon: <Mail className="w-5 h-5" />, href: "#" }
                                 ].map((social, i) => (
-                                    <a key={i} href={social.href} className="w-11 h-11 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center border border-slate-100 hover:bg-brand-dark hover:text-white transition-all transform hover:-translate-y-1">
+                                    <a key={i} href={social.href} className="w-11 h-11 bg-white/5 text-slate-400 rounded-xl flex items-center justify-center border border-white/5 hover:bg-brand-primary hover:text-brand-dark transition-all transform hover:-translate-y-1">
                                         {social.icon}
                                     </a>
                                 ))}
@@ -548,66 +549,71 @@ const Home = () => {
                         </div>
 
                         {/* Link Columns */}
-                        <div className="lg:col-span-5 grid grid-cols-2 md:grid-cols-3 gap-12">
+                        <div className="lg:col-span-5 grid grid-cols-2 md:grid-cols-3 gap-8">
                             <div className="space-y-8">
-                                <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-dark">Platform</h6>
-                                <ul className="space-y-4 text-sm font-bold text-slate-400">
-                                    <li><a href="#features" className="hover:text-brand-primary transition-colors flex items-center gap-2">Features</a></li>
-                                    <li><a href="#pricing" className="hover:text-brand-primary transition-colors flex items-center gap-2">Pricing Plans</a></li>
-                                    <li><a href="#stats" className="hover:text-brand-primary transition-colors flex items-center gap-2">Global Impact</a></li>
-                                    <li><a href="#" className="hover:text-brand-primary transition-colors flex items-center gap-2">API Documentation</a></li>
+                                <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-primary">Platform</h6>
+                                <ul className="space-y-4 text-sm font-bold text-slate-500">
+                                    <li><a href="#features" className="hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-brand-primary/0 group-hover:bg-brand-primary transition-all"></span> Features</a></li>
+                                    <li><a href="#pricing" className="hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-brand-primary/0 group-hover:bg-brand-primary transition-all"></span> Pricing Plans</a></li>
+                                    <li><a href="#stats" className="hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-brand-primary/0 group-hover:bg-brand-primary transition-all"></span> Global Impact</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-brand-primary/0 group-hover:bg-brand-primary transition-all"></span> API Docs</a></li>
                                 </ul>
                             </div>
                             <div className="space-y-8">
-                                <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-dark">Company</h6>
-                                <ul className="space-y-4 text-sm font-bold text-slate-400">
-                                    <li><Link to="/about" className="hover:text-brand-primary transition-colors">Our Mission</Link></li>
-                                    <li><a href="#" className="hover:text-brand-primary transition-colors">Careers</a></li>
-                                    <li><a href="#" className="hover:text-brand-primary transition-colors">Newsroom</a></li>
-                                    <li><a href="#" className="hover:text-brand-primary transition-colors">Contact Support</a></li>
+                                <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-primary">Company</h6>
+                                <ul className="space-y-4 text-sm font-bold text-slate-500">
+                                    <li><Link to="/about" className="hover:text-white transition-colors">Our Mission</Link></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Newsroom</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
                                 </ul>
                             </div>
                             <div className="space-y-8 col-span-2 md:col-span-1">
-                                <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-dark">Legal</h6>
-                                <ul className="space-y-4 text-sm font-bold text-slate-400">
-                                    <li><a href="#" className="hover:text-brand-primary transition-colors">Privacy Policy</a></li>
-                                    <li><a href="#" className="hover:text-brand-primary transition-colors">Terms of Service</a></li>
-                                    <li><a href="#" className="hover:text-brand-primary transition-colors">Cookie Policy</a></li>
+                                <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-primary">Legal</h6>
+                                <ul className="space-y-4 text-sm font-bold text-slate-500">
+                                    <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Cookies</a></li>
                                 </ul>
                             </div>
                         </div>
 
                         {/* Newsletter Section */}
                         <div className="lg:col-span-3 space-y-8">
-                            <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-dark">Stay Updated</h6>
-                            <p className="text-sm font-bold text-slate-500 leading-relaxed">
+                            <h6 className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-primary">Stay Updated</h6>
+                            <p className="text-sm font-medium text-slate-400 leading-relaxed">
                                 Join our monthly briefing on clinical technology and lab management.
                             </p>
                             <div className="relative group">
                                 <input 
                                     type="email" 
                                     placeholder="Enter your email"
-                                    className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 text-sm font-bold outline-none focus:bg-white focus:border-brand-primary transition-all pr-14"
+                                    className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 text-sm font-bold text-white outline-none focus:bg-white/10 focus:border-brand-primary transition-all pr-14"
                                 />
-                                <button className="absolute right-2 top-2 bottom-2 w-10 h-10 bg-brand-dark text-white rounded-xl flex items-center justify-center hover:bg-brand-primary transition-colors active:scale-95">
+                                <button className="absolute right-2 top-2 bottom-2 w-10 h-10 bg-brand-primary text-brand-dark rounded-xl flex items-center justify-center hover:scale-105 transition-transform active:scale-95 shadow-xl shadow-brand-primary/20">
                                     <Send className="w-4 h-4" />
                                 </button>
                             </div>
-                            <div className="flex items-center gap-3 text-xs font-black uppercase tracking-widest text-slate-400 pt-4">
-                                <Globe className="w-4 h-4 text-brand-primary" />
+                            <div className="flex items-center gap-3 text-xs font-black uppercase tracking-widest text-slate-500 pt-4">
+                                <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                                    <Globe className="w-4 h-4 text-brand-primary" />
+                                </div>
                                 <span>Based in Muskara, UP</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Bottom Bar */}
-                    <div className="pt-12 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">
+                    <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
                             © 2026 LabMitra Global Healthcare. All Rights Reserved.
                         </p>
-                        <div className="flex items-center gap-3 bg-slate-50 px-5 py-2 rounded-full border border-slate-100">
-                            <span className="w-2 h-2 rounded-full bg-brand-primary animate-pulse"></span>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Global Infrastructure Live</span>
+                        <div className="flex items-center gap-4 bg-white/5 px-6 py-2.5 rounded-full border border-white/5 backdrop-blur-md">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
+                            </span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Global Infrastructure Live</span>
                         </div>
                     </div>
                 </div>

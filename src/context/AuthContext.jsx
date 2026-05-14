@@ -95,12 +95,28 @@ export const AuthProvider = ({ children }) => {
     };
   }, [selectedLabId]);
 
+  // Demo plan computed properties
+  const isDemoLab = subscription?.plan === 'demo';
+  const demoExpiryDate = isDemoLab ? subscription?.expiryDate : null;
+  const demoDaysRemaining = (() => {
+    if (!isDemoLab || !subscription?.expiryDate) return 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(subscription.expiryDate);
+    exp.setHours(0, 0, 0, 0);
+    const diffTime = exp.getTime() - today.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  })();
+
   const checkFeature = (featureName) => {
     if (!subscription) return false;
     const planId = subscription.plan || 'basic';
     
+    // Demo plan gets PRO features
+    const effectivePlanId = planId === 'demo' ? 'pro' : planId;
+    
     // Always use the master plan record for real-time feature gating
-    const masterPlan = allPlans.find(p => p.id === planId.toLowerCase());
+    const masterPlan = allPlans.find(p => p.id === effectivePlanId.toLowerCase());
     if (!masterPlan) {
       // Fallback to subscription snapshot if master plan not loaded yet
       if (!subscription.features) return false;
@@ -119,7 +135,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Implicit inheritance: If the feature is missing in Pro/Enterprise completely, but exists in Basic, assume it's inherited.
-    const isPremiumPlan = ['pro', 'enterprise', 'pay_as_you_go'].includes(planId.toLowerCase());
+    const isPremiumPlan = ['pro', 'enterprise', 'pay_as_you_go', 'demo'].includes(effectivePlanId.toLowerCase());
     if (isPremiumPlan) {
         const basicPlan = allPlans.find(p => p.id === 'basic');
         if (basicPlan) {
@@ -141,7 +157,10 @@ export const AuthProvider = ({ children }) => {
     checkFeature,
     loading,
     activeLabId: userData?.labId || selectedLabId,
-    setActiveLabId
+    setActiveLabId,
+    isDemoLab,
+    demoExpiryDate,
+    demoDaysRemaining
   };
 
   return (

@@ -3,19 +3,21 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, setDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Loader, FileText, Trash2, Edit3, ChevronRight, ChevronLeft, FlaskConical, Beaker, CheckCircle, ChevronDown, Upload, Download, Layers, FolderPlus, X, Zap, Folder, Search, Copy } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 /* ─── Tiny reusable primitives ───────────────────────────────────────────── */
 const Label = ({ children }) => (
   <label className="block text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider mb-1.5 ml-1">{children}</label>
 );
-const Input = ({ className = '', ...props }) => (
+const Input = React.forwardRef(({ className = '', ...props }, ref) => (
   <input
+    ref={ref}
     className={`w-full px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[13px] font-bold text-[#1F2937] outline-none focus:border-[#1E2A5A]/30 focus:ring-4 focus:ring-[#1E2A5A]/10 transition-all placeholder:text-[#98A2B3] shadow-sm ${className}`}
     {...props}
   />
-);
+));
+Input.displayName = 'Input';
 const Select = ({ className = '', children, ...props }) => (
   <select
     className={`w-full px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[13px] font-bold text-[#1F2937] outline-none focus:border-[#1E2A5A]/30 focus:ring-4 focus:ring-[#1E2A5A]/10 transition-all appearance-none cursor-pointer shadow-sm ${className}`}
@@ -56,6 +58,11 @@ const Tests = () => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const priceInputRef = React.useRef(null);
+  const [sourceFromUrl, setSourceFromUrl] = useState(null);
 
   const [testForm, setTestForm] = useState({
     testCode: '', testName: '', category: 'Hematology',
@@ -140,6 +147,33 @@ const Tests = () => {
     }
     finally { setLoading(false); }
   };
+
+  const handleOpenEdit = (test) => {
+    setTestForm({ ...test, groups: test.groups || [] });
+    setShowModal(true);
+    // Focus price input after modal opens
+    setTimeout(() => {
+      priceInputRef.current?.focus();
+      priceInputRef.current?.select();
+    }, 400);
+  };
+
+  // Deep-link to edit test if 'edit' param exists in URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const editId = params.get('edit');
+    const source = params.get('source');
+    
+    if (source && !sourceFromUrl) setSourceFromUrl(source);
+
+    if (editId && tests.length > 0) {
+      const testToEdit = tests.find(t => t.id === editId);
+      if (testToEdit) {
+        handleOpenEdit(testToEdit);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, [location.search, tests, sourceFromUrl]);
   
   // ─── Filters & Counts ──────────────────────────────────────────────────
   const statusCounts = React.useMemo(() => {
@@ -385,6 +419,12 @@ const Tests = () => {
       setShowModal(false); 
       resetForm(); 
       fetchTests();
+
+      // Check if we need to return to booking
+      if (sourceFromUrl === 'booking') {
+        toast.success("Price updated! Returning to Booking...");
+        setTimeout(() => navigate('/bookings?autoOpen=true'), 1200);
+      }
     } catch(e) { 
       alert('Save failed: ' + e.message); 
     }
@@ -544,17 +584,17 @@ const Tests = () => {
   /* ─── RENDER ──────────────────────────────────────────────────────────── */
   return (
     <>
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
+    <div className="max-w-full mx-auto w-full flex-1 flex flex-col overflow-hidden p-3 sm:p-4 text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 px-1">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-[#1E2A5A] rounded-2xl shadow-xl shadow-[#1E2A5A]/20 rotate-3 transition-transform hover:rotate-0 hover:scale-110">
-            <FlaskConical className="w-6 h-6 text-white" />
+          <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+            <FlaskConical className="w-5 h-5 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-[24px] font-bold text-[#1F2937] tracking-tight leading-tight">Test Catalog</h1>
-            <p className="text-[#7B8794] text-[11px] font-bold uppercase tracking-[0.2em] mt-1 opacity-70">Laboratory Diagnostic Protocol Repository</p>
+            <h1 className="text-[20px] font-bold text-[#1F2937] tracking-tight leading-tight">Test Catalog</h1>
+            <p className="text-[#7B8794] text-[10px] font-bold uppercase tracking-wider mt-1 opacity-70">Laboratory Diagnostic Protocol Repository</p>
           </div>
         </div>
         {canEditFull && (
@@ -600,7 +640,7 @@ const Tests = () => {
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-[#E5E7EB] relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         {loading ? (
           <div className="py-24 text-center">
             <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-5" />
@@ -617,20 +657,20 @@ const Tests = () => {
           <table className="w-full border-collapse">
             <thead className="border-y border-slate-100">
               <tr>
-                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-left text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Test Name / ID</th>
-                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-center text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Category</th>
-                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-center text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Base Price</th>
-                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-center text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Status</th>
-                <th className="sticky top-0 z-20 bg-[#F8FAFC] px-6 py-4 text-right text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.2em] shadow-sm">Actions</th>
+                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Test Name / ID</th>
+                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-center text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Category</th>
+                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-center text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Base Price</th>
+                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-center text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Status</th>
+                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
                 {paginatedTests.map((test) => (
                   <tr key={test.id} className="hover:bg-slate-50/40 transition-all group relative">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-[#F3F4F6] rounded-xl text-[#1E2A5A]">
-                          <Zap className="w-4 h-4" />
+                        <div className="p-1.5 bg-[#F3F4F6] rounded-lg text-[#1E2A5A]">
+                          <Zap className="w-3.5 h-3.5" />
                         </div>
                         <div>
                           <div className="text-[14px] font-semibold text-[#1F2937] leading-tight mb-0.5">{test.testName}</div>
@@ -638,16 +678,17 @@ const Tests = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center text-[12px] font-semibold text-[#4B5563]">{test.category}</td>
-                    <td className="px-6 py-4 text-center text-[13px] font-bold text-[#1F2937] tabular-nums">₹{parseFloat(test.price||0).toLocaleString()}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
-                        test.status === 'inactive' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                    <td className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#4B5563]">{test.category}</td>
+                    <td className="px-4 py-2.5 text-center text-[13px] font-bold text-[#1F2937] tabular-nums">₹{parseFloat(test.price||0).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shadow-sm transition-all ${
+                        test.status === 'inactive' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                       }`}>
+                        <div className="w-1 h-1 rounded-full bg-current opacity-80 mr-1" />
                         {test.status === 'inactive' ? 'Inactive' : 'Active'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {userData?.role !== 'Staff' && (test.labId === 'GLOBAL' || test.isGlobal) && (
                           <button
@@ -658,7 +699,7 @@ const Tests = () => {
                             <Copy className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => { setTestForm({...test, groups: test.groups || []}); setShowModal(true); }} className="p-2 bg-[#F3F4F6] text-[#4B5563] rounded-xl hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm">
+                        <button onClick={() => handleOpenEdit(test)} className="p-2 bg-[#F3F4F6] text-[#4B5563] rounded-xl hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm">
                           <Edit3 className="w-4 h-4" />
                         </button>
                         {(isSuperAdmin || (isLabAdmin && test.labId === activeLabId)) && (
@@ -796,7 +837,7 @@ const Tests = () => {
 
                   <div>
                     <Label>Price (₹) *</Label>
-                    <Input type="number" value={testForm.price} onChange={e => setTestForm({...testForm, price: parseFloat(e.target.value)})} className="text-[#1E2A5A] font-bold"/>
+                    <Input ref={priceInputRef} type="number" value={testForm.price} onChange={e => setTestForm({...testForm, price: parseFloat(e.target.value)})} className="text-[#1E2A5A] font-bold"/>
                   </div>
                   <div>
                     <Label>Report Layout</Label>

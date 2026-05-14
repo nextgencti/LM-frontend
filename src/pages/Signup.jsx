@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PreLoader from '../components/PreLoader';
 import { 
     Activity, Plus, Globe, FileText, CheckCircle, ArrowRight, ArrowLeft, LogIn,
     Loader, Mail, Phone, MapPin, Building2, User, 
-    ShieldCheck, Sparkles, BarChart3, Zap, AlertCircle, CreditCard
+    ShieldCheck, Sparkles, BarChart3, Zap, AlertCircle, CreditCard, Copy, Clock
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -36,15 +34,13 @@ const Signup = () => {
         address: '',
         city: '',
         state: '',
-        pincode: '',
-        plan: 'basic'
+        pincode: ''
     });
 
     // Validation State
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
-    const [plans, setPlans] = useState({});
-    const [loadingPlans, setLoadingPlans] = useState(true);
+    const [registrationData, setRegistrationData] = useState(null);
 
     // Verification State
     const [otp, setOtp] = useState('');
@@ -142,22 +138,6 @@ const Signup = () => {
         }
     };
 
-    useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, 'plans'), (snapshot) => {
-            const plansData = {};
-            snapshot.docs.forEach(doc => {
-                plansData[doc.id] = doc.data();
-            });
-            setPlans(plansData);
-            setLoadingPlans(false);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    const formatPrice = (priceStr) => {
-        if (!priceStr) return '0';
-        return priceStr; // Already formatted in DB
-    };
 
     // Real-time validation
     useEffect(() => {
@@ -201,8 +181,8 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Safety: Only allow submission on the final plan tab
-        if (activeTab !== 'plan') return;
+        // Safety: Only allow submission on the final location tab
+        if (activeTab !== 'location') return;
         
         // Final validation check
         if (Object.keys(errors).length > 0) {
@@ -212,36 +192,25 @@ const Signup = () => {
 
         setSubmitting(true);
         try {
-            await addDoc(collection(db, 'signupRequests'), {
-                ...formData,
-                status: 'pending',
-                createdAt: serverTimestamp()
+            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+            const response = await fetch(`${BACKEND_URL}/api/signup/auto-provision`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
             });
 
-            // Notify Super Admin 24/7 via Email Alert
-            try {
-                const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
-                await fetch(`${BACKEND_URL}/api/signup/notify-admin`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        labName: formData.labFullName || formData.labName,
-                        ownerName: formData.ownerName,
-                        email: formData.email,
-                        phone: formData.phone,
-                        plan: formData.plan
-                    })
-                });
-            } catch (err) {
-                console.warn("[Admin Notification] Failed to notify super admins:", err.message);
-                // We don't block the user success if notification fails
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Registration failed');
             }
 
+            setRegistrationData(data);
             setSuccess(true);
-            toast.success("Application submitted successfully!");
+            toast.success("Demo account created successfully!");
         } catch (error) {
-            console.error("Error submitting signup request:", error);
-            toast.error("Submission failed. Please check your connection.");
+            console.error("Error during auto-provision:", error);
+            toast.error(error.message || "Registration failed. Please try again.");
         } finally {
             setSubmitting(false);
         }
@@ -257,17 +226,58 @@ const Signup = () => {
                     <div className="w-24 h-24 bg-brand-light rounded-[32px] flex items-center justify-center mx-auto mb-8 text-brand-primary rotate-6 animate-bounce">
                         <CheckCircle className="w-12 h-12" />
                     </div>
-                    <h2 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-4">You're on the list!</h2>
-                    <p className="text-slate-500 font-bold mb-10 leading-relaxed text-lg text-balance">
-                        Registration request received for <span className="text-brand-dark underline decoration-brand-primary decoration-4">{formData.labFullName}</span>. 
-                        We'll verify your details and email you within 24 hours.
+                    <h2 className="text-4xl font-black text-brand-dark tracking-tighter uppercase mb-4">{registrationData?.demoDays || 30}-Day Free Demo Activated!</h2>
+                    <p className="text-slate-500 font-bold mb-8 leading-relaxed text-lg text-balance">
+                        Your lab <span className="text-brand-dark underline decoration-brand-primary decoration-4">{formData.labFullName}</span> is ready to use with full PRO features.
                     </p>
+
+                    {/* Credentials Card */}
+                    {registrationData && (
+                        <div className="bg-brand-dark rounded-[28px] p-8 mb-8 text-left space-y-4">
+                            <div className="text-[10px] font-black text-brand-primary uppercase tracking-[0.3em] mb-4">Login Credentials</div>
+                            
+                            <div className="flex items-center justify-between bg-white/5 rounded-2xl px-5 py-3 border border-white/10">
+                                <div>
+                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Email</div>
+                                    <div className="text-sm font-black text-brand-primary font-mono">{registrationData.email}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-white/5 rounded-2xl px-5 py-3 border border-white/10">
+                                <div>
+                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Password</div>
+                                    <div className="text-sm font-black text-brand-primary font-mono">{registrationData.tempPassword}</div>
+                                </div>
+                                <button 
+                                    onClick={() => { navigator.clipboard.writeText(registrationData.tempPassword); toast.success('Password copied!'); }}
+                                    className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-slate-400 hover:text-white"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-white/5 rounded-2xl px-5 py-3 border border-white/10">
+                                <div>
+                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Demo Ends</div>
+                                    <div className="text-sm font-black text-amber-400">{registrationData.expiryDate?.split('-').reverse().join('/')}</div>
+                                </div>
+                                <Clock className="w-4 h-4 text-amber-400" />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-8">
+                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">
+                            ⚠ Save your password — it was also sent to your email
+                        </p>
+                    </div>
+
                     <div className="space-y-4">
                         <button 
-                            onClick={() => navigate('/')}
+                            onClick={() => navigate('/login')}
                             className="w-full py-5 bg-black text-white rounded-[24px] font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:bg-brand-secondary transition-all transform hover:scale-105 active:scale-95"
                         >
-                            Back to Home
+                            Login to Dashboard →
                         </button>
                     </div>
                 </div>
@@ -412,20 +422,19 @@ const Signup = () => {
                             {/* Registration Flow Header */}
                             <div className="mb-8">
                                 <h1 className="text-3xl font-black text-brand-dark tracking-tighter uppercase mb-2">Laboratory <span className="text-brand-primary">Onboarding</span></h1>
-                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">Step {activeTab === 'basic' ? '1' : activeTab === 'admin' ? '2' : activeTab === 'location' ? '3' : '4'} of 4</p>
+                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">Step {activeTab === 'basic' ? '1' : activeTab === 'admin' ? '2' : '3'} of 3 — Free Demo Registration</p>
                             </div>
 
                             {/* Progress Tracker */}
                             <div className="flex justify-between items-center mb-6 relative">
                                 <div className="absolute top-6 left-0 right-0 h-[2px] bg-slate-100 -z-10">
                                     <div className={`h-full bg-brand-primary transition-all duration-700 shadow-[0_0_15px_rgba(155,207,131,0.5)]`} style={{
-                                        width: activeTab === 'basic' ? '0%' : activeTab === 'admin' ? '33.33%' : activeTab === 'location' ? '66.66%' : '100%'
+                                        width: activeTab === 'basic' ? '0%' : activeTab === 'admin' ? '50%' : '100%'
                                     }}></div>
                                 </div>
                                 <ProgressDot step="basic" label="Facility" />
                                 <ProgressDot step="admin" label="Identity" />
                                 <ProgressDot step="location" label="Location" />
-                                <ProgressDot step="plan" label="Plan" />
                             </div>
                         </div>
                         {/* Shadow/Line to indicate scroll boundary */}
@@ -613,119 +622,8 @@ const Signup = () => {
                                 </div>
                             )}
 
-                            {activeTab === 'plan' && (
-                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                                    {loadingPlans ? (
-                                        <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[40px] shadow-sm border border-slate-100">
-                                            <Loader className="w-10 h-10 animate-spin text-brand-primary mb-4" />
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fetching Latest Plans...</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {/* Basic Plan Card */}
-                                            {plans.basic && (
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setFormData({...formData, plan: 'basic'})}
-                                                    className={`relative p-8 rounded-[40px] text-left transition-all border-2 flex flex-col h-full ${
-                                                        formData.plan === 'basic' 
-                                                        ? 'bg-white border-brand-primary shadow-2xl shadow-brand-primary/10 ring-4 ring-brand-primary/5' 
-                                                        : 'bg-slate-50 border-transparent hover:bg-white hover:border-slate-200 grayscale opacity-60'
-                                                    }`}
-                                                >
-                                                    <div className="mb-6 flex justify-between items-start">
-                                                        <div className={`p-3 rounded-2xl ${formData.plan === 'basic' ? 'bg-brand-primary/10 text-brand-primary' : 'bg-slate-200 text-slate-400'}`}>
-                                                            <ShieldCheck className="w-6 h-6" />
-                                                        </div>
-                                                        {formData.plan === 'basic' && <CheckCircle className="w-5 h-5 text-brand-primary" />}
-                                                    </div>
-                                                    <h3 className="text-xl font-black text-brand-dark uppercase tracking-tight mb-2">{plans.basic.name}</h3>
-                                                    <div className="mb-6">
-                                                        <span className="text-3xl font-black text-brand-dark">{formatPrice(plans.basic.price)}</span>
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">/mo</span>
-                                                    </div>
-                                                    <ul className="space-y-3 mb-8 flex-grow">
-                                                        {plans.basic.features.filter(f => f.available).slice(0, 3).map((f, i) => (
-                                                            <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary"></div> {f.text}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </button>
-                                            )}
 
-                                            {/* Pro Plan Card */}
-                                            {plans.pro && (
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setFormData({...formData, plan: 'pro'})}
-                                                    className={`relative p-8 rounded-[40px] text-left transition-all border-2 flex flex-col h-full ${
-                                                        formData.plan === 'pro' 
-                                                        ? 'bg-brand-dark border-brand-primary shadow-2xl shadow-brand-dark/30 ring-4 ring-brand-primary/5 text-white' 
-                                                        : 'bg-slate-50 border-transparent hover:bg-white hover:border-slate-200 grayscale opacity-60'
-                                                    }`}
-                                                >
-                                                    <div className="absolute top-4 right-8 bg-brand-primary text-brand-dark text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Popular</div>
-                                                    <div className="mb-6 flex justify-between items-start">
-                                                        <div className={`p-3 rounded-2xl ${formData.plan === 'pro' ? 'bg-brand-primary/20 text-brand-primary' : 'bg-slate-200 text-slate-400'}`}>
-                                                            <Sparkles className="w-6 h-6" />
-                                                        </div>
-                                                        {formData.plan === 'pro' && <CheckCircle className="w-5 h-5 text-brand-primary" />}
-                                                    </div>
-                                                    <h3 className={`text-xl font-black uppercase tracking-tight mb-2 ${formData.plan === 'pro' ? 'text-white' : 'text-brand-dark'}`}>{plans.pro.name}</h3>
-                                                    <div className="mb-6">
-                                                        <span className={`text-3xl font-black ${formData.plan === 'pro' ? 'text-brand-primary' : 'text-brand-dark'}`}>{formatPrice(plans.pro.price)}</span>
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">/mo</span>
-                                                    </div>
-                                                    <ul className="space-y-3 mb-8 flex-grow">
-                                                        {plans.pro.features.filter(f => f.available).slice(0, 3).map((f, i) => (
-                                                            <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-300">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary"></div> {f.text}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </button>
-                                            )}
 
-                                            {/* Pay As You Go Plan Card */}
-                                            {plans.pay_as_you_go && (
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setFormData({...formData, plan: 'pay_as_you_go'})}
-                                                    className={`relative p-8 rounded-[40px] text-left transition-all border-2 flex flex-col h-full ${
-                                                        formData.plan === 'pay_as_you_go' 
-                                                        ? 'bg-white border-amber-500 shadow-2xl shadow-amber-500/10 ring-4 ring-amber-500/5' 
-                                                        : 'bg-slate-50 border-transparent hover:bg-white hover:border-slate-200 grayscale opacity-60'
-                                                    }`}
-                                                >
-                                                    <div className="mb-6 flex justify-between items-start">
-                                                        <div className={`p-3 rounded-2xl ${formData.plan === 'pay_as_you_go' ? 'bg-amber-500/10 text-amber-600' : 'bg-slate-200 text-slate-400'}`}>
-                                                            <Zap className="w-6 h-6" />
-                                                        </div>
-                                                        {formData.plan === 'pay_as_you_go' && <CheckCircle className="w-5 h-5 text-amber-500" />}
-                                                    </div>
-                                                    <h3 className="text-xl font-black text-brand-dark uppercase tracking-tight mb-2">{plans.pay_as_you_go.name}</h3>
-                                                    <div className="mb-6">
-                                                        <span className="text-3xl font-black text-brand-dark">₹{formatPrice(plans.pay_as_you_go.price)}</span>
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">/token</span>
-                                                    </div>
-                                                    <ul className="space-y-3 mb-8 flex-grow">
-                                                        {plans.pay_as_you_go.features.filter(f => f.available).slice(0, 3).map((f, i) => (
-                                                            <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> {f.text}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                    <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest px-10">
-                                        You are selecting a <span className="text-brand-dark underline decoration-brand-primary decoration-2">{formData.plan.toUpperCase()}</span> plan request. 
-                                        Payment is required only after approval.
-                                    </p>
-                                </div>
-                            )}
 
                             {/* Actions */}
                             <div className="pt-8 flex flex-col md:flex-row gap-6">
@@ -733,8 +631,7 @@ const Signup = () => {
                                     <button 
                                         type="button"
                                         onClick={() => {
-                                            if (activeTab === 'plan') setActiveTab('location');
-                                            else if (activeTab === 'location') setActiveTab('admin');
+                                            if (activeTab === 'location') setActiveTab('admin');
                                             else if (activeTab === 'admin') setActiveTab('basic');
                                         }}
                                         className="flex-1 py-4 bg-white border-2 border-slate-100 text-slate-400 rounded-3xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all hover:border-slate-200"
@@ -743,14 +640,13 @@ const Signup = () => {
                                     </button>
                                 )}
                                 
-                                {activeTab !== 'plan' ? (
+                                {activeTab !== 'location' ? (
                                     <button 
                                         type="button"
                                         onClick={() => {
                                             if (canMoveForward()) {
                                                 if (activeTab === 'basic') setActiveTab('admin');
                                                 else if (activeTab === 'admin') setActiveTab('location');
-                                                else if (activeTab === 'location') setActiveTab('plan');
                                             } else {
                                                 // Mark all current tab fields as touched
                                                 const currentFields = activeTab === 'basic' ? ['labName', 'labFullName'] : ['ownerName', 'email', 'phone'];
@@ -770,13 +666,13 @@ const Signup = () => {
                                     <button 
                                         type="submit"
                                         key="submit-button"
-                                        disabled={submitting || Object.keys(errors).length > 0 || loadingPlans}
+                                        disabled={submitting || Object.keys(errors).length > 0}
                                         className={`flex-[2] py-4 bg-brand-primary text-brand-dark rounded-3xl font-black uppercase text-[10px] tracking-[0.3em] shadow-xl shadow-brand-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 ${
-                                            (submitting || Object.keys(errors).length > 0 || loadingPlans) ? 'opacity-50 cursor-not-allowed' : ''
+                                            (submitting || Object.keys(errors).length > 0) ? 'opacity-50 cursor-not-allowed' : ''
                                         }`}
                                     >
                                         {submitting ? <Loader className="w-5 h-5 animate-spin" /> : (
-                                            <>Register My Laboratory <Sparkles className="w-5 h-5" /></>
+                                            <>Start Free Demo <Sparkles className="w-5 h-5" /></>
                                         )}
                                     </button>
                                 )}

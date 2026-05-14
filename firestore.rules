@@ -185,5 +185,13 @@ service cloud.firestore {
       // Only SuperAdmins can view or manage requests
       allow read, update, delete: if isSuperAdmin();
     }
+
+    // 9. Validity Extension Requests
+    match /validityRequests/{requestId} {
+      // Authenticated lab staff can create requests
+      allow create: if isAuthenticated();
+      // Only SuperAdmins can manage requests
+      allow read, update, delete: if isSuperAdmin();
+    }
   }
 }

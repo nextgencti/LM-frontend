@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { Download, Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, Mail, X } from 'lucide-react';
+import { Download, Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, Mail, X, Lock } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -11,7 +11,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail, isPublic = false, isEmailing = false }) {
+export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail, onDeliver, isPublic = false, isEmailing = false, isRestricted = false, onRestrict }) {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(window.innerWidth < 768 ? 0.6 : 1.0);
@@ -55,6 +55,7 @@ export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail,
       link.click();
       document.body.removeChild(link);
       toast.success("Download started!");
+      if (onDeliver) onDeliver();
     } catch (e) {
       toast.error("Download failed.");
     }
@@ -72,6 +73,7 @@ export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail,
       iframe.onload = () => {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
+        if (onDeliver) onDeliver();
       };
     } catch (e) {
       toast.error("Print failed. Try downloading first.");
@@ -98,22 +100,28 @@ export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail,
         <div className="flex items-center gap-1.5 ml-auto">
           {onEmail && (
             <button 
-              onClick={onEmail} 
+              onClick={isRestricted ? () => { toast.warn("Please settle the payment to enable email."); onRestrict?.(); } : onEmail} 
               disabled={isEmailing}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex items-center gap-2 px-3 py-2 ${isRestricted ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-70' : 'bg-slate-800 text-white hover:bg-slate-900 active:scale-95'} rounded-lg transition-all shadow-sm disabled:opacity-50`}
             >
-              {isEmailing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+              {isEmailing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRestricted ? <Lock className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
               <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">
                 {isEmailing ? 'Sending...' : 'Email'}
               </span>
             </button>
           )}
-          <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-all active:scale-95 border border-slate-200">
-            <Printer className="w-4 h-4" />
+          <button 
+            onClick={isRestricted ? () => { toast.warn("Please settle the payment to enable printing."); onRestrict?.(); } : handlePrint} 
+            className={`flex items-center gap-2 px-3 py-2 ${isRestricted ? 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-70' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95'} rounded-lg transition-all border border-slate-200`}
+          >
+            {isRestricted ? <Lock className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
             <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Print</span>
           </button>
-          <button onClick={handleDownload} className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20">
-            <Download className="w-4 h-4" />
+          <button 
+            onClick={isRestricted ? () => { toast.warn("Please settle the payment to enable download."); onRestrict?.(); } : handleDownload} 
+            className={`flex items-center gap-2 px-3 py-2 ${isRestricted ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-70' : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 shadow-lg shadow-emerald-600/20'} rounded-lg transition-all`}
+          >
+            {isRestricted ? <Lock className="w-4 h-4" /> : <Download className="w-4 h-4" />}
             <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Download</span>
           </button>
           {onClose && (

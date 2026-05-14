@@ -18,18 +18,19 @@ import Settings from './pages/Settings';
 import BusinessAnalytics from './pages/BusinessAnalytics';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 import AboutUs from './pages/AboutUs';
 import PublicReportView from './pages/PublicReportView';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import { Activity, Users, FileText, Calendar, LogOut, Stethoscope, IndianRupee, Shield, BookOpen, Settings as SettingsIcon, Globe, CreditCard, BarChart3, Menu, X, ChevronDown } from 'lucide-react';
+import { Activity, Users, FileText, Calendar, LogOut, Stethoscope, IndianRupee, Shield, BookOpen, Settings as SettingsIcon, Globe, CreditCard, BarChart3, Menu, X, ChevronDown, Clock } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import PreLoader from './components/PreLoader';
 import TokenManager from './components/TokenManager';
 
 const Layout = ({ children }) => {
-  const { userData, subscription, activeLabId, setActiveLabId } = useAuth();
+  const { userData, subscription, activeLabId, setActiveLabId, isDemoLab, demoDaysRemaining } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [isDarkMode, setIsDarkMode] = React.useState(() => {
@@ -277,10 +278,31 @@ const Layout = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main content area */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-10">
-        {children}
-      </main>
+      {/* Content Container */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Demo Trial Banner */}
+        {isDemoLab && demoDaysRemaining > 0 && userData?.role !== 'SuperAdmin' && (
+          <div className={`px-4 py-2.5 flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest border-b transition-all shrink-0 ${
+            demoDaysRemaining <= 3 
+              ? 'bg-gradient-to-r from-rose-500 to-red-600 text-white border-rose-600' 
+              : demoDaysRemaining <= 7 
+                ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white border-amber-500' 
+                : 'bg-gradient-to-r from-violet-500 to-purple-600 text-white border-violet-600'
+          }`}>
+            <Clock className="w-3.5 h-3.5 animate-pulse" />
+            <span>
+              Free Demo Trial — <span className="underline decoration-2 underline-offset-4">{demoDaysRemaining} {demoDaysRemaining === 1 ? 'day' : 'days'}</span> remaining
+            </span>
+            <span className="hidden sm:inline opacity-70">•</span>
+            <span className="hidden sm:inline opacity-80 normal-case tracking-normal font-bold">Full PRO access included</span>
+          </div>
+        )}
+
+        {/* Main content area */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-10">
+          {children}
+        </main>
+      </div>
     </div>
   );
 };
@@ -297,8 +319,9 @@ function App() {
       <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} closeOnClick pauseOnHover theme="colored" />
       <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/about" element={<AboutUs />} />
       
       {/* Protected Routes wrapped in Layout */}

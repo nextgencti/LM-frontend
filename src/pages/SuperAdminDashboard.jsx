@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, where } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2, ChevronRight, Zap } from 'lucide-react';
+import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2, ChevronRight, Zap, Calendar, Clock } from 'lucide-react';
 import GlobalTestCatalog from '../components/GlobalTestCatalog';
 import GlobalSettings from '../components/GlobalSettings';
 import MasterParameters from './MasterParameters';
@@ -17,8 +17,9 @@ const SuperAdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('Active');
   const [stats, setStats] = useState({ total: 0, active: 0, expired: 0, pro: 0 });
-  const [activeView, setActiveView] = useState('labs'); // 'labs', 'tests', 'requests', 'token_requests'
+  const [activeView, setActiveView] = useState('labs'); // 'labs', 'tests', 'requests', 'token_requests', 'validity_requests'
   const [tokenRequests, setTokenRequests] = useState([]);
+  const [validityRequests, setValidityRequests] = useState([]);
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
   const [tokenForm, setTokenForm] = useState({ labId: '', amount: '100', labName: '' });
 
@@ -57,6 +58,7 @@ const SuperAdminDashboard = () => {
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [extendingMonths, setExtendingMonths] = useState(12);
   const [trFilter, setTrFilter] = useState('pending');
+  const [vrFilter, setVrFilter] = useState('pending');
   const [processingRequestId, setProcessingRequestId] = useState(null);
 
   const trCounts = {
@@ -69,6 +71,17 @@ const SuperAdminDashboard = () => {
   const filteredTokenRequests = trFilter === 'all' 
     ? tokenRequests 
     : tokenRequests.filter(r => r.status === trFilter);
+
+  const vrCounts = {
+    all: validityRequests.length,
+    pending: validityRequests.filter(r => r.status === 'pending').length,
+    approved: validityRequests.filter(r => r.status === 'approved').length,
+    rejected: validityRequests.filter(r => r.status === 'rejected').length
+  };
+
+  const filteredValidityRequests = vrFilter === 'all'
+    ? validityRequests
+    : validityRequests.filter(r => r.status === vrFilter);
 
   const isExpired = (dateStr) => {
     if (!dateStr || dateStr === 'N/A') return true;
@@ -133,6 +146,7 @@ const SuperAdminDashboard = () => {
       fetchLabs();
       fetchRequests();
       fetchTokenRequests();
+      fetchValidityRequests();
     }
   }, [isPinVerified]);
 
@@ -249,6 +263,80 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const fetchValidityRequests = async () => {
+    try {
+      const q = query(collection(db, 'validityRequests'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      setValidityRequests(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error("Error fetching validity requests:", error);
+      toast.error("Failed to sync validity requests");
+    }
+  };
+
+  const handleApproveValidityRequest = async (req) => {
+    setProcessingRequestId(req.id);
+    try {
+      // 1. Get current subscription for the lab
+      const subRef = doc(db, 'subscriptions', req.labId);
+      const subSnap = await getDocs(query(collection(db, 'subscriptions'), where('__name__', '==', req.labId)));
+      
+      if (subSnap.empty) throw new Error("Subscription not found");
+      const subData = subSnap.docs[0].data();
+      
+      // 2. Calculate new expiry
+      const today = new Date();
+      let startDate = new Date();
+      const currentExpiry = subData.expiryDate && subData.expiryDate !== 'N/A' ? new Date(subData.expiryDate) : null;
+      
+      if (currentExpiry && currentExpiry > today) {
+        startDate = currentExpiry;
+      }
+      
+      const newExpiry = new Date(startDate);
+      newExpiry.setMonth(newExpiry.getMonth() + req.requestedMonths);
+      const newExpiryStr = newExpiry.toISOString().split('T')[0];
+
+      // 3. Update subscription
+      await updateDoc(subRef, {
+        expiryDate: newExpiryStr,
+        status: 'active',
+        updatedAt: serverTimestamp()
+      });
+
+      // 4. Update request status
+      await updateDoc(doc(db, 'validityRequests', req.id), {
+        status: 'approved',
+        updatedAt: serverTimestamp()
+      });
+
+      toast.success(`Plan extended until ${newExpiryStr}`);
+      await fetchValidityRequests();
+      await fetchLabs();
+    } catch (error) {
+      console.error("Error approving validity request:", error);
+      toast.error(error.message || "Failed to approve request");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectValidityRequest = async (reqId) => {
+    setProcessingRequestId(reqId);
+    try {
+      await updateDoc(doc(db, 'validityRequests', reqId), {
+        status: 'rejected',
+        updatedAt: serverTimestamp()
+      });
+      toast.warn("Request rejected");
+      await fetchValidityRequests();
+    } catch (error) {
+      toast.error("Failed to reject request");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
   const fetchRequests = async () => {
     try {
       const q = query(collection(db, 'signupRequests'), orderBy('createdAt', 'desc'));
@@ -362,12 +450,14 @@ const SuperAdminDashboard = () => {
       const active = labsList.filter(l => l.status === 'active' && !isExpired(l.expiryDate)).length;
       const expiredCount = labsList.filter(l => isExpired(l.expiryDate)).length;
       const pro = labsList.filter(l => l.plan === 'pro').length;
+      const demo = labsList.filter(l => l.plan === 'demo').length;
       
       setStats({
         total: labsList.length,
         active,
         expired: expiredCount,
-        pro
+        pro,
+        demo
       });
     } catch (error) {
       console.error('Error fetching labs data:', error);
@@ -523,6 +613,7 @@ const SuperAdminDashboard = () => {
     const matchesFilter = filter === 'All' || 
                          (filter === 'Active' && l.status === 'active') || 
                          (filter === 'Expired' && l.status === 'expired') ||
+                         (filter === 'Demo' && l.plan === 'demo') ||
                          (filter === 'Pro' && l.plan === 'pro');
     return matchesSearch && matchesFilter;
   });
@@ -750,6 +841,18 @@ const SuperAdminDashboard = () => {
             )}
           </button>
           <button 
+            onClick={() => setActiveView('validity_requests')}
+            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all relative whitespace-nowrap ${activeView === 'validity_requests' ? 'bg-[#9BCF83] text-[#1E2A5A] shadow-xl shadow-[#9BCF83]/20' : 'text-slate-400 hover:text-brand-dark'}`}
+          >
+            <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5" /> 
+            Validity
+            {validityRequests.filter(r => r.status === 'pending').length > 0 && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-[#1E2A5A] text-white text-[7px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
+                {validityRequests.filter(r => r.status === 'pending').length}
+              </span>
+            )}
+          </button>
+          <button 
             onClick={() => setActiveView('requests')}
             className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all relative whitespace-nowrap ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
           >
@@ -798,9 +901,10 @@ const SuperAdminDashboard = () => {
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 mb-5 md:mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-8 mb-5 md:mb-8">
             <StatCard icon={<Users className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Total Labs" value={stats.total} color="from-brand-dark to-brand-secondary" gradient />
             <StatCard icon={<CheckCircle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Active Labs" value={stats.active} color="from-brand-primary to-lime-600" gradient />
+            <StatCard icon={<Clock className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Demo Labs" value={stats.demo || 0} color="from-violet-500 to-purple-700" gradient />
             <StatCard icon={<AlertTriangle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Expired Labs" value={stats.expired} color="from-rose-500 to-rose-700" gradient />
             <StatCard icon={<Activity className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Pro Labs" value={stats.pro} color="from-brand-secondary to-blue-700" gradient />
           </div>
@@ -819,7 +923,7 @@ const SuperAdminDashboard = () => {
                 />
               </div>
               <div className="flex bg-white p-1 rounded-[16px] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
-                {['All', 'Active', 'Expired', 'Pro'].map(f => (
+                {['All', 'Active', 'Demo', 'Expired', 'Pro'].map(f => (
                   <button 
                     key={f}
                     onClick={() => setFilter(f)}
@@ -875,11 +979,13 @@ const SuperAdminDashboard = () => {
                           </td>
                           <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-center">
                             <span className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest border transition-all ${
-                              lab.plan === 'pro' 
-                                ? 'bg-brand-dark text-white border-brand-dark shadow-lg shadow-brand-dark/10' 
-                                : lab.plan === 'pay_as_you_go'
-                                  ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/10'
-                                  : 'bg-brand-light/50 text-brand-dark border-brand-primary/10'
+                              lab.plan === 'demo'
+                                ? 'bg-violet-500 text-white border-violet-500 shadow-lg shadow-violet-500/10'
+                                : lab.plan === 'pro' 
+                                  ? 'bg-brand-dark text-white border-brand-dark shadow-lg shadow-brand-dark/10' 
+                                  : lab.plan === 'pay_as_you_go'
+                                    ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/10'
+                                    : 'bg-brand-light/50 text-brand-dark border-brand-primary/10'
                             }`}>
                               {lab.plan?.replace(/_/g, ' ') || 'basic'}
                             </span>
@@ -1078,6 +1184,93 @@ const SuperAdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      ) : activeView === 'validity_requests' ? (
+        <div className="animate-in fade-in duration-700">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-8 md:mb-10 bg-white p-5 md:p-8 rounded-2xl md:rounded-[28px] shadow-sm border border-slate-100">
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                Validity <span className="text-[#9BCF83]">Requests</span>
+              </h1>
+              <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1">Review and approve subscription extension requests.</p>
+            </div>
+
+            <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100 w-full lg:w-auto">
+              {['all', 'pending', 'approved', 'rejected'].map((f) => (
+                <button 
+                  key={f}
+                  onClick={() => setVrFilter(f)}
+                  className={`flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${vrFilter === f ? 'bg-brand-dark text-white shadow-lg' : 'text-slate-400 hover:text-brand-dark'}`}
+                >
+                  {f} ({vrCounts[f]})
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredValidityRequests.length === 0 ? (
+               <div className="md:col-span-2 lg:col-span-3 p-20 text-center font-black text-slate-300 uppercase tracking-widest bg-white rounded-[42px] border border-slate-100">
+                 No {vrFilter} validity requests found.
+               </div>
+            ) : filteredValidityRequests.map((req) => (
+              <div key={req.id} className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                <div className={`absolute top-0 right-0 w-24 h-24 blur-3xl opacity-10 rounded-full -mr-12 -mt-12 transition-colors ${req.status === 'pending' ? 'bg-amber-500' : req.status === 'approved' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                
+                <div className="flex justify-between items-start mb-6">
+                   <div>
+                      <div className="font-black text-brand-dark text-lg uppercase tracking-tight leading-tight">{req.labName}</div>
+                      <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Lab ID: {req.labId}</div>
+                   </div>
+                   <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                     req.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                     req.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                     'bg-rose-50 text-rose-600 border-rose-100'
+                   }`}>
+                     {req.status}
+                   </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-brand-primary shadow-sm">
+                         <Calendar className="w-5 h-5" />
+                      </div>
+                      <div>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Requested Duration</p>
+                         <p className="text-xl font-black text-brand-dark leading-none">{req.requestedMonths} <span className="text-[10px] opacity-40">Months</span></p>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-6">
+                   <span>Request Date</span>
+                   <span className="text-slate-600">
+                     {req.createdAt?.toDate ? req.createdAt.toDate().toLocaleDateString('en-GB') : 'N/A'}
+                   </span>
+                </div>
+
+                {req.status === 'pending' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      disabled={processingRequestId === req.id}
+                      onClick={() => handleRejectValidityRequest(req.id)}
+                      className="py-3 bg-white text-rose-500 border border-rose-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                    <button 
+                      disabled={processingRequestId === req.id}
+                      onClick={() => handleApproveValidityRequest(req)}
+                      className="py-3 bg-brand-dark text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-xl shadow-brand-dark/10 transition-all border border-white/5 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      {processingRequestId === req.id ? <Loader className="w-3 h-3 animate-spin" /> : 'Approve'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       ) : activeView === 'requests' ? (

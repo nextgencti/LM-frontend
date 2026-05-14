@@ -153,11 +153,13 @@ const Reports = () => {
     return () => unsubscribe();
   }, [userData, activeLabId]);
 
-  // Fetch Bookings to cross-reference doctor names
+  // Fetch Bookings to cross-reference doctor names and payment status
   useEffect(() => {
-    const labId = activeLabId || userData?.labId;
-    if (!labId) return;
-    const q = query(collection(db, 'bookings'), where('labId', '==', labId));
+    if (!activeLabId && userData?.role !== 'SuperAdmin') return;
+    let q = activeLabId
+      ? query(collection(db, 'bookings'), where('labId', '==', activeLabId))
+      : query(collection(db, 'bookings'));
+      
     const unsubscribe = onSnapshot(q, (snap) => {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setBookings(items);
@@ -230,17 +232,29 @@ const Reports = () => {
 
   // ─── Group reports by billId ───────────────────────────────────────────────
   const groupedReports = useMemo(() => {
+    // Pre-build fast lookup maps from bookings for O(1) matching
+    const bookingById = {};
+    const bookingByNo = {};
+    const bookingByBillId = {};
+    bookings.forEach(b => {
+      if (b.id) bookingById[b.id] = b;
+      if (b.bookingNo) bookingByNo[b.bookingNo] = b;
+      if (b.bookingId) bookingByNo[b.bookingId] = b;
+      if (b.billId) bookingByBillId[b.billId] = b;
+    });
+
     const map = {};
     reports.forEach((r) => {
       const key = r.billId || r.id;
-      // Cross-reference with bookings to find missing doctor info
-      const constructedBookingId = r.bookingId || (r.labId && r.bookingNo ? `${r.labId}_${r.bookingNo}` : null);
-      const booking = bookings.find(b => 
-        (constructedBookingId && b.id === constructedBookingId) ||
-        (r.bookingNo && b.bookingNo === r.bookingNo) || 
-        (r.billId && b.billId === r.billId) ||
-        (b.patientId === r.patientId && b.testNames?.includes(r.testName))
-      );
+      
+      // Fast O(1) booking lookup using multiple keys
+      const constructedId = r.bookingId || (r.labId && r.bookingNo ? `${r.labId}_${r.bookingNo}` : null);
+      const booking = 
+        (constructedId && bookingById[constructedId]) ||
+        (r.bookingNo && bookingByNo[r.bookingNo]) ||
+        (r.billId && bookingByBillId[r.billId]) ||
+        null;
+      
       const doctorName = r.doctorName || r.referredBy || booking?.doctorName || 'SELF / DIRECT';
 
       if (!map[key]) {
@@ -257,16 +271,18 @@ const Reports = () => {
           doctorName: doctorName,
           tests: [],
           createdAt: r.createdAt,
-          balance: 0,
-          totalAmount: 0,
+          // Use booking data first, then report doc as fallback
+          balance: booking ? parseFloat(booking.balance ?? 0) : 0,
+          totalAmount: booking ? parseFloat(booking.totalAmount ?? 0) : parseFloat(r.totalAmount || 0),
+          paymentStatus: booking ? (booking.paymentStatus || 'Unpaid') : (r.paymentStatus || 'Unpaid'),
         };
-      }
-      map[key].tests.push(r);
-      if (booking) {
-        map[key].balance = parseFloat(booking.balance || 0);
-        map[key].totalAmount = parseFloat(booking.totalAmount || 0);
+      } else if (booking) {
+        // Always update from booking data (most authoritative source)
+        map[key].balance = parseFloat(booking.balance ?? 0);
+        map[key].totalAmount = parseFloat(booking.totalAmount ?? 0);
         map[key].paymentStatus = booking.paymentStatus || 'Unpaid';
       }
+      map[key].tests.push(r);
       if (r.tokenDeducted) map[key].tokenDeducted = true;
       if (r.totalAmount && map[key].totalAmount === 0) map[key].totalAmount = parseFloat(r.totalAmount);
     });
@@ -813,8 +829,8 @@ const Reports = () => {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 shadow-sm transition-transform hover:scale-110">
-              <FileText className="w-5 h-5 text-[#1E2A5A]" />
+            <div className="p-2 bg-brand-light rounded-xl border border-brand-primary/10 shadow-sm transition-transform hover:scale-110">
+              <FileText className="w-5 h-5 text-brand-primary" />
             </div>
             <div>
               <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight">Reports List</h1>
@@ -958,9 +974,20 @@ const Reports = () => {
                   return (
                     <tr key={group.groupKey} className="hover:bg-[#F9FAFB] transition-colors group border-b border-[#F3F4F6]">
                       <td className="px-3.5 py-2.5">
-                        <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${group.balance > 0 ? 'bg-rose-600 text-white shadow-sm' : 'text-[#1E2A5A]'}`}>
-                          {group.billId.replace('BKG', 'RPT')}
-                        </div>
+                        {(() => {
+                          // Direct booking lookup - same as Bills.jsx & Bookings.jsx
+                          const matchedBooking = bookings.find(b => 
+                            b.billId === group.billId || 
+                            b.bookingNo === group.bookingNo ||
+                            b.id === group.bookingId
+                          );
+                          const isUnpaid = parseFloat(matchedBooking?.balance || group.balance || 0) > 0;
+                          return (
+                            <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${isUnpaid ? 'bg-rose-600 text-white shadow-sm' : 'text-[#1E2A5A] bg-slate-100'}`}>
+                              {group.billId.replace('BKG', 'RPT')}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3.5 py-2.5">
                         <div className="text-[14px] font-semibold text-[#1F2937] leading-tight">{group.patientName}</div>
@@ -998,7 +1025,7 @@ const Reports = () => {
                       <td className="px-3.5 py-2.5 text-center">
                         <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider shadow-sm transition-all ${statusColors[groupStatus || 'Pending']}`}>
                            <div className="w-1 h-1 rounded-full bg-current opacity-80" />
-                           {groupStatus === 'Final' || groupStatus === 'Delivered' ? 'Completed' : groupStatus}
+                           {groupStatus === 'Final' ? 'Completed' : groupStatus}
                         </div>
                       </td>
                       <td className="px-3.5 py-2.5">
@@ -1040,7 +1067,7 @@ const Reports = () => {
                                     className="flex items-center gap-1 px-2 py-1 bg-[#14B8A6] text-white rounded hover:bg-[#0F766E] transition-all transform active:scale-95 text-[10px] font-semibold shadow-sm"
                                   >
                                     <FlaskConical className="w-3 h-3" />
-                                    Sample
+                                    Receive Sample
                                   </button>
                                 );
                               }

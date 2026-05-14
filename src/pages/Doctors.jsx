@@ -810,14 +810,14 @@ const Doctors = () => {
   }, [filteredDoctors, currentPage, rowsPerPage]);
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
+    <div className="max-w-[1400px] mx-auto px-3 sm:px-4 py-3 w-full flex-grow text-slate-800 animate-in fade-in duration-500">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div>
           <h1 className="text-[20px] font-bold text-[#1F2937] flex items-center gap-3">
-            <div className="p-2 bg-[#F3F4F6] rounded-xl shadow-sm border border-[#E5E7EB]">
-              <Stethoscope className="w-5 h-5 text-[#1E2A5A]" />
+            <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+              <Stethoscope className="w-5 h-5 text-brand-primary" />
             </div>
             Doctors
           </h1>
@@ -857,11 +857,11 @@ const Doctors = () => {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Doctor Name</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Clinic / Hospital</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Structure</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Status</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-4 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Actions</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Doctor Name</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Clinic / Hospital</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Structure</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-4 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Status</th>
+              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-4 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -884,7 +884,7 @@ const Doctors = () => {
               ) : (
                 paginatedDoctors.map((doc) => (
                   <tr key={doc.id} className="hover:bg-slate-50/40 transition-all group relative">
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#1E2A5A] font-bold text-[13px] border border-[#E5E7EB]">
                           {doc.name?.charAt(0).toUpperCase()}
@@ -895,7 +895,7 @@ const Doctors = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="flex flex-col">
                         <span className="text-[14px] font-semibold text-[#1F2937] leading-tight mb-0.5">{doc.clinic || 'Independent Practice'}</span>
                         {doc.phone && (
@@ -906,7 +906,7 @@ const Doctors = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-2.5">
+                    <td className="px-4 py-2.5">
                       <div className="inline-flex items-center px-2 py-0.5 bg-[#F3F4F6] rounded-lg text-[10px] font-bold text-[#1E2A5A] uppercase tracking-wider border border-[#E5E7EB]">
                         {doc.commissionValue}{doc.commissionType === 'Percentage' ? '%' : ' Fixed'}
                       </div>
@@ -919,7 +919,7 @@ const Doctors = () => {
                         {doc.status}
                       </span>
                     </td>
-                    <td className="px-6 py-2.5 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1 isolate">
                         <button
                           onClick={() => fetchLedgerData(doc)}

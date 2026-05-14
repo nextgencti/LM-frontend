@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   X, Search, Plus, User, Stethoscope, Clock, 
   Trash2, IndianRupee, FileText, CheckCircle, 
@@ -25,6 +26,7 @@ const BookingForm = ({
   activeLabId,
   refreshData
 }) => {
+  const navigate = useNavigate();
   const [testSearch, setTestSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
 
@@ -53,6 +55,34 @@ const BookingForm = ({
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [showQuickPatient, showQuickDoctor, onClose]);
+
+  const showPriceWarning = (test) => {
+    toast.warn(
+      <div className="flex items-center justify-between gap-3 w-full min-w-[240px]">
+        <p className="text-[12px] font-bold text-[#1E2A5A]">
+          Price not set for <span className="text-rose-600 underline underline-offset-2 uppercase">{test.testName}</span>
+        </p>
+        <button 
+          onClick={() => {
+            // Preserve form state before navigating
+            const stateToSave = {
+              newBooking,
+              isEditing,
+              editingBookingId
+            };
+            sessionStorage.setItem('pendingBookingState', JSON.stringify(stateToSave));
+            
+            if (onClose) onClose(); // Close modal before navigating
+            navigate(`/tests?edit=${test.id}&source=booking`);
+          }}
+          className="px-3 py-1.5 bg-[#1E2A5A] text-white text-[10px] font-bold rounded-[4px] uppercase tracking-wider shrink-0 shadow-sm hover:bg-slate-800 transition-all active:scale-95"
+        >
+          Set Price
+        </button>
+      </div>,
+      { autoClose: 6000, position: "top-center" }
+    );
+  };
 
   const handleSaveQuickPatient = async (e) => {
     e.preventDefault();
@@ -484,6 +514,13 @@ const BookingForm = ({
                       if (e.key === 'Enter' && filteredTests.length > 0) {
                         e.preventDefault();
                         const firstTest = filteredTests[0];
+
+                        if (parseFloat(firstTest.price || 0) <= 0) {
+                          showPriceWarning(firstTest);
+                          setTestSearch('');
+                          return;
+                        }
+
                         if (!newBooking.testIds.includes(firstTest.id)) {
                           const ids = [...newBooking.testIds, firstTest.id];
                           calculateTotal(ids);
@@ -503,6 +540,11 @@ const BookingForm = ({
                          <button 
                           key={t.id}
                           onClick={() => {
+                            if (parseFloat(t.price || 0) <= 0) {
+                              showPriceWarning(t);
+                              setTestSearch('');
+                              return;
+                            }
                             const ids = [...new Set([...newBooking.testIds, t.id])];
                             calculateTotal(ids);
                             setTestSearch('');
@@ -829,7 +871,13 @@ const BookingForm = ({
                         placeholder="00"
                         className="w-2/3 px-3 py-1.5 bg-white border border-slate-300 focus:border-[#1E2A5A] focus:bg-white rounded-[5px] transition-all font-bold text-[#1F2937] outline-none placeholder:text-slate-300 shadow-sm"
                         value={quickPatient.age} 
-                        onChange={e => setQuickPatient({...quickPatient, age: e.target.value})}
+                        onChange={e => {
+                          const val = e.target.value.toString().slice(0, 2);
+                          setQuickPatient({...quickPatient, age: val});
+                        }}
+                        onInput={(e) => {
+                          if (e.target.value.length > 2) e.target.value = e.target.value.slice(0, 2);
+                        }}
                       />
                       <select 
                         className="w-1/3 px-2 py-1.5 bg-white border border-slate-300 focus:bg-white rounded-[5px] transition-all font-bold text-[#1F2937] outline-none cursor-pointer text-[12px] shadow-sm"

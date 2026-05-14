@@ -415,12 +415,19 @@ const Bills = () => {
                         </div>
                         <div>
                           <div className="text-[14px] font-semibold text-[#1F2937] leading-tight group-hover:text-brand-primary transition-colors">{bill.patientName || 'Walk-in Patient'}</div>
-                          <div className="text-[11px] font-medium text-[#7B8794] mt-0.5 uppercase tracking-wider">Patient ID: {bill.patientId?.substring(0, 8)}</div>
+                          <div className="text-[11px] font-medium text-[#7B8794] mt-0.5 uppercase tracking-wider">
+                            Patient ID: {bill.patientId?.includes('_') ? bill.patientId.split('_')[1] : bill.patientId}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-2.5">
-                      <div className="text-[13px] font-bold text-[#1F2937] tabular-nums tracking-tighter">₹{bill.totalAmount}</div>
+                      <div className="text-[13px] font-bold text-[#1F2937] tabular-nums tracking-tighter flex items-center gap-1.5">
+                        ₹{bill.totalAmount}
+                        {bill.discount > 0 && (
+                          <span className="text-[10px] text-[#98A2B3] font-medium line-through decoration-rose-400/40">₹{bill.subtotal || (parseFloat(bill.totalAmount) + parseFloat(bill.discount))}</span>
+                        )}
+                      </div>
                       <div className="text-[11px] font-medium text-[#7B8794] mt-1">
                         {(() => {
                            if (!bill.createdAt) return 'Processing...';
@@ -447,7 +454,7 @@ const Bills = () => {
                     </td>
                     <td className="px-6 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-2 transition-all">
-                        {bill.paymentStatus !== 'Paid' ? (
+                        {bill.paymentStatus !== 'Paid' && bill.status !== 'Cancelled' ? (
                           <>
                              <div className="flex bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg p-0.5 overflow-hidden h-9">
                               <select 
@@ -490,23 +497,27 @@ const Bills = () => {
                           </>
                         ) : (
                            <div className="flex items-center gap-2">
-                             {bill.paymentHistory && bill.paymentHistory.length > 0 && (
-                               <button 
-                                 onClick={() => setShowHistory(prev => ({ ...prev, [bill.id]: !prev[bill.id] }))}
-                                 className="px-3 py-1.5 bg-[#F8FAFC] text-[#64748B] rounded-lg hover:bg-slate-100 hover:text-[#1F2937] transition-all border border-[#E5E7EB] flex items-center gap-1.5 h-9"
-                               >
-                                 <Clock className="w-3.5 h-3.5" />
-                                 <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
-                               </button>
+                             {bill.status !== 'Cancelled' && (
+                               <>
+                                 {bill.paymentHistory && bill.paymentHistory.length > 0 && (
+                                   <button 
+                                     onClick={() => setShowHistory(prev => ({ ...prev, [bill.id]: !prev[bill.id] }))}
+                                     className="px-3 py-1.5 bg-[#F8FAFC] text-[#64748B] rounded-lg hover:bg-slate-100 hover:text-[#1F2937] transition-all border border-[#E5E7EB] flex items-center gap-1.5 h-9"
+                                   >
+                                     <Clock className="w-3.5 h-3.5" />
+                                     <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
+                                   </button>
+                                 )}
+                                 <button 
+                                   onClick={() => setSelectedInvoice(bill)}
+                                   className="px-3 py-1.5 bg-[#F8FAFC] text-[#1E2A5A] border border-[#E5E7EB] rounded-lg hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm flex items-center gap-1.5 h-9"
+                                   title="Print Invoice"
+                                 >
+                                   <Printer className="w-3.5 h-3.5" />
+                                   <span className="text-[10px] font-bold uppercase tracking-wider">Print</span>
+                                 </button>
+                               </>
                              )}
-                             <button 
-                               onClick={() => setSelectedInvoice(bill)}
-                               className="px-3 py-1.5 bg-[#F8FAFC] text-[#1E2A5A] border border-[#E5E7EB] rounded-lg hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm flex items-center gap-1.5 h-9"
-                               title="Print Invoice"
-                             >
-                               <Printer className="w-3.5 h-3.5" />
-                               <span className="text-[10px] font-bold uppercase tracking-wider">Print</span>
-                             </button>
                           </div>
                         )}
                       </div>
@@ -536,11 +547,18 @@ const Bills = () => {
                                }`}>
                                  {p.method}
                                </div>
-                               <div className="text-xl font-bold text-[#1F2937] mb-1 tabular-nums tracking-tighter">₹{p.amount}</div>
+                               <div className="text-xl font-bold text-[#1F2937] mb-1 tabular-nums tracking-tighter flex items-baseline gap-1">
+                                 ₹{p.amount}
+                                 {p.discount > 0 && (
+                                   <span className="text-[10px] font-bold text-rose-500 whitespace-nowrap">
+                                     (-₹{p.discount} Disc)
+                                   </span>
+                                 )}
+                               </div>
                                <div className="text-[11px] font-medium text-[#7B8794] uppercase tracking-wider">
                                  {(() => {
                                    if (!p.date) return 'N/A';
-                                   const d = p.date.seconds ? new Date(p.date.seconds * 1000) : new Date(p.date);
+                                   const d = p.date.seconds ? new Date(p.date.seconds * 1000) : (p.date.toDate ? p.date.toDate() : new Date(p.date));
                                    return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`;
                                  })()}
                                </div>

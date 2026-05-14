@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { Settings, Save, Loader, Globe, CheckCircle, Image as ImageIcon, MapPin, Phone, Building, Mail } from 'lucide-react';
+import { Settings, Save, Loader, Globe, CheckCircle, Image as ImageIcon, MapPin, Phone, Building, Mail, Clock } from 'lucide-react';
 
 const GlobalSettings = () => {
   const [loading, setLoading] = useState(true);
@@ -20,7 +20,8 @@ const GlobalSettings = () => {
     footerText: 'This is a system-generated report. Ensure clinical correlation before starting treatment.',
     emailProvider: 'gas',
     gasUrl: '',
-    resendApiKey: ''
+    resendApiKey: '',
+    demoDays: 30
   });
 
   useEffect(() => {
@@ -275,6 +276,41 @@ const GlobalSettings = () => {
                 <p className="text-[10px] text-gray-400 font-bold ml-2 mt-2">Leave blank to fallback to backend .env file default.</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Demo Trial Configuration Section */}
+        <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 p-8">
+          <div className="flex items-center mb-6">
+            <div className="p-3 bg-violet-50 rounded-2xl mr-4">
+              <Clock className="w-6 h-6 text-violet-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900">Demo Trial Configuration</h2>
+              <p className="text-xs font-bold text-gray-400 tracking-wider">FREE TRIAL SETTINGS FOR NEW SIGNUPS</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-end gap-6">
+              <div className="space-y-2 flex-1">
+                <label className="text-xs font-black text-gray-500 uppercase tracking-widest pl-1">Demo Duration (Days)</label>
+                <input 
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={settings.demoDays}
+                  onChange={(e) => setSettings({...settings, demoDays: parseInt(e.target.value) || 30})}
+                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-violet-600 focus:bg-white rounded-2xl transition-all font-bold outline-none text-2xl text-violet-600"
+                />
+              </div>
+              <div className="bg-violet-50 border border-violet-100 rounded-2xl p-4 flex-1">
+                <p className="text-[10px] font-black text-violet-600 uppercase tracking-widest mb-1">How it works</p>
+                <p className="text-xs text-violet-800 font-bold leading-relaxed">
+                  New labs that register via the signup page will automatically receive a <strong>{settings.demoDays}-day</strong> free demo with full PRO features. After expiry, they must purchase a subscription.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 

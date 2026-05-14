@@ -23,7 +23,7 @@ const BusinessAnalytics = () => {
   const [timeRange, setTimeRange] = useState('30'); // Days
   
   // Premium Feature check
-  const isPremiumPlan = ['pro', 'enterprise', 'pay_as_you_go'].includes(subscription?.plan?.toLowerCase()) || userData?.role === 'SuperAdmin';
+  const isPremiumPlan = ['pro', 'enterprise', 'pay_as_you_go', 'demo'].includes(subscription?.plan?.toLowerCase()) || userData?.role === 'SuperAdmin';
 
   useEffect(() => {
     if (isPremiumPlan) {
@@ -198,8 +198,8 @@ const BusinessAnalytics = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 shadow-sm transition-transform hover:scale-110">
-            <BarChart3 className="w-5 h-5 text-[#1E2A5A]" />
+          <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
+            <BarChart3 className="w-5 h-5 text-brand-primary" />
           </div>
           <div>
             <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight">Business Intelligence</h1>

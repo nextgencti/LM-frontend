@@ -90,18 +90,41 @@ const Bookings = () => {
     const pid = params.get('patientId');
     const isNew = params.get('new');
     
-    if ((shouldAutoOpen === 'true' && pid && activeLabId) || (isNew === 'true' && activeLabId)) {
+    if ((shouldAutoOpen === 'true' && activeLabId) || (isNew === 'true' && activeLabId)) {
       // --- PAY AS YOU GO ENFORCEMENT ---
       const isPayAsYouGo = subscription?.plan === 'pay_as_you_go';
       const balance = subscription?.tokenBalance || 0;
       if (isPayAsYouGo && balance <= 0) {
         setShowTokenModal(true);
       } else {
+        // CHECK FOR PRESERVED STATE FIRST
+        const saved = sessionStorage.getItem('pendingBookingState');
+        if (saved) {
+          try {
+            const { newBooking: savedBooking, isEditing: savedEditing, editingBookingId: savedId } = JSON.parse(saved);
+            setNewBooking(savedBooking);
+            setIsEditing(savedEditing);
+            setEditingBookingId(savedId);
+            setShowAddModal(true);
+            sessionStorage.removeItem('pendingBookingState');
+            return; // Skip standard auto-open if we restored state
+          } catch (e) {
+            console.error("Error restoring state:", e);
+          }
+        }
+
         if (pid) {
           setNewBooking(prev => ({ ...prev, patientId: pid }));
+          setShowAddModal(true);
+        } else if (isNew === 'true') {
+          setNewBooking({
+            patientId: '', doctorId: '', testIds: [], 
+            subtotal: 0, discount: 0, totalAmount: 0, paidAmount: 0, 
+            status: 'Pending', urgency: 'Routine', notes: '',
+            paymentStatus: 'Unpaid', balance: 0
+          });
+          setShowAddModal(true);
         }
-        setIsEditing(false);
-        setShowAddModal(true);
       }
       
       // Clean URL
@@ -809,6 +832,8 @@ const Bookings = () => {
             onSave={isEditing ? handleUpdateBooking : handleAddBooking}
             onClose={exitModal}
             userData={userData}
+            activeLabId={activeLabId}
+            refreshData={fetchCreationData}
           />
         </div>
       ) : (

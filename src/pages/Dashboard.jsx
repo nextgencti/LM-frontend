@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp, addDoc, serverTimestamp } from 'firebase/firestore';
+import { toast } from 'react-toastify';
 import { 
   Users, Stethoscope, FileText, Calendar, 
   TrendingUp, IndianRupee, Clock, CheckCircle2,
   Zap, PlusCircle, LayoutDashboard, Settings,
   LogOut, MousePointer2, Activity, FlaskConical,
   Bell, ChevronDown, Plus, Sparkles, Filter, 
-  UserPlus, FileCheck, ArrowRight, Wallet
+  UserPlus, FileCheck, ArrowRight, Wallet, X, Send, Loader
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -41,6 +42,7 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showTokenModal, setShowTokenModal] = useState(false);
+  const [showValidityModal, setShowValidityModal] = useState(false);
   const [timeFilter, setTimeFilter] = useState('week'); // 'week' or 'month'
 
   useEffect(() => {
@@ -406,10 +408,24 @@ const Dashboard = () => {
                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 leading-none">Plan</p>
                    <p className="text-[11px] font-black text-brand-primary uppercase leading-tight">{subscription?.plan?.replace(/_/g, ' ') || 'PAY AS YOU GO'}</p>
                 </div>
-                <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
-                   <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 leading-none">Tokens</p>
-                   <p className="text-[14px] font-bold text-amber-400 tabular-nums leading-none">{subscription?.tokenBalance || 0}</p>
-                </div>
+                {subscription?.plan === 'pay_as_you_go' ? (
+                  <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 leading-none">Tokens</p>
+                    <p className="text-[14px] font-bold text-amber-400 tabular-nums leading-none">{subscription?.tokenBalance || 0}</p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 leading-none">Remaining</p>
+                    <p className="text-[14px] font-bold text-amber-400 tabular-nums leading-none">
+                      {(() => {
+                        const expiry = new Date(subscription?.expiryDate);
+                        const diffTime = expiry - new Date();
+                        const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return days > 0 ? `${days} Days` : 'Expired';
+                      })()}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-3 mb-4 ml-1">
@@ -428,31 +444,78 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="px-1 mb-4">
-                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-1.5 text-right">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-1000 ${(subscription?.tokenBalance || 0) > 10 ? 'bg-brand-primary' : 'bg-rose-500'}`} 
-                      style={{ width: `${Math.min(100, ((subscription?.tokenBalance || 0) / 100) * 100)}%` }}
-                    ></div>
-                 </div>
-                 <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 uppercase">
-                   <span>{subscription?.tokenBalance || 0} TOKENS AVAILABLE</span>
-                   <span className={(subscription?.tokenBalance || 0) > 10 ? 'text-brand-primary' : 'text-rose-500'}>
-                     {(subscription?.tokenBalance || 0) > 10 ? 'Healthy' : 'Low Balance'}
-                   </span>
-                 </div>
-              </div>
+              {subscription?.plan === 'pay_as_you_go' && (
+                <div className="px-1 mb-4">
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-1.5 text-right">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-1000 ${(subscription?.tokenBalance || 0) > 10 ? 'bg-brand-primary' : 'bg-rose-500'}`} 
+                        style={{ width: `${Math.min(100, ((subscription?.tokenBalance || 0) / 100) * 100)}%` }}
+                      ></div>
+                  </div>
+                  <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 uppercase">
+                    <span>{subscription?.tokenBalance || 0} TOKENS AVAILABLE</span>
+                    <span className={(subscription?.tokenBalance || 0) > 10 ? 'text-brand-primary' : 'text-rose-500'}>
+                      {(subscription?.tokenBalance || 0) > 10 ? 'Healthy' : 'Low Balance'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {(subscription?.plan === 'basic' || subscription?.plan === 'pro' || subscription?.plan === 'demo') && (
+                <div className="px-1 mb-4">
+                  {(() => {
+                    const expiry = new Date(subscription?.expiryDate);
+                    const now = new Date();
+                    const diffTime = expiry - now;
+                    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    // Assume 30 days for bar calculation if we don't have a start date
+                    const percent = Math.max(0, Math.min(100, (daysRemaining / 30) * 100));
+                    const statusColor = daysRemaining > 7 ? 'bg-brand-primary' : 'bg-rose-500';
+                    const statusText = daysRemaining > 7 ? 'Active' : 'Expiring Soon';
+                    
+                    return (
+                      <>
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-1.5 text-right">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-1000 ${statusColor}`} 
+                            style={{ width: `${percent}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 uppercase">
+                          <span>{daysRemaining > 0 ? `${daysRemaining} DAYS REMAINING` : 'EXPIRED'}</span>
+                          <span className={daysRemaining > 7 ? 'text-brand-primary' : 'text-rose-500'}>
+                            {statusText}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             <div className="relative z-10 flex flex-col gap-2">
+              {subscription?.plan === 'pay_as_you_go' ? (
+                <button 
+                  onClick={() => setShowTokenModal(true)}
+                  className="w-full bg-brand-primary text-white py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-brand-primary/20 transition-all flex items-center justify-center gap-2"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  Buy Tokens
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setShowValidityModal(true)}
+                  className="w-full bg-[#9BCF83] text-[#1E2A5A] py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-[#9BCF83]/10 transition-all flex items-center justify-center gap-2 hover:bg-[#8abf72]"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  Extend Validity
+                </button>
+              )}
               <button 
-                onClick={() => setShowTokenModal(true)}
-                className="w-full bg-brand-primary text-white py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-brand-primary/20 transition-all flex items-center justify-center gap-2"
+                onClick={() => navigate('/settings/billing')}
+                className="w-full bg-white/5 text-white/50 py-1.5 rounded-xl font-bold text-[9px] uppercase transition-all border border-white/5"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
-                Buy Tokens
-              </button>
-              <button className="w-full bg-white/5 text-white/50 py-1.5 rounded-xl font-bold text-[9px] uppercase transition-all border border-white/5">
                 Upgrade Plan
               </button>
             </div>
@@ -534,6 +597,107 @@ const Dashboard = () => {
           isOpen={showTokenModal} 
           onClose={() => setShowTokenModal(false)} 
         />
+
+        <ValidityRequestModal 
+          isOpen={showValidityModal} 
+          onClose={() => setShowValidityModal(false)} 
+          labId={activeLabId || userData?.labId}
+          labName={labFullName || userData?.labName}
+        />
+      </div>
+    </div>
+  );
+};
+
+const ValidityRequestModal = ({ isOpen, onClose, labId, labName }) => {
+  const [months, setMonths] = useState(12);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, 'validityRequests'), {
+        labId,
+        labName,
+        requestedMonths: parseInt(months),
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      toast.success("Extension request sent successfully! Admin will review it shortly.");
+      onClose();
+    } catch (err) {
+      console.error("Error sending validity request:", err);
+      toast.error("Failed to send request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-3xl animate-in fade-in" onClick={onClose}></div>
+      <div className="relative bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="bg-brand-dark px-8 py-6 border-b border-white/5 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-brand-primary/10 rounded-xl text-brand-primary">
+                 <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                 <h3 className="text-[16px] font-bold text-white uppercase tracking-tight">Request Extension</h3>
+                 <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">Extend Plan Validity</p>
+              </div>
+           </div>
+           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-all text-white/40 hover:text-white">
+              <X className="w-5 h-5" />
+           </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+           <div className="space-y-4">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Extension Duration</label>
+              <div className="grid grid-cols-2 gap-3">
+                 {[
+                   { label: '6 Months', val: 6 },
+                   { label: '12 Months', val: 12 },
+                   { label: '24 Months', val: 24 },
+                   { label: '36 Months', val: 36 }
+                 ].map(opt => (
+                   <button 
+                     key={opt.val}
+                     type="button"
+                     onClick={() => setMonths(opt.val)}
+                     className={`py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${months === opt.val ? 'bg-brand-primary/10 border-brand-primary text-brand-dark shadow-lg shadow-brand-primary/10' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                   >
+                     {opt.label}
+                   </button>
+                 ))}
+              </div>
+           </div>
+
+           <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
+              <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+              <p className="text-[11px] font-medium text-amber-700 leading-relaxed">
+                Your request will be sent to the admin. Once approved, your plan expiry will be updated automatically.
+              </p>
+           </div>
+
+           <button 
+             type="submit"
+             disabled={submitting}
+             className="w-full py-4 bg-brand-dark text-white rounded-[22px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-brand-dark/20 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+           >
+             {submitting ? (
+               <Loader className="w-4 h-4 animate-spin" />
+             ) : (
+               <Send className="w-4 h-4 text-brand-primary" />
+             )}
+             {submitting ? 'Sending Request...' : 'Send Request'}
+           </button>
+        </form>
       </div>
     </div>
   );
