@@ -618,6 +618,30 @@ const Home = () => {
                     </div>
                 </div>
             </footer>
+
+            {/* Floating WhatsApp Button */}
+            <div className="fixed bottom-8 right-8 z-[100] group flex items-center justify-center">
+                {/* Continuous Pulse Animation Ring */}
+                <div className="absolute inset-0 rounded-full bg-[#25D366] opacity-30 animate-ping"></div>
+                
+                {/* Main WhatsApp Button */}
+                <a 
+                    href="https://wa.me/919000000000" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="relative bg-[#25D366] text-white p-4 rounded-full shadow-[0_10px_40px_-10px_rgba(37,211,102,0.8)] hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-4 border-white/20 backdrop-blur-md"
+                    aria-label="Need Help? Chat on WhatsApp"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor" className="w-8 h-8 relative z-10 animate-bounce" style={{ animationDuration: '2s' }}>
+                        <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zM223.9 414.3h-.1c-32.9 0-65.2-8.8-93.5-25.5l-6.7-4-69.5 18.2L72.5 334l-4.4-7c-18.4-29.4-28.1-63.5-28.1-98.3 0-102.8 83.5-186.3 189.1-186.3 49.8 0 96.6 19.4 131.8 54.6 35.2 35.2 54.6 82 54.6 131.8 0 102.8-83.6 186.3-189.1 186.3zm103.5-141.2c-5.7-2.8-33.6-16.6-38.8-18.5-5.2-1.9-9-2.8-12.8 2.8-3.8 5.7-14.7 18.5-18 22.3-3.3 3.8-6.6 4.3-12.3 1.4-5.7-2.8-24-8.8-45.7-28.2-16.9-15.1-28.3-33.8-31.6-39.5-3.3-5.7-.3-8.8 2.6-11.6 2.6-2.6 5.7-6.6 8.5-9.9 2.8-3.3 3.8-5.7 5.7-9.5 1.9-3.8.9-7.1-.5-9.9-1.4-2.8-12.8-30.8-17.5-42.2-4.6-11.1-9.3-9.6-12.8-9.8-3.3-.2-7.1-.2-11-.2-3.8 0-10 1.4-15.2 7.1-5.2 5.7-20.1 19.7-20.1 48.1 0 28.4 20.6 55.9 23.4 59.7 2.8 3.8 40.8 62.3 98.9 87.4 13.8 6 24.6 9.6 33 12.3 13.8 4.4 26.4 3.8 36.3 2.3 11.2-1.7 33.6-13.7 38.3-27 4.7-13.3 4.7-24.6 3.3-27-.9-2.8-4.7-4.2-10.4-7.1z"/>
+                    </svg>
+                </a>
+
+                {/* Hover Tooltip */}
+                <div className="absolute right-full mr-4 bg-white text-slate-800 text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-2xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-slate-100">
+                    Need Help?
+                </div>
+            </div>
         </div>
     );
 };
