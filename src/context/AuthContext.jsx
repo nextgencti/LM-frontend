@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, onSnapshot } from 'firebase/firestore';
+import PreLoader from '../components/PreLoader';
 
 const AuthContext = createContext();
 
@@ -165,7 +166,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <PreLoader message="Verifying Authentication..." /> : children}
     </AuthContext.Provider>
   );
 };
