@@ -1,17 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  --color-brand-light: #F5F7FA;
-  --color-brand-primary: rgb(155, 207, 131);
-  --color-brand-secondary: #7B8794;
-  --color-brand-accent: #14B8A6;
-  --color-brand-dark: #1F2937;
-  --color-muted-label: #98A2B3;
-  
-  --font-sans: "Inter", "system-ui", "sans-serif";
-}
 @layer utilities {
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
@@ -22,17 +14,18 @@
   }
   
   .glass-card {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
   }
   
   .glass-card-dark {
-    background: rgba(45, 50, 80, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .text-gradient {
@@ -72,3 +65,21 @@
     background: #cbd5e1;
   }
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm 10mm 8mm 10mm;
+  }
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important;
+    color: black !important;
+  }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+

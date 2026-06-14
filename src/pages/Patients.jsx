@@ -255,18 +255,18 @@ const Patients = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div>
-          <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight flex items-center">
+          <h1 className="text-xl font-display font-bold text-brand-dark leading-tight flex items-center">
             <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
               <Users className="w-5 h-5 text-brand-primary" />
             </div>
             Patients
           </h1>
-          <p className="text-[11px] font-medium text-[#7B8794] mt-1.5">Comprehensive medical record directory.</p>
+          <p className="text-[11px] font-medium text-slate-500 mt-1.5">Comprehensive medical record directory.</p>
         </div>
         
         <button
           onClick={() => { setEditingId(null); setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '', honorific: 'Mr.', isAuto: true }); setShowAddModal(true); }}
-          className="w-full md:w-auto bg-[#1E2A5A] text-white px-5 py-2.5 rounded-xl font-bold tracking-wider text-[12px] shadow-lg hover:shadow-[#1E2A5A]/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
+          className="w-full md:w-auto bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold tracking-wider text-[12px] shadow-lg hover:shadow-brand-primary/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
         >
           <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-500" />
           Add Patient
@@ -277,9 +277,9 @@ const Patients = () => {
       <div className="flex flex-col lg:flex-row gap-3 mb-6">
         {/* Left Side: Search Bar */}
         <div className="flex-[2] relative group shadow-sm transition-all focus-within:shadow-md rounded-xl max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
           <input type="text"
-            className="w-full pl-11 pr-6 py-2.5 bg-white border border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A]/20 transition-all font-bold text-[13px] text-[#1F2937] outline-none placeholder:text-[#98A2B3]"
+            className="w-full pl-11 pr-6 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary/30 transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400"
             placeholder="Search name, phone or ID..." value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
@@ -291,15 +291,15 @@ const Patients = () => {
             onClick={() => setGenderFilter('All')}
             className={`lg:w-[220px] shrink-0 flex items-center gap-2 px-4 py-2 border rounded-xl shadow-sm h-[42px] transition-all cursor-pointer ${
               genderFilter === 'All' 
-                ? 'bg-[#1E2A5A] border-[#1E2A5A] shadow-md' 
-                : 'bg-white border-[#E5E7EB] hover:bg-slate-50'
+                ? 'bg-brand-dark border-brand-dark shadow-md' 
+                : 'bg-white border-slate-200 hover:bg-slate-50'
             }`}
           >
-             <Users className={`w-3.5 h-3.5 shrink-0 ${genderFilter === 'All' ? 'text-white' : 'text-[#98A2B3]'}`} />
+             <Users className={`w-3.5 h-3.5 shrink-0 ${genderFilter === 'All' ? 'text-white' : 'text-slate-400'}`} />
              <div className="flex items-center justify-between w-full">
-               <span className={`text-[10px] font-black uppercase tracking-wider ${genderFilter === 'All' ? 'text-white' : 'text-[#64748B]'}`}>Total Registry</span>
+               <span className={`text-[10px] font-black uppercase tracking-wider ${genderFilter === 'All' ? 'text-white' : 'text-slate-500'}`}>Total Registry</span>
                <span className={`px-2 py-0.5 rounded-md text-[9px] font-black tabular-nums ${
-                 genderFilter === 'All' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
+                 genderFilter === 'All' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
                }`}>{patients.length}</span>
              </div>
           </button>
@@ -309,16 +309,16 @@ const Patients = () => {
             onClick={() => setGenderFilter(prev => prev === 'Male' ? 'All' : 'Male')}
             className={`shrink-0 flex items-center justify-between gap-3 px-4 py-2 border rounded-xl shadow-sm h-[42px] transition-all min-w-[120px] ${
               genderFilter === 'Male' 
-                ? 'bg-[#1E2A5A] border-[#1E2A5A] text-white shadow-md' 
-                : 'bg-white border-[#E5E7EB] hover:bg-slate-50'
+                ? 'bg-brand-primary border-brand-primary text-white shadow-md' 
+                : 'bg-white border-slate-200 hover:bg-slate-50'
             }`}
           >
             <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${genderFilter === 'Male' ? 'bg-white' : 'bg-[#1E2A5A]'}`}></div>
-              <span className={`text-[10px] font-black uppercase tracking-wider ${genderFilter === 'Male' ? 'text-white' : 'text-[#64748B]'}`}>Male</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${genderFilter === 'Male' ? 'bg-white' : 'bg-brand-primary'}`}></div>
+              <span className={`text-[10px] font-black uppercase tracking-wider ${genderFilter === 'Male' ? 'text-white' : 'text-slate-500'}`}>Male</span>
             </div>
             <span className={`px-2 py-0.5 rounded-md text-[9px] font-black tabular-nums ${
-              genderFilter === 'Male' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
+              genderFilter === 'Male' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
             }`}>{maleCount}</span>
           </button>
 
@@ -327,16 +327,16 @@ const Patients = () => {
             onClick={() => setGenderFilter(prev => prev === 'Female' ? 'All' : 'Female')}
             className={`shrink-0 flex items-center justify-between gap-3 px-4 py-2 border rounded-xl shadow-sm h-[42px] transition-all min-w-[120px] ${
               genderFilter === 'Female' 
-                ? 'bg-[#1E2A5A] border-[#1E2A5A] text-white shadow-md' 
-                : 'bg-white border-[#E5E7EB] hover:bg-slate-50'
+                ? 'bg-purple-500 border-purple-500 text-white shadow-md' 
+                : 'bg-white border-slate-200 hover:bg-slate-50'
             }`}
           >
             <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${genderFilter === 'Female' ? 'bg-white' : 'bg-[#D946EF]'}`}></div>
-              <span className={`text-[10px] font-black uppercase tracking-wider ${genderFilter === 'Female' ? 'text-white' : 'text-[#64748B]'}`}>Female</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${genderFilter === 'Female' ? 'bg-white' : 'bg-purple-500'}`}></div>
+              <span className={`text-[10px] font-black uppercase tracking-wider ${genderFilter === 'Female' ? 'text-white' : 'text-slate-500'}`}>Female</span>
             </div>
             <span className={`px-2 py-0.5 rounded-md text-[9px] font-black tabular-nums ${
-              genderFilter === 'Female' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
+              genderFilter === 'Female' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
             }`}>{femaleCount}</span>
           </button>
         </div>
@@ -345,16 +345,16 @@ const Patients = () => {
       <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[24px] shadow-sm border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Patient Name</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Age & Gender</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Phone No.</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Email</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Address</th>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="sticky top-0 z-20 bg-slate-50 px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Patient Name</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Age & Gender</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Phone No.</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Email</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Address</th>
               {isSuperAdmin && !activeLabId && (
-                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Hosting Lab</th>
+                <th className="sticky top-0 z-20 bg-slate-50 px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Hosting Lab</th>
               )}
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-3 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Actions</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-4 py-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -379,21 +379,21 @@ const Patients = () => {
                   <tr key={patient.id} className="hover:bg-slate-50/40 transition-all group relative">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#1E2A5A] font-black text-xs border border-[#E5E7EB] shadow-sm group-hover:scale-110 transition-transform">
+                        <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-brand-primary font-black text-xs border border-slate-200 shadow-sm group-hover:scale-110 transition-transform">
                           {patient.name?.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="text-[14px] font-semibold text-[#1F2937] leading-tight group-hover:text-[#1E2A5A] transition-colors">{patient.name}</div>
-                          <div className="text-[11px] font-medium text-[#7B8794] mt-0.5">#{patient.patientId || patient.id.slice(-8)}</div>
+                          <div className="text-[14px] font-semibold text-brand-dark leading-tight group-hover:text-brand-primary transition-colors">{patient.name}</div>
+                          <div className="text-[11px] font-medium text-slate-500 mt-0.5">#{patient.patientId || patient.id.slice(-8)}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex flex-col">
-                        <span className="text-[11px] font-semibold text-[#374151] tabular-nums">{patient.age} {patient.ageUnit}</span>
+                        <span className="text-[11px] font-semibold text-slate-700 tabular-nums">{patient.age} {patient.ageUnit}</span>
                         <div className="flex mt-0.5">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
-                            patient.gender === 'Male' ? 'bg-[#1E2A5A]/5 text-[#1E2A5A]' : 'bg-[#D946EF]/5 text-[#D946EF]'
+                            patient.gender === 'Male' ? 'bg-brand-primary/10 text-brand-primary' : 'bg-purple-500/10 text-purple-600'
                           }`}>
                             {patient.gender}
                           </span>
@@ -401,17 +401,17 @@ const Patients = () => {
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
-                      <div className="text-[11px] font-semibold text-[#374151] tabular-nums">{patient.phone || <span className="text-[#98A2B3]">--</span>}</div>
+                      <div className="text-[11px] font-semibold text-slate-700 tabular-nums">{patient.phone || <span className="text-slate-400">--</span>}</div>
                     </td>
                     <td className="px-4 py-2.5">
-                      <div className="text-[11px] font-medium text-[#7B8794]">{patient.email ? <a href={`mailto:${patient.email}`} className="hover:text-brand-primary transition-colors">{patient.email}</a> : <span className="text-[#98A2B3]">--</span>}</div>
+                      <div className="text-[11px] font-medium text-slate-500">{patient.email ? <a href={`mailto:${patient.email}`} className="hover:text-brand-primary transition-colors">{patient.email}</a> : <span className="text-slate-400">--</span>}</div>
                     </td>
                     <td className="px-4 py-2.5">
-                      <div className="text-[11px] text-[#7B8794] font-medium truncate max-w-[150px]" title={patient.address || 'No address provided'}>{patient.address || '--'}</div>
+                      <div className="text-[11px] text-slate-500 font-medium truncate max-w-[150px]" title={patient.address || 'No address provided'}>{patient.address || '--'}</div>
                     </td>
                     {isSuperAdmin && !activeLabId && (
                       <td className="px-4 py-2.5">
-                        <span className="px-2 py-0.5 bg-[#F1F5F9] text-[#64748B] rounded-md text-[9px] font-bold uppercase tracking-wider border border-[#E5E7EB]">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] font-bold uppercase tracking-wider border border-slate-200">
                           {labs.find(l => l.labId === patient.labId)?.labName || patient.labId}
                         </span>
                       </td>
@@ -446,13 +446,13 @@ const Patients = () => {
       {/* Pagination Footer */}
       <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 px-6 pb-6">
         <div className="flex items-center gap-4">
-          <p className="text-[13px] font-medium text-[#7B8794]">
-            Showing <span className="text-[#1F2937] font-semibold">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredPatients.length)}</span> of <span className="text-[#1F2937] font-semibold">{filteredPatients.length}</span> reports
+          <p className="text-[13px] font-medium text-slate-500">
+            Showing <span className="text-brand-dark font-semibold">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredPatients.length)}</span> of <span className="text-brand-dark font-semibold">{filteredPatients.length}</span> reports
           </p>
-          <div className="h-3 w-[1px] bg-[#E5E7EB] hidden md:block" />
+          <div className="h-3 w-[1px] bg-slate-200 hidden md:block" />
           <div className="flex items-center gap-1">
             <select 
-               className="bg-transparent text-[13px] font-semibold text-[#7B8794] outline-none cursor-pointer hover:text-[#1F2937] transition-all appearance-none"
+               className="bg-transparent text-[13px] font-semibold text-slate-500 outline-none cursor-pointer hover:text-brand-dark transition-all appearance-none"
                value={rowsPerPage}
                onChange={e => setRowsPerPage(parseInt(e.target.value))}
              >
@@ -461,7 +461,7 @@ const Patients = () => {
                <option value={20}>20 per page</option>
                <option value={50}>50 per page</option>
              </select>
-             <ChevronDown className="w-4 h-4 text-[#98A2B3] pointer-events-none" />
+             <ChevronDown className="w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
@@ -469,7 +469,7 @@ const Patients = () => {
              <button 
                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                disabled={currentPage === 1}
-               className="p-2 bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg text-[#64748B] hover:text-[#1E2A5A] hover:border-[#1E2A5A]/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
+               className="p-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 hover:text-brand-primary hover:border-brand-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
               >
                <ChevronLeft className="w-4 h-4" />
              </button>
@@ -481,7 +481,7 @@ const Patients = () => {
                     onClick={() => setCurrentPage(i + 1)}
                     className={`w-9 h-9 rounded-xl text-[11px] font-black transition-all duration-300 ${
                       currentPage === i + 1 
-                        ? 'bg-[#1E2A5A] text-white shadow-lg shadow-[#1E2A5A]/20 scale-105' 
+                        ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20 scale-105' 
                         : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-100'
                     }`}
                   >
@@ -493,7 +493,7 @@ const Patients = () => {
              <button 
                onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredPatients.length / rowsPerPage), p + 1))}
                disabled={currentPage === Math.ceil(filteredPatients.length / rowsPerPage) || Math.ceil(filteredPatients.length / rowsPerPage) === 0}
-               className="p-2 bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg text-[#64748B] hover:text-[#1E2A5A] hover:border-[#1E2A5A]/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
+               className="p-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 hover:text-brand-primary hover:border-brand-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
               >
                <ChevronRight className="w-4 h-4" />
              </button>
@@ -502,34 +502,34 @@ const Patients = () => {
     </div>
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-3xl flex items-center justify-center p-4 z-[200] animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-[0_32px_128px_rgba(0,0,0,0.3)] max-w-2xl w-full border border-white/20 animate-in zoom-in-95 duration-500 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200] animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] shadow-2xl max-w-2xl w-full border border-white/20 animate-in zoom-in-95 duration-500 overflow-hidden flex flex-col max-h-[90vh]">
             
-            <div className="px-6 sm:px-10 py-6 sm:py-8 bg-[#1E2A5A] text-white flex justify-between items-center shrink-0 border-b border-white/5 relative overflow-hidden">
+            <div className="px-6 py-5 bg-brand-dark text-white flex justify-between items-center shrink-0 border-b border-white/5 relative overflow-hidden">
                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] -mr-20 -mt-20"></div>
-               <div className="relative z-10 flex items-center gap-4 sm:gap-5">
-                  <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10 transition-transform rotate-3 hover:rotate-6">
-                     <Users className="w-6 h-6 text-white" />
+               <div className="relative z-10 flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 text-emerald-400">
+                     <Users className="w-5 h-5" />
                   </div>
                   <div>
-                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{editingId ? 'Edit Patient' : 'Add New Patient'}</h2>
-                     <p className="text-[11px] font-medium text-white/60 uppercase tracking-wider mt-1">Patient Management System</p>
+                     <h2 className="text-xl font-bold tracking-tight">{editingId ? 'Edit Patient' : 'Add New Patient'}</h2>
+                     <p className="text-[9px] font-bold text-white/50 uppercase tracking-[0.15em] mt-0.5">Patient Management System</p>
                   </div>
                </div>
-               <button onClick={closeModal} className="relative z-10 w-10 h-10 sm:w-12 sm:h-12 flex justify-center items-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all text-white border border-white/10">
-                  <X className="w-5 h-5" />
+               <button onClick={closeModal} className="relative z-10 w-10 h-10 flex justify-center items-center bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white border border-white/10">
+                  <X className="w-4 h-4" />
                </button>
             </div>
             
-            <form onSubmit={handleAddPatient} className="flex-grow flex flex-col overflow-hidden">
-              <div className="p-6 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleAddPatient} className="flex-grow flex flex-col overflow-hidden bg-white">
+              <div className="p-6 md:p-8 space-y-5 overflow-y-auto custom-scrollbar">
                 
                 {isSuperAdmin && !activeLabId && !editingId && (
-                  <div className="space-y-2">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider pl-1">Select Laboratory *</label>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Select Laboratory *</label>
                     <select 
                       required 
-                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl text-sm font-bold text-[#1F2937] outline-none focus:ring-4 focus:ring-[#1E2A5A]/5 transition-all cursor-pointer"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-bold text-brand-dark outline-none focus:border-brand-primary/50 focus:bg-white transition-all cursor-pointer"
                       value={newPatient.labId}
                       onChange={e => setNewPatient({...newPatient, labId: e.target.value})}
                     >
@@ -541,13 +541,13 @@ const Patients = () => {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider pl-1">Full Name *</label>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Full Name *</label>
                   <div className="flex gap-2">
-                    <div className="relative w-[130px] shrink-0">
+                    <div className="relative w-[120px] shrink-0">
                       <select 
-                        className={`w-full px-3 py-3 border rounded-xl transition-all font-bold text-sm outline-none cursor-pointer appearance-none ${
-                          newPatient.isAuto ? 'bg-[#1E2A5A]/5 border-[#1E2A5A]/30 text-[#1E2A5A]' : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#1F2937] focus:border-[#1E2A5A]/50 focus:bg-white'
+                        className={`w-full px-3 py-2.5 border rounded-xl transition-all font-bold text-[12px] outline-none cursor-pointer appearance-none ${
+                          newPatient.isAuto ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-50 border-slate-200 text-brand-dark focus:border-brand-primary/50 focus:bg-white'
                         }`}
                         value={newPatient.isAuto ? 'Auto' : newPatient.honorific}
                         onChange={e => {
@@ -576,33 +576,33 @@ const Patients = () => {
                       required 
                       type="text" 
                       placeholder="Enter patient's name"
-                      className="flex-grow px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium" 
+                      className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
                       value={newPatient.name} 
                       onChange={e => setNewPatient({...newPatient, name: e.target.value})} 
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider pl-1">Age *</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Age *</label>
                     <div className="flex gap-2">
                       <input 
                         required 
                         type="number" 
                         placeholder="00"
-                        className="w-2/3 px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3]"
+                        className="w-[120px] px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400"
                         value={newPatient.age} 
                         onChange={e => {
-                          const val = e.target.value.toString().slice(0, 2);
+                          const val = e.target.value.toString().slice(0, 3);
                           setNewPatient({...newPatient, age: val});
                         }}
                         onInput={(e) => {
-                          if (e.target.value.length > 2) e.target.value = e.target.value.slice(0, 2);
+                          if (e.target.value.length > 3) e.target.value = e.target.value.slice(0, 3);
                         }}
                       />
                       <select 
-                        className="w-1/3 px-3 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none cursor-pointer text-sm"
+                        className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-[13px]"
                         value={newPatient.ageUnit} 
                         onChange={e => setNewPatient({...newPatient, ageUnit: e.target.value})}
                       >
@@ -610,10 +610,10 @@ const Patients = () => {
                       </select>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider pl-1">Gender *</label>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Gender *</label>
                     <select 
-                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none cursor-pointer text-sm"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-[13px]"
                       value={newPatient.gender} 
                       onChange={e => setNewPatient({...newPatient, gender: e.target.value})}
                     >
@@ -622,46 +622,49 @@ const Patients = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider pl-1">Phone Number</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Phone Number</label>
                     <input 
                       type="tel" 
                       placeholder="10-digit mobile number"
-                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium" 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
                       value={newPatient.phone} 
                       onChange={e => setNewPatient({...newPatient, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})} 
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider pl-1">Email <span className="text-[#1E2A5A] lowercase tracking-normal font-bold opacity-80">(Needed for reports)</span></label>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Email <span className="text-brand-primary lowercase tracking-normal font-bold opacity-80">(Needed for reports)</span></label>
                     <input 
                       type="email" 
                       placeholder="patient@email.com"
-                      className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium" 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
                       value={newPatient.email} 
                       onChange={e => setNewPatient({...newPatient, email: e.target.value})} 
                     />
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider pl-1">Address</label>
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Address</label>
+                    <div className="h-[1px] bg-slate-200 flex-grow max-w-[100px]"></div>
+                  </div>
                   <textarea 
                     rows="2"
                     placeholder="Enter full address"
-                    className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] focus:border-[#1E2A5A]/50 focus:bg-white rounded-2xl transition-all font-bold text-[#1F2937] outline-none placeholder:text-[#98A2B3] placeholder:font-medium resize-none" 
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium resize-none" 
                     value={newPatient.address} 
                     onChange={e => setNewPatient({...newPatient, address: e.target.value})} 
                   />
                 </div>
               </div>
 
-              <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 shrink-0">
+              <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
                 <button 
                   type="button" 
                   onClick={closeModal} 
-                  className="px-6 py-3 bg-white border border-[#E5E7EB] rounded-2xl text-[12px] font-bold text-[#7B8794] hover:text-[#1F2937] hover:border-[#D1D5DB] transition-all shadow-sm"
+                  className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:text-brand-dark transition-all"
                 >
                   Cancel
                 </button>
@@ -669,17 +672,17 @@ const Patients = () => {
                   type="button" 
                   disabled={isSaving}
                   onClick={(e) => handleAddPatient(e, true)}
-                  className="px-6 py-3 bg-[#1F2937] text-white rounded-2xl text-[12px] font-bold tracking-wide transition-all shadow-xl shadow-[#1F2937]/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="px-5 py-2.5 bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-all hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isSaving ? <Loader className="w-4 h-4 animate-spin" /> : null}
+                  {isSaving ? <Loader className="w-3.5 h-3.5 animate-spin" /> : null}
                   Save & Create Booking
                 </button>
                 <button 
                   type="submit" 
                   disabled={isSaving}
-                  className="px-6 py-3 bg-[#1E2A5A] text-white rounded-2xl text-[12px] font-bold tracking-wide transition-all shadow-xl shadow-[#1E2A5A]/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="px-5 py-2.5 bg-[#96D17C] text-white rounded-xl text-[11px] font-bold transition-all hover:bg-[#86c06c] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isSaving ? <Loader className="w-4 h-4 animate-spin" /> : null}
+                  {isSaving ? <Loader className="w-3.5 h-3.5 animate-spin" /> : null}
                   {editingId ? 'Update Record' : 'Save Patient'}
                 </button>
               </div>

@@ -833,7 +833,7 @@ const Reports = () => {
               <FileText className="w-5 h-5 text-brand-primary" />
             </div>
             <div>
-              <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight">Reports List</h1>
+              <h1 className="text-[20px] font-bold text-brand-dark leading-tight">Reports List</h1>
             </div>
           </div>
         </div>
@@ -842,13 +842,13 @@ const Reports = () => {
         <div className="flex flex-wrap items-center gap-3 mb-4">
           {/* Search Bar */}
           <div className="flex-1 min-w-[280px] relative group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
             <input 
               type="text" 
               placeholder="Search name or mobile..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 bg-white border border-[#E5E7EB] rounded-xl pl-10 pr-4 text-[13px] font-bold text-[#1F2937] placeholder:text-[#98A2B3] outline-none focus:border-[#1E2A5A] focus:ring-4 focus:ring-[#1E2A5A]/5 transition-all shadow-sm"
+              className="w-full h-10 bg-white border border-slate-200 rounded-xl pl-10 pr-4 text-[13px] font-bold text-brand-dark placeholder:text-slate-400 outline-none focus:border-brand-primary/20 focus:ring-4 focus:ring-brand-primary/5 transition-all shadow-sm"
             />
           </div>
 
@@ -857,32 +857,32 @@ const Reports = () => {
             <select 
               value={doctorFilter}
               onChange={(e) => setDoctorFilter(e.target.value)}
-              className="w-full h-10 bg-white border border-[#E5E7EB] rounded-xl pl-4 pr-10 text-[12px] font-bold text-[#1F2937] outline-none appearance-none cursor-pointer focus:border-[#1E2A5A] focus:ring-4 focus:ring-[#1E2A5A]/5 transition-all shadow-sm"
+              className="w-full h-10 bg-white border border-slate-200 rounded-xl pl-4 pr-10 text-[12px] font-bold text-brand-dark outline-none appearance-none cursor-pointer focus:border-brand-primary/20 focus:ring-4 focus:ring-brand-primary/5 transition-all shadow-sm"
             >
               <option value="All Doctors">All Doctors</option>
               {doctors.map(doc => (
                 <option key={doc.id} value={doc.name}>{doc.name}</option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] pointer-events-none group-focus-within:text-[#1E2A5A]" />
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within:text-brand-primary" />
           </div>
 
           {/* Date Range Picker */}
-          <div className="flex items-center gap-2 bg-white px-3 py-0 rounded-xl border border-[#E5E7EB] shadow-sm h-10">
-            <CalendarIcon className="w-4 h-4 text-[#98A2B3]" />
+          <div className="flex items-center gap-2 bg-white px-3 py-0 rounded-xl border border-slate-200 shadow-sm h-10">
+            <CalendarIcon className="w-4 h-4 text-slate-400" />
             <div className="flex items-center gap-1">
               <input 
                 type="date" 
                 value={dateRange.start}
                 onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] outline-none focus:ring-0 p-0 w-[95px] cursor-pointer"
+                className="bg-transparent border-none text-[11px] font-bold text-brand-dark outline-none focus:ring-0 p-0 w-[95px] cursor-pointer"
               />
-              <span className="text-[#E5E7EB]">-</span>
+              <span className="text-slate-200">-</span>
               <input 
                 type="date" 
                 value={dateRange.end}
                 onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] outline-none focus:ring-0 p-0 w-[95px] cursor-pointer"
+                className="bg-transparent border-none text-[11px] font-bold text-brand-dark outline-none focus:ring-0 p-0 w-[95px] cursor-pointer"
               />
             </div>
           </div>
@@ -890,7 +890,7 @@ const Reports = () => {
           {/* Global Reset */}
           <button 
             onClick={() => { setSearchTerm(''); setStatusFilter('Active'); setDoctorFilter('All Doctors'); setDateRange({ start: '', end: '' }); }}
-            className="flex items-center justify-center p-2.5 bg-white border border-[#E5E7EB] rounded-xl text-[#94A3B8] hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
+            className="flex items-center justify-center p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
             title="Reset Filters"
           >
             <RefreshCw className="w-4 h-4" />
@@ -899,7 +899,7 @@ const Reports = () => {
 
         {/* Quick Filter Chips (Billing Style) */}
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 -mb-1 mb-5">
-          <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E5E7EB] rounded-xl shadow-sm h-10 shrink-0">
+          <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-xl shadow-sm h-10 shrink-0">
             {[
               { id: 'All', label: 'All', color: 'bg-slate-400', count: statusCounts.Total },
               { id: 'Active', label: 'Active', color: 'bg-blue-500', count: statusCounts.Total - statusCounts.Delivered },
@@ -913,14 +913,14 @@ const Reports = () => {
                 onClick={() => setStatusFilter(btn.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap h-full ${
                   statusFilter === btn.id 
-                    ? 'bg-[#1E2A5A] text-white shadow-sm' 
-                    : 'text-[#64748B] hover:bg-[#F8FAFC]'
+                    ? 'bg-brand-dark text-white shadow-sm' 
+                    : 'text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 <div className={`w-1.5 h-1.5 rounded-full ${statusFilter === btn.id ? 'bg-white' : btn.color}`}></div>
                 <span className="text-[10px] font-black uppercase tracking-wider">{btn.label}</span>
                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md tabular-nums ${
-                  statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
+                  statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
                 }`}>
                   {btn.count}
                 </span>
@@ -931,34 +931,34 @@ const Reports = () => {
 
 
         {/* High-Density Table Container */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col flex-1 overflow-hidden min-h-0">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col flex-1 overflow-hidden min-h-0">
           <div className="overflow-y-auto flex-1 custom-scrollbar">
             <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 z-10 bg-[#F9FAFB]">
-                <tr className="border-b border-[#E5E7EB]">
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Report ID</th>
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Patient Details</th>
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Tests</th>
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Doctor</th>
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Report Date</th>
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider text-center">Status</th>
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Amount</th>
-                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider text-right">Actions</th>
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr className="border-b border-slate-200">
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Report ID</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Patient Details</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Tests</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Doctor</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Report Date</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center">Status</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Amount</th>
+                  <th className="px-3.5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
+              <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
                     <td colSpan="8" className="px-6 py-20 text-center">
-                      <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-4" />
-                      <p className="text-[14px] font-medium text-[#7B8794]">Fetching reports...</p>
+                      <Loader className="w-10 h-10 animate-spin text-brand-dark mx-auto mb-4" />
+                      <p className="text-[14px] font-medium text-slate-500">Fetching reports...</p>
                     </td>
                   </tr>
                 ) : paginatedGroups.length === 0 ? (
                   <tr>
                     <td colSpan="8" className="px-6 py-20 text-center">
-                      <FileText className="w-12 h-12 text-[#E5E7EB] mx-auto mb-4" />
-                      <p className="text-[16px] font-medium text-[#98A2B3]">No records matching your search</p>
+                      <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                      <p className="text-[16px] font-medium text-slate-400">No records matching your search</p>
                     </td>
                   </tr>
                 ) : paginatedGroups.map((group) => {
@@ -967,12 +967,12 @@ const Reports = () => {
                     'Delivered': 'bg-[#ECFDF5] text-[#059669] border-[#D1FAE5]',
                     'Final': 'bg-[#ECFDF5] text-[#059669] border-[#D1FAE5]',
                     'In Progress': 'bg-[#FFFBEB] text-[#D97706] border-[#FEF3C7]',
-                    'Pending': 'bg-[#F9FAFB] text-[#6B7280] border-[#F3F4F6]',
+                    'Pending': 'bg-slate-50 text-slate-500 border-slate-100',
                     'Cancelled': 'bg-[#FEF2F2] text-[#DC2626] border-[#FEE2E2]'
                   };
 
                   return (
-                    <tr key={group.groupKey} className="hover:bg-[#F9FAFB] transition-colors group border-b border-[#F3F4F6]">
+                    <tr key={group.groupKey} className="hover:bg-slate-50 transition-colors group border-b border-slate-100">
                       <td className="px-3.5 py-2.5">
                         {(() => {
                           // Direct booking lookup - same as Bills.jsx & Bookings.jsx
@@ -983,42 +983,42 @@ const Reports = () => {
                           );
                           const isUnpaid = parseFloat(matchedBooking?.balance || group.balance || 0) > 0;
                           return (
-                            <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${isUnpaid ? 'bg-rose-600 text-white shadow-sm' : 'text-[#1E2A5A] bg-slate-100'}`}>
+                            <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${isUnpaid ? 'bg-rose-600 text-white shadow-sm' : 'text-brand-dark bg-slate-100'}`}>
                               {group.billId.replace('BKG', 'RPT')}
                             </div>
                           );
                         })()}
                       </td>
                       <td className="px-3.5 py-2.5">
-                        <div className="text-[14px] font-semibold text-[#1F2937] leading-tight">{group.patientName}</div>
-                        <div className="text-[11px] font-medium text-[#7B8794] mt-0.5">
+                        <div className="text-[14px] font-semibold text-brand-dark leading-tight">{group.patientName}</div>
+                        <div className="text-[11px] font-medium text-slate-500 mt-0.5">
                           {group.patientAge}Y • {group.patientGender} • {group.patientMobile || '9876543210'}
                         </div>
                       </td>
                       <td className="px-3.5 py-2.5">
                         <div className="flex flex-col gap-0.5">
-                          <div className="text-[11px] font-medium text-[#4B5563] leading-tight truncate max-w-[180px]">
+                          <div className="text-[11px] font-medium text-slate-600 leading-tight truncate max-w-[180px]">
                             {group.tests.slice(0, 2).map(t => t.testName).join(', ')}
                             {group.tests.length > 2 && '...'}
                           </div>
                           {group.tests.length > 2 && (
-                            <div className="text-[9px] font-semibold text-[#1E2A5A] bg-[#1E2A5A]/5 px-1.5 py-0.5 rounded-full w-fit">
+                            <div className="text-[9px] font-semibold text-brand-dark bg-brand-dark/5 px-1.5 py-0.5 rounded-full w-fit">
                               +{group.tests.length - 2} MORE
                             </div>
                           )}
                         </div>
                       </td>
                       <td className="px-3.5 py-2.5">
-                        <div className="text-[12px] font-semibold text-[#374151] truncate max-w-[120px]">
+                        <div className="text-[12px] font-semibold text-slate-700 truncate max-w-[120px]">
                           {group.doctorName?.match(/^Dr\.?\s/i) ? group.doctorName : `Dr. ${group.doctorName}`}
                         </div>
-                        <div className="text-[9px] font-semibold text-[#98A2B3] uppercase tracking-wider">Referred By</div>
+                        <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Referred By</div>
                       </td>
                       <td className="px-3.5 py-2.5">
-                        <div className="text-[11px] font-semibold text-[#374151] tabular-nums">
+                        <div className="text-[11px] font-semibold text-slate-700 tabular-nums">
                           {group.createdAt?.toDate ? group.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '21 Apr, 2026'}
                         </div>
-                        <div className="text-[10px] font-medium text-[#98A2B3] tabular-nums">
+                        <div className="text-[10px] font-medium text-slate-400 tabular-nums">
                           {group.createdAt?.toDate ? group.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:30 AM'}
                         </div>
                       </td>
@@ -1029,7 +1029,7 @@ const Reports = () => {
                         </div>
                       </td>
                       <td className="px-3.5 py-2.5">
-                        <div className="text-[13px] font-bold text-[#1F2937] tabular-nums">
+                        <div className="text-[13px] font-bold text-brand-dark tabular-nums">
                           ₹{(group.totalAmount || group.tests.reduce((acc, t) => acc + (parseFloat(t.price) || 0), 0)).toLocaleString()}
                         </div>
                       </td>
@@ -1039,13 +1039,13 @@ const Reports = () => {
                              <>
                                <button 
                                  onClick={(e) => handlePreviewClick(e, group)}
-                                 className="p-1.25 bg-[#F3F4F6] text-[#4B5563] rounded hover:bg-[#1E2A5A] hover:text-white transition-all active:scale-95"
+                                 className="p-1.25 bg-slate-100 text-slate-600 rounded hover:bg-brand-dark hover:text-white transition-all active:scale-95"
                                  title="Print Report"
                                >
                                   <Printer className="w-3 h-3" />
                                </button>
                                <button 
-                                 className="p-1.25 bg-[#F3F4F6] text-[#4B5563] rounded hover:bg-[#1E2A5A] hover:text-white transition-all active:scale-95"
+                                 className="p-1.25 bg-slate-100 text-slate-600 rounded hover:bg-brand-dark hover:text-white transition-all active:scale-95"
                                  title="Download PDF"
                                >
                                   <Download className="w-3 h-3" />
@@ -1064,7 +1064,7 @@ const Reports = () => {
                                       e.stopPropagation();
                                       handleGroupTimestampAction(group, 'received_at');
                                     }}
-                                    className="flex items-center gap-1 px-2 py-1 bg-[#14B8A6] text-white rounded hover:bg-[#0F766E] transition-all transform active:scale-95 text-[10px] font-semibold shadow-sm"
+                                    className="flex items-center gap-1 px-2 py-1 bg-brand-primary text-white rounded hover:bg-emerald-600 transition-all transform active:scale-95 text-[10px] font-semibold shadow-sm"
                                   >
                                     <FlaskConical className="w-3 h-3" />
                                     Receive Sample
@@ -1078,7 +1078,7 @@ const Reports = () => {
                                    e.stopPropagation();
                                    navigate(`/reports/${group.billId}/results`);
                                  }}
-                                 className="flex items-center gap-1 px-2 py-1 bg-[#1E2A5A] text-white rounded hover:bg-[#1E2A5A]/90 transition-all transform active:scale-95 text-[10px] font-semibold shadow-sm"
+                                 className="flex items-center gap-1 px-2 py-1 bg-brand-dark text-white rounded hover:bg-slate-800 transition-all transform active:scale-95 text-[10px] font-semibold shadow-sm"
                                 >
                                  <Pencil className="w-3 h-3" />
                                  Enter Result
@@ -1095,8 +1095,8 @@ const Reports = () => {
             </table>
           </div>
 
-          <div className="mt-auto border-t border-[#E5E7EB] bg-[#F9FAFB] px-5 py-3 flex items-center justify-between">
-            <div className="text-[13px] font-medium text-[#7B8794]">
+          <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-3 flex items-center justify-between">
+            <div className="text-[13px] font-medium text-slate-500">
               Showing {filteredGroups.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredGroups.length)} of {filteredGroups.length} reports
             </div>
             
@@ -1114,7 +1114,7 @@ const Reports = () => {
                    <button 
                      key={p} 
                      onClick={() => setCurrentPage(p)}
-                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-semibold transition-all ${currentPage === p ? 'bg-[#1E2A5A] text-white shadow-md' : 'text-[#7B8794] hover:bg-[#E5E7EB] hover:text-[#1F2937]'}`}
+                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-semibold transition-all ${currentPage === p ? 'bg-brand-dark text-white shadow-md' : 'text-slate-500 hover:bg-slate-200 hover:text-brand-dark'}`}
                    >
                      {p}
                    </button>
@@ -1127,14 +1127,14 @@ const Reports = () => {
                       setItemsPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="bg-transparent text-[13px] font-semibold text-[#7B8794] outline-none cursor-pointer hover:text-[#1F2937]"
+                    className="bg-transparent text-[13px] font-semibold text-slate-500 outline-none cursor-pointer hover:text-brand-dark"
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
                     <option value={25}>25 per page</option>
                     <option value={50}>50 per page</option>
                   </select>
-                  <ChevronDown className="w-4 h-4 text-[#98A2B3] pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
          </div>
       </div>
@@ -1182,9 +1182,9 @@ const Reports = () => {
       {/* Quick Payment Modal */}
       {paymentBooking && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#1E2A5A]/90 backdrop-blur-md" onClick={() => setPaymentBooking(null)}></div>
-          <div className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-[#E5E7EB] animate-in zoom-in duration-300">
-            <div className="bg-[#1E2A5A] p-10 text-white relative">
+          <div className="absolute inset-0 bg-brand-dark/90 backdrop-blur-md" onClick={() => setPaymentBooking(null)}></div>
+          <div className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in duration-300">
+            <div className="bg-brand-dark p-10 text-white relative">
                <div className="absolute top-0 right-0 p-8">
                   <button onClick={() => setPaymentBooking(null)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
                     <X className="w-6 h-6" />
@@ -1202,16 +1202,16 @@ const Reports = () => {
             </div>
             
             <div className="p-10 space-y-8">
-               <div className="flex justify-between items-end bg-[#F9FAFB] p-6 rounded-3xl border border-[#E5E7EB]">
+               <div className="flex justify-between items-end bg-slate-50 p-6 rounded-3xl border border-slate-200">
                   <div>
-                    <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider mb-1">Total Due</p>
-                    <p className="text-4xl font-bold text-[#1E2A5A] tabular-nums tracking-tight">₹{paymentBooking.balance}</p>
+                    <p className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Due</p>
+                    <p className="text-4xl font-bold text-brand-dark tabular-nums tracking-tight">₹{paymentBooking.balance}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider mb-1">Patient</p>
-                    <p className="text-[16px] font-bold text-[#1F2937]">{paymentBooking.patientName}</p>
+                    <p className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Patient</p>
+                    <p className="text-[16px] font-bold text-brand-dark">{paymentBooking.patientName}</p>
                     <div className="mt-2 flex justify-end">
-                      <span className="text-[11px] font-bold text-[#1E2A5A] bg-[#1E2A5A]/5 px-3 py-1 rounded-full border border-[#1E2A5A]/10">
+                      <span className="text-[11px] font-bold text-brand-dark bg-brand-dark/5 px-3 py-1 rounded-full border border-brand-dark/10">
                         ID: {paymentBooking.billId || paymentBooking.id}
                       </span>
                     </div>
@@ -1220,10 +1220,10 @@ const Reports = () => {
 
                <div className="space-y-6">
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider mb-3 ml-1">Receiving Amount (₹)</label>
+                    <label className="block text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-3 ml-1">Receiving Amount (₹)</label>
                     <input 
                       type="number" 
-                      className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl py-5 px-8 text-2xl font-bold text-[#1F2937] outline-none focus:ring-4 focus:ring-[#1E2A5A]/5 focus:bg-white transition-all tabular-nums"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-5 px-8 text-2xl font-bold text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/5 focus:bg-white transition-all tabular-nums"
                       autoFocus
                       placeholder="0.00"
                       id="quick-pay-amount"
@@ -1232,22 +1232,22 @@ const Reports = () => {
                   </div>
 
                   <div>
-                     <label className="block text-[12px] font-semibold text-[#7B8794] uppercase tracking-wider mb-3 ml-1">Payment Method</label>
+                     <label className="block text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-3 ml-1">Payment Method</label>
                      <div className="grid grid-cols-3 gap-3">
                         {['Cash', 'UPI', 'Card'].map(m => (
                           <button 
                             key={m}
                             onClick={() => {
                               document.querySelectorAll('.pay-mode-btn').forEach(b => {
-                                b.classList.remove('bg-[#1E2A5A]', 'text-white', 'shadow-lg', 'shadow-[#1E2A5A]/20', 'border-transparent');
-                                b.classList.add('bg-[#F9FAFB]', 'text-[#4B5563]', 'border-[#E5E7EB]');
+                                b.classList.remove('bg-brand-dark', 'text-white', 'shadow-lg', 'shadow-brand-dark/20', 'border-transparent');
+                                b.classList.add('bg-slate-50', 'text-slate-600', 'border-slate-200');
                               });
                               const el = document.getElementById(`mode-${m}`);
-                              el.classList.remove('bg-[#F9FAFB]', 'text-[#4B5563]', 'border-[#E5E7EB]');
-                              el.classList.add('bg-[#1E2A5A]', 'text-white', 'shadow-lg', 'shadow-[#1E2A5A]/20', 'border-transparent');
+                              el.classList.remove('bg-slate-50', 'text-slate-600', 'border-slate-200');
+                              el.classList.add('bg-brand-dark', 'text-white', 'shadow-lg', 'shadow-brand-dark/20', 'border-transparent');
                             }}
                             id={`mode-${m}`}
-                            className={`pay-mode-btn py-4 rounded-xl text-[13px] font-bold border transition-all duration-300 ${m === 'Cash' ? 'bg-[#1E2A5A] text-white shadow-lg shadow-[#1E2A5A]/20 border-transparent' : 'bg-[#F9FAFB] text-[#4B5563] border-[#E5E7EB] hover:bg-[#F3F4F6]'}`}
+                            className={`pay-mode-btn py-4 rounded-xl text-[13px] font-bold border transition-all duration-300 ${m === 'Cash' ? 'bg-brand-dark text-white shadow-lg shadow-brand-dark/20 border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
                           >
                             {m}
                           </button>
@@ -1315,13 +1315,13 @@ const Reports = () => {
                         setIsQuickPaying(false);
                       }
                     }}
-                    className="w-full py-5 bg-[#1E2A5A] text-white rounded-2xl text-[14px] font-bold uppercase tracking-widest shadow-xl shadow-[#1E2A5A]/20 hover:shadow-2xl hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="w-full py-5 bg-brand-dark text-white rounded-2xl text-[14px] font-bold uppercase tracking-widest shadow-xl shadow-brand-dark/20 hover:shadow-2xl hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     {isQuickPaying ? <Loader className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Confirm Payment</>}
                   </button>
                   <button 
                     onClick={() => setPaymentBooking(null)}
-                    className="w-full py-3 text-[#98A2B3] text-[13px] font-semibold hover:text-[#1F2937] transition-all"
+                    className="w-full py-3 text-slate-400 text-[13px] font-semibold hover:text-brand-dark transition-all"
                   >
                     Skip For Now
                   </button>

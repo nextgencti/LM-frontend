@@ -43,7 +43,7 @@ const Bills = () => {
   const handlePrint = () => {
     if (!selectedInvoice) return;
 
-    const brand = { primary: '#9BCF83', secondary: '#6B85A8', dark: '#2D3250', light: '#EEFABD' };
+    const brand = { primary: '#10B981', secondary: '#64748b', dark: '#1e293b', light: '#f8fafc' };
 
     const formatDate = (createdAt) => {
       if (!createdAt) return 'N/A';
@@ -325,13 +325,13 @@ const Bills = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div>
-          <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight flex items-center">
+          <h1 className="text-[20px] font-bold text-brand-dark leading-tight flex items-center">
             <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
               <IndianRupee className="w-5 h-5 text-brand-primary" />
             </div>
             Billing
           </h1>
-          <p className="text-[11px] font-medium text-[#7B8794] mt-1 tracking-wide">Track and manage financial records and patient invoices.</p>
+          <p className="text-[11px] font-medium text-slate-500 mt-1 tracking-wide">Track and manage financial records and patient invoices.</p>
         </div>
       </div>
 
@@ -339,16 +339,16 @@ const Bills = () => {
       <div className="flex flex-col lg:flex-row gap-3 mb-6">
         {/* Left Side: Search Bar */}
         <div className="flex-[2] relative group shadow-sm transition-all focus-within:shadow-md rounded-xl max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
           <input type="text"
-            className="w-full h-10 pl-11 pr-6 bg-white border border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A]/20 transition-all font-bold text-[13px] text-[#1F2937] outline-none placeholder:text-[#98A2B3] shadow-sm"
+            className="w-full h-10 pl-11 pr-6 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary/20 transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 shadow-sm"
             placeholder="Search by invoice ID or patient..." value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
         {/* Right Side: Quick Filter Buttons */}
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 -mb-1">
-          <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E5E7EB] rounded-xl shadow-sm h-10 shrink-0">
+          <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-xl shadow-sm h-10 shrink-0">
             {[
               { id: 'Unpaid', label: 'Due', color: 'bg-rose-500', count: statusCounts.Unpaid },
               { id: 'Paid', label: 'Paid', color: 'bg-emerald-500', count: statusCounts.Paid },
@@ -359,14 +359,14 @@ const Bills = () => {
                 onClick={() => setFilter(btn.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap h-full ${
                   filter === btn.id 
-                    ? 'bg-[#1E2A5A] text-white shadow-sm' 
-                    : 'text-[#64748B] hover:bg-[#F8FAFC]'
+                    ? 'bg-brand-dark text-white shadow-sm' 
+                    : 'text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 <div className={`w-1.5 h-1.5 rounded-full ${filter === btn.id ? 'bg-white' : btn.color}`}></div>
                 <span className="text-[10px] font-bold uppercase tracking-wider">{btn.label}</span>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md tabular-nums ${
-                  filter === btn.id ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
+                  filter === btn.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
                 }`}>
                   {btn.count}
                 </span>
@@ -376,23 +376,23 @@ const Bills = () => {
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-[#E5E7EB] relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Invoice / Patient</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Total Amount</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Paid / Due</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Status</th>
-              <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Recording Details</th>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Invoice / Patient</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Total Amount</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Paid / Due</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Status</th>
+              <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Recording Details</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#F3F4F6]">
+          <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={5} className="py-24 text-center">
-                    <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-5" />
-                    <p className="text-[14px] font-medium text-[#7B8794]">Synchronizing Records...</p>
+                    <Loader className="w-10 h-10 animate-spin text-brand-dark mx-auto mb-5" />
+                    <p className="text-[14px] font-medium text-slate-500">Synchronizing Records...</p>
                   </td>
                 </tr>
               ) : filteredBills.length === 0 ? (
@@ -401,34 +401,34 @@ const Bills = () => {
                     <div className="w-20 h-20 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 transition-transform hover:rotate-12">
                       <IndianRupee className="w-8 h-8 text-slate-200" />
                     </div>
-                    <p className="text-[16px] font-medium text-[#98A2B3]">Zero Matching Records Found</p>
+                    <p className="text-[16px] font-medium text-slate-400">Zero Matching Records Found</p>
                   </td>
                 </tr>
               ) : (
                 paginatedBills.map((bill) => (
                   <React.Fragment key={bill.id}>
-                  <tr className="hover:bg-[#F9FAFB] transition-colors group border-b border-[#F3F4F6] relative">
+                  <tr className="hover:bg-slate-50 transition-colors group border-b border-slate-100 relative">
                     <td className="px-6 py-2.5">
                       <div className="flex items-center gap-3">
-                        <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${parseFloat(bill.balance || 0) > 0 ? 'bg-rose-600 text-white shadow-sm' : 'text-[#1E2A5A] bg-slate-100'}`}>
+                        <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${parseFloat(bill.balance || 0) > 0 ? 'bg-rose-600 text-white shadow-sm' : 'text-brand-dark bg-slate-100'}`}>
                           {bill.billId || bill.bookingId}
                         </div>
                         <div>
-                          <div className="text-[14px] font-semibold text-[#1F2937] leading-tight group-hover:text-brand-primary transition-colors">{bill.patientName || 'Walk-in Patient'}</div>
-                          <div className="text-[11px] font-medium text-[#7B8794] mt-0.5 uppercase tracking-wider">
+                          <div className="text-[14px] font-semibold text-brand-dark leading-tight group-hover:text-brand-primary transition-colors">{bill.patientName || 'Walk-in Patient'}</div>
+                          <div className="text-[11px] font-medium text-slate-500 mt-0.5 uppercase tracking-wider">
                             Patient ID: {bill.patientId?.includes('_') ? bill.patientId.split('_')[1] : bill.patientId}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-2.5">
-                      <div className="text-[13px] font-bold text-[#1F2937] tabular-nums tracking-tighter flex items-center gap-1.5">
+                      <div className="text-[13px] font-bold text-brand-dark tabular-nums tracking-tighter flex items-center gap-1.5">
                         ₹{bill.totalAmount}
                         {bill.discount > 0 && (
-                          <span className="text-[10px] text-[#98A2B3] font-medium line-through decoration-rose-400/40">₹{bill.subtotal || (parseFloat(bill.totalAmount) + parseFloat(bill.discount))}</span>
+                          <span className="text-[10px] text-slate-400 font-medium line-through decoration-rose-400/40">₹{bill.subtotal || (parseFloat(bill.totalAmount) + parseFloat(bill.discount))}</span>
                         )}
                       </div>
-                      <div className="text-[11px] font-medium text-[#7B8794] mt-1">
+                      <div className="text-[11px] font-medium text-slate-500 mt-1">
                         {(() => {
                            if (!bill.createdAt) return 'Processing...';
                            const ts = bill.createdAt.seconds || bill.createdAt._seconds;
@@ -439,7 +439,7 @@ const Bills = () => {
                       </div>
                     </td>
                     <td className="px-6 py-2.5">
-                      <div className="text-[13px] font-bold text-[#374151] tabular-nums tracking-tight">Paid: ₹{bill.paidAmount || 0}</div>
+                      <div className="text-[13px] font-bold text-slate-700 tabular-nums tracking-tight">Paid: ₹{bill.paidAmount || 0}</div>
                       <div className={`text-[11px] font-semibold uppercase tracking-wider mt-1 ${parseFloat(bill.balance || 0) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                         {parseFloat(bill.balance || 0) > 0 ? `Due: ₹${bill.balance}` : '• Fully Paid'}
                       </div>
@@ -456,9 +456,9 @@ const Bills = () => {
                       <div className="flex items-center justify-end gap-2 transition-all">
                         {bill.paymentStatus !== 'Paid' && bill.status !== 'Cancelled' ? (
                           <>
-                             <div className="flex bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg p-0.5 overflow-hidden h-9">
+                             <div className="flex bg-slate-50 border border-slate-200 rounded-lg p-0.5 overflow-hidden h-9">
                               <select 
-                                className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] focus:ring-0 cursor-pointer pr-5 py-0"
+                                className="bg-transparent border-none text-[11px] font-bold text-brand-dark focus:ring-0 cursor-pointer pr-5 py-0"
                                 value={payMethodInput[bill.id] || 'Cash'}
                                 onChange={(e) => setPayMethodInput(prev => ({ ...prev, [bill.id]: e.target.value }))}
                               >
@@ -470,14 +470,14 @@ const Bills = () => {
                             <input 
                               type="number"
                               placeholder="Amount"
-                              className="w-24 px-2.5 py-1 bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg text-[11px] font-bold text-[#1F2937] outline-none focus:ring-2 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A] transition-all tabular-nums h-9 shadow-sm"
+                              className="w-24 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-brand-dark outline-none focus:ring-2 focus:ring-brand-primary/5 focus:border-brand-primary transition-all tabular-nums h-9 shadow-sm"
                               value={payAmountInput[bill.id] || ''}
                               onChange={(e) => setPayAmountInput(prev => ({ ...prev, [bill.id]: e.target.value }))}
                             />
                              {parseFloat(payAmountInput[bill.id] || 0) > 0 && (
                                <button 
                                  onClick={() => handleUpdatePayment(bill.id, payAmountInput[bill.id])}
-                                 className="px-3 py-1.5 bg-[#1E2A5A] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-slate-800 transition-all shadow-sm active:scale-95 h-9"
+                                 className="px-3 py-1.5 bg-brand-dark text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-slate-800 transition-all shadow-sm active:scale-95 h-9"
                                >
                                  Collect
                                </button>
@@ -502,7 +502,7 @@ const Bills = () => {
                                  {bill.paymentHistory && bill.paymentHistory.length > 0 && (
                                    <button 
                                      onClick={() => setShowHistory(prev => ({ ...prev, [bill.id]: !prev[bill.id] }))}
-                                     className="px-3 py-1.5 bg-[#F8FAFC] text-[#64748B] rounded-lg hover:bg-slate-100 hover:text-[#1F2937] transition-all border border-[#E5E7EB] flex items-center gap-1.5 h-9"
+                                     className="px-3 py-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 hover:text-brand-dark transition-all border border-slate-200 flex items-center gap-1.5 h-9"
                                    >
                                      <Clock className="w-3.5 h-3.5" />
                                      <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
@@ -510,7 +510,7 @@ const Bills = () => {
                                  )}
                                  <button 
                                    onClick={() => setSelectedInvoice(bill)}
-                                   className="px-3 py-1.5 bg-[#F8FAFC] text-[#1E2A5A] border border-[#E5E7EB] rounded-lg hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm flex items-center gap-1.5 h-9"
+                                   className="px-3 py-1.5 bg-slate-50 text-brand-dark border border-slate-200 rounded-lg hover:bg-brand-dark hover:text-white transition-all shadow-sm flex items-center gap-1.5 h-9"
                                    title="Print Invoice"
                                  >
                                    <Printer className="w-3.5 h-3.5" />
@@ -526,20 +526,20 @@ const Bills = () => {
 
                   {/* Expandable Payment History Row */}
                   {showHistory[bill.id] && bill.paymentHistory && (
-                    <tr className="bg-[#F9FAFB]">
-                      <td colSpan="5" className="px-12 py-8 border-b border-[#E5E7EB]">
+                    <tr className="bg-slate-50">
+                      <td colSpan="5" className="px-12 py-8 border-b border-slate-200">
                         <div className="flex items-center gap-3 mb-6">
-                           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-[#E5E7EB]">
-                              <Clock className="w-5 h-5 text-[#1E2A5A]" />
+                           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-200">
+                              <Clock className="w-5 h-5 text-brand-dark" />
                            </div>
                            <div>
-                             <h4 className="text-[14px] font-bold text-[#1F2937] leading-none">Payment Timeline</h4>
-                             <p className="text-[11px] font-medium text-[#7B8794] mt-1.5 uppercase tracking-wider">Sequential records of all financial transactions</p>
+                             <h4 className="text-[14px] font-bold text-brand-dark leading-none">Payment Timeline</h4>
+                             <p className="text-[11px] font-medium text-slate-500 mt-1.5 uppercase tracking-wider">Sequential records of all financial transactions</p>
                            </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                           {bill.paymentHistory.map((p, idx) => (
-                            <div key={idx} className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col items-center text-center relative group/card hover:border-[#1E2A5A]/20 transition-all hover:shadow-md">
+                            <div key={idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center relative group/card hover:border-brand-primary/20 transition-all hover:shadow-md">
                                <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase mb-3 border shadow-sm ${
                                  p.method === 'UPI' ? 'bg-sky-50 text-sky-600 border-sky-100' : 
                                  p.method === 'Card' ? 'bg-violet-50 text-violet-600 border-violet-100' : 
@@ -547,7 +547,7 @@ const Bills = () => {
                                }`}>
                                  {p.method}
                                </div>
-                               <div className="text-xl font-bold text-[#1F2937] mb-1 tabular-nums tracking-tighter flex items-baseline gap-1">
+                               <div className="text-xl font-bold text-brand-dark mb-1 tabular-nums tracking-tighter flex items-baseline gap-1">
                                  ₹{p.amount}
                                  {p.discount > 0 && (
                                    <span className="text-[10px] font-bold text-rose-500 whitespace-nowrap">
@@ -555,7 +555,7 @@ const Bills = () => {
                                    </span>
                                  )}
                                </div>
-                               <div className="text-[11px] font-medium text-[#7B8794] uppercase tracking-wider">
+                               <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
                                  {(() => {
                                    if (!p.date) return 'N/A';
                                    const d = p.date.seconds ? new Date(p.date.seconds * 1000) : (p.date.toDate ? p.date.toDate() : new Date(p.date));
@@ -578,12 +578,12 @@ const Bills = () => {
       {/* Pagination Footer */}
       <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 px-6 pb-6">
         <div className="flex items-center gap-4">
-          <p className="text-[11px] font-medium text-[#7B8794] uppercase tracking-wider">
-            Records <span className="text-[#1F2937] font-bold px-1">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredBills.length)}</span> of <span className="text-[#1F2937] font-bold">{filteredBills.length}</span>
+          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+            Records <span className="text-brand-dark font-bold px-1">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredBills.length)}</span> of <span className="text-brand-dark font-bold">{filteredBills.length}</span>
           </p>
-          <div className="h-3 w-[1px] bg-[#E5E7EB] hidden md:block" />
+          <div className="h-3 w-[1px] bg-slate-200 hidden md:block" />
           <select 
-             className="bg-[#F8FAFC] border border-[#E5E7EB] px-3 py-1.5 rounded-lg text-[11px] font-bold text-[#1F2937] outline-none cursor-pointer hover:bg-white transition-all uppercase tracking-wider"
+             className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-[11px] font-bold text-brand-dark outline-none cursor-pointer hover:bg-white transition-all uppercase tracking-wider"
              value={rowsPerPage}
              onChange={e => setRowsPerPage(parseInt(e.target.value))}
            >
@@ -598,7 +598,7 @@ const Bills = () => {
              <button 
                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                disabled={currentPage === 1}
-               className="p-2 bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl text-[#94A3B8] hover:text-[#1F2937] hover:border-[#1E2A5A] disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
+               className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-400 hover:text-brand-dark hover:border-brand-dark disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
               >
                <ChevronLeft className="w-4 h-4" />
              </button>
@@ -610,8 +610,8 @@ const Bills = () => {
                     onClick={() => setCurrentPage(i + 1)}
                     className={`w-9 h-9 rounded-xl text-[12px] font-bold transition-all duration-300 ${
                       currentPage === i + 1 
-                        ? 'bg-[#1E2A5A] text-white shadow-lg' 
-                        : 'bg-[#F8FAFC] text-[#64748B] hover:bg-slate-100 border border-[#E5E7EB]'
+                        ? 'bg-brand-dark text-white shadow-lg' 
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'
                     }`}
                   >
                     {i + 1}
@@ -622,7 +622,7 @@ const Bills = () => {
              <button 
                onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredBills.length / rowsPerPage), p + 1))}
                disabled={currentPage === Math.ceil(filteredBills.length / rowsPerPage) || Math.ceil(filteredBills.length / rowsPerPage) === 0}
-               className="p-2.5 bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl text-[#94A3B8] hover:text-[#1F2937] hover:border-[#1E2A5A] disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
+               className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-400 hover:text-brand-dark hover:border-brand-dark disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-sm active:scale-90"
               >
                <ChevronRight className="w-5 h-5" />
              </button>

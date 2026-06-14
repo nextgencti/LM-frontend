@@ -212,13 +212,13 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-sky-50/50 pb-4">
+    <div className="min-h-screen pb-4 animate-in fade-in duration-500">
       <div className="max-w-[1500px] mx-auto px-4 md:px-6">
         
         {/* Header Section - Compact */}
         <div className="flex justify-between items-center py-4 gap-4">
           <div>
-            <h1 className="text-xl font-bold text-brand-dark flex items-center gap-2">
+            <h1 className="text-xl font-display font-bold text-brand-dark flex items-center gap-2">
               Hello, {userData?.firstName || userData?.name?.split(' ')[0] || currentUser?.displayName?.split(' ')[0] || 'Admin'} 👋
             </h1>
             <p className="text-slate-500 font-semibold text-[11px]">Welcome back! Overview of {labFullName || 'your lab'} today.</p>
@@ -249,7 +249,7 @@ const Dashboard = () => {
             { label: 'Pending', val: stats.pendingReports, urgent: 2, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100/20' },
             { label: "Total Revenue", val: `₹${stats.revenue}`, sub: `+₹${stats.todayRevenue} today`, icon: IndianRupee, color: 'text-emerald-600', bg: 'bg-emerald-100/20' },
           ].map((s, idx) => (
-            <div key={idx} className="bg-white p-3 rounded-2xl border-none shadow-xs hover:shadow-md transition-all group relative overflow-hidden">
+            <div key={idx} className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group relative overflow-hidden">
               <div className="flex gap-2.5 items-center relative z-10">
                 <div className={`p-2 rounded-xl ${s.bg} ${s.color}`}>
                   <s.icon className="w-4 h-4" />
@@ -273,9 +273,9 @@ const Dashboard = () => {
         {/* MIDDLE SECTION - Compact */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
           
-          <div className="lg:col-span-5 bg-white p-4 rounded-[32px] border-none shadow-xs">
+          <div className="lg:col-span-5 bg-white p-4 rounded-[32px] border border-slate-100 shadow-sm">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-[13px] font-bold text-brand-dark tracking-tight">Bookings Overview</h2>
+                <h2 className="text-[13px] font-display font-bold text-brand-dark tracking-tight">Bookings Overview</h2>
                 <div className="relative group/filter">
                   <select 
                     value={timeFilter}
@@ -293,8 +293,8 @@ const Dashboard = () => {
                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
                    <defs>
                      <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="5%" stopColor="#9BCF83" stopOpacity={0.2}/>
-                       <stop offset="95%" stopColor="#9BCF83" stopOpacity={0}/>
+                       <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
+                       <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                      </linearGradient>
                    </defs>
                    <CartesianGrid strokeDasharray="0" vertical={false} stroke="#f8fafc" />
@@ -335,21 +335,21 @@ const Dashboard = () => {
                    <Area 
                     type="monotone" 
                     dataKey="bookings" 
-                    stroke="#9BCF83" 
+                    stroke="#10B981" 
                     strokeWidth={3} 
                     fillOpacity={1} 
                     fill="url(#colorBookings)" 
-                    dot={{ r: 4, fill: '#9BCF83', strokeWidth: 2, stroke: '#fff' }}
-                    activeDot={{ r: 6, fill: '#9BCF83', strokeWidth: 3, stroke: '#fff' }}
+                    dot={{ r: 4, fill: '#10B981', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, fill: '#10B981', strokeWidth: 3, stroke: '#fff' }}
                    />
                  </AreaChart>
                </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="lg:col-span-4 bg-white p-4 rounded-[32px] border-none shadow-xs flex flex-col h-full uppercase">
+          <div className="lg:col-span-4 bg-white p-4 rounded-[32px] border border-slate-100 shadow-sm flex flex-col h-full uppercase">
             <div className="flex justify-between items-center mb-5 px-1">
-              <h2 className="text-[13px] font-bold text-brand-dark tracking-tight">Recent Bookings</h2>
+              <h2 className="text-[13px] font-display font-bold text-brand-dark tracking-tight">Recent Bookings</h2>
               <button 
                 onClick={() => navigate('/bookings')}
                 className="text-[9px] font-bold text-slate-400 hover:text-brand-primary flex items-center gap-1 transition-colors"
@@ -506,7 +506,7 @@ const Dashboard = () => {
               ) : (
                 <button 
                   onClick={() => setShowValidityModal(true)}
-                  className="w-full bg-[#9BCF83] text-[#1E2A5A] py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-[#9BCF83]/10 transition-all flex items-center justify-center gap-2 hover:bg-[#8abf72]"
+                  className="w-full bg-brand-primary text-white py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-brand-primary/20 transition-all flex items-center justify-center gap-2 hover:bg-emerald-600"
                 >
                   <Calendar className="w-3.5 h-3.5" />
                   Extend Validity
@@ -525,8 +525,8 @@ const Dashboard = () => {
         {/* BOTTOM SECTION - Compact */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           
-          <div className="lg:col-span-3 bg-white p-3.5 rounded-[32px] border-none shadow-xs uppercase">
-             <h2 className="text-[13px] font-bold text-brand-dark tracking-tight mb-3 px-1">Today's Activity</h2>
+          <div className="lg:col-span-3 bg-white p-3.5 rounded-[32px] border border-slate-100 shadow-sm uppercase">
+             <h2 className="text-[13px] font-display font-bold text-brand-dark tracking-tight mb-3 px-1">Today's Activity</h2>
              <div className="grid grid-cols-4 gap-2.5">
                {[
                  { label: 'New Bookings', icon: Calendar, val: stats.todayBookings, color: 'text-emerald-600', bg: 'bg-emerald-50/50', path: '/bookings' },
@@ -556,8 +556,8 @@ const Dashboard = () => {
              </div>
           </div>
 
-          <div className="lg:col-span-2 bg-white p-3.5 rounded-[32px] border-none shadow-xs uppercase">
-             <h2 className="text-[13px] font-bold text-brand-dark tracking-tight mb-3 px-1">Quick Actions</h2>
+          <div className="lg:col-span-2 bg-white p-3.5 rounded-[32px] border border-slate-100 shadow-sm uppercase">
+             <h2 className="text-[13px] font-display font-bold text-brand-dark tracking-tight mb-3 px-1">Quick Actions</h2>
              <div className="grid grid-cols-3 gap-2.5">
                {[
                  { name: 'New Booking', icon: Calendar, color: 'text-emerald-700', bg: 'bg-emerald-50/50', path: '/bookings?new=true' },

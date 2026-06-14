@@ -479,7 +479,7 @@ const ResultEntry = () => {
   if (loading) return (
     <div className="flex justify-center items-center h-screen bg-slate-50">
       <div className="flex flex-col items-center gap-3">
-        <Loader className="w-8 h-8 animate-spin text-[#1b2b4d]" />
+        <Loader className="w-8 h-8 animate-spin text-brand-dark" />
         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Hydrating Workspace...</p>
       </div>
     </div>
@@ -518,15 +518,15 @@ const ResultEntry = () => {
       {/* 1. TOP HEADER & BREADCRUMBS */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#8bc971]/10 rounded-md flex items-center justify-center border border-[#8bc971]/20">
-            <FileText className="w-4 h-4 text-[#8bc971]" />
+          <div className="w-8 h-8 bg-brand-primary/10 rounded-md flex items-center justify-center border border-brand-primary/20">
+            <FileText className="w-4 h-4 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-[#1b2b4d] tracking-tight leading-none">Report Entry</h1>
+            <h1 className="text-base font-bold text-brand-dark tracking-tight leading-none">Report Entry</h1>
             <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              <Link to="/dashboard" className="hover:text-[#1b2b4d]">Dashboard</Link>
+              <Link to="/dashboard" className="hover:text-brand-dark">Dashboard</Link>
               <ChevronRight className="w-2 h-2" />
-              <Link to="/reports" className="hover:text-[#1b2b4d]">Reports</Link>
+              <Link to="/reports" className="hover:text-brand-dark">Reports</Link>
               <ChevronRight className="w-2 h-2" />
               <span className="text-slate-500">Entry</span>
             </div>
@@ -534,10 +534,10 @@ const ResultEntry = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1 bg-white border border-slate-200 rounded-md text-[9px] font-semibold text-[#1b2b4d] hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+          <button className="px-3 py-1 bg-white border border-slate-200 rounded-md text-[9px] font-semibold text-brand-dark hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
             <History className="w-3 h-3" /> History
           </button>
-          <button className="px-3 py-1 bg-white border border-slate-200 rounded-md text-[9px] font-semibold text-[#1b2b4d] flex items-center gap-2 shadow-sm">
+          <button className="px-3 py-1 bg-white border border-slate-200 rounded-md text-[9px] font-semibold text-brand-dark flex items-center gap-2 shadow-sm">
             <Calendar className="w-3 h-3" /> 23 Apr, 2026
           </button>
         </div>
@@ -546,21 +546,21 @@ const ResultEntry = () => {
       {/* 2. PATIENT INFO BAR */}
       <div className="bg-white p-0.5 rounded-sm border border-slate-200 shadow-sm flex flex-wrap items-center shrink-0">
         <div className="flex items-center gap-1.5 px-3 border-r border-slate-100 h-11 bg-slate-50/50">
-           <User className="w-3.5 h-3.5 text-[#8bc971]" />
-           <p className="text-[10px] font-black text-[#1b2b4d] uppercase tracking-[0.15em]">Patient</p>
+           <User className="w-3.5 h-3.5 text-brand-primary" />
+           <p className="text-[10px] font-black text-brand-dark uppercase tracking-[0.15em]">Patient</p>
         </div>
         
         <div className="px-4 py-1.5 border-r border-slate-100 flex flex-col justify-start h-11 min-w-[140px]">
           <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5 leading-none">Patient Name</p>
-          <p className="text-[12px] font-bold text-[#1b2b4d] leading-tight truncate">{booking?.patientName}</p>
+          <p className="text-[12px] font-bold text-brand-dark leading-tight truncate">{booking?.patientName}</p>
         </div>
         <div className="px-4 py-1.5 border-r border-slate-100 flex flex-col justify-start h-11 min-w-[110px]">
           <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5 leading-none">Age / Gender</p>
-          <p className="text-[12px] font-bold text-[#1b2b4d] leading-tight">{patient?.age} {patient?.ageUnit || 'Years'} / {patient?.gender}</p>
+          <p className="text-[12px] font-bold text-brand-dark leading-tight">{patient?.age} {patient?.ageUnit || 'Years'} / {patient?.gender}</p>
         </div>
         <div className="px-4 py-1.5 border-r border-slate-100 flex flex-col justify-start h-11 min-w-[120px]">
           <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5 leading-none">Patient ID</p>
-          <p className="text-[11px] font-bold text-[#1b2b4d] leading-tight truncate">{booking?.patientId || '---'}</p>
+          <p className="text-[11px] font-bold text-brand-dark leading-tight truncate">{booking?.patientId || '---'}</p>
         </div>
         <div className="px-4 py-1.5 border-r border-slate-100 flex flex-col justify-start h-11 min-w-[100px]">
           <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5 leading-none">Booking ID</p>
@@ -568,11 +568,11 @@ const ResultEntry = () => {
         </div>
         <div className="px-4 py-1.5 border-r border-slate-100 flex flex-col justify-start h-11 min-w-[90px]">
           <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5 leading-none">Sample Type</p>
-          <p className="text-[12px] font-bold text-[#1b2b4d] leading-tight">{report?.sampleType || 'Blood'}</p>
+          <p className="text-[12px] font-bold text-brand-dark leading-tight">{report?.sampleType || 'Blood'}</p>
         </div>
         <div className="px-4 py-1.5 flex flex-col justify-start h-11 min-w-[130px]">
           <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5 leading-none">Collected On</p>
-          <p className="text-[11px] font-bold text-[#1b2b4d] leading-tight whitespace-nowrap">23 Apr, 2026 <span className="text-slate-400 font-medium ml-1">09:15 AM</span></p>
+          <p className="text-[11px] font-bold text-brand-dark leading-tight whitespace-nowrap">23 Apr, 2026 <span className="text-slate-400 font-medium ml-1">09:15 AM</span></p>
         </div>
       </div>
 
@@ -593,13 +593,13 @@ const ResultEntry = () => {
               onClick={() => setActiveTestId(tid)}
               className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all border flex-shrink-0 flex items-center gap-1.5 
                 ${isActive 
-                  ? 'bg-[#1b2b4d] text-white border-[#1b2b4d] shadow-sm' 
+                  ? 'bg-brand-dark text-white border-brand-dark shadow-sm' 
                   : isComplete 
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
                     : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
             >
               {isComplete ? (
-                <CheckCircle2 className={`w-3 h-3 ${isActive ? 'text-[#8bc971]' : 'text-emerald-500'}`} />
+                <CheckCircle2 className={`w-3 h-3 ${isActive ? 'text-brand-primary' : 'text-emerald-500'}`} />
               ) : (
                 <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white/40' : 'bg-slate-300'}`} />
               )}
@@ -617,8 +617,8 @@ const ResultEntry = () => {
           {/* 4. ACTIVE TEST HEADER & OPTIONS */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
             <div className="flex items-center gap-3">
-              <div className="w-1.5 h-6 bg-[#8bc971] rounded-full" />
-              <h2 className="text-sm font-bold text-[#1b2b4d] tracking-tight uppercase">
+              <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
+              <h2 className="text-sm font-bold text-brand-dark tracking-tight uppercase">
                 {(Array.isArray(booking?.testNames) 
                   ? booking.testNames[booking?.testIds?.indexOf(activeTestId)] 
                   : (typeof booking.testNames === 'string' ? booking.testNames.split(', ')[booking?.testIds?.indexOf(activeTestId)] : 'Analysis')) || 'Result Entry'}
@@ -628,7 +628,7 @@ const ResultEntry = () => {
             <div className="flex items-center gap-2">
               <button 
                 onClick={toggleExpandAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-500 hover:text-[#1b2b4d] transition-all shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-500 hover:text-brand-dark transition-all shadow-sm"
               >
                 {collapsedGroups.length > 0 ? (
                   <><Plus className="w-3.5 h-3.5" /> Expand All</>
@@ -642,7 +642,7 @@ const ResultEntry = () => {
           <div className="bg-white rounded-sm border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
             <div className="overflow-auto flex-1 custom-scrollbar">
               <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 z-20 bg-slate-50 text-[#1b2b4d] text-[11px] font-bold uppercase tracking-widest border-b border-slate-200">
+                <thead className="sticky top-0 z-20 bg-slate-50 text-brand-dark text-[11px] font-bold uppercase tracking-widest border-b border-slate-200">
                   <tr>
                     <th className="px-3 py-2.5 w-48 border-r border-slate-200 bg-slate-50">Parameter</th>
                     <th className="px-3 py-2.5 text-center border-r border-slate-200 bg-slate-50">Result</th>
@@ -673,7 +673,7 @@ const ResultEntry = () => {
                           <td className="px-3 py-1.5 text-center">
                              <div className="grid grid-cols-5 gap-1.5 w-full">
                                {["1:20", "1:40", "1:80", "1:160", "1:320"].map(t => (
-                                 <div key={t} className="text-[11px] font-bold text-[#1b2b4d] text-center uppercase py-1 border-x border-slate-100 bg-white/50">{t}</div>
+                                 <div key={t} className="text-[11px] font-bold text-brand-dark text-center uppercase py-1 border-x border-slate-100 bg-white/50">{t}</div>
                                ))}
                              </div>
                           </td>
@@ -703,19 +703,19 @@ const ResultEntry = () => {
                           >
                             <td colSpan="4" className="px-3 py-1.5 border-y border-slate-200">
                                <div className="flex items-center justify-between w-full">
-                                 <span className="text-[10px] font-bold text-[#1b2b4d] uppercase tracking-wider">{param.groupName}</span>
-                                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${collapsedGroups.includes(param.groupName) ? '-rotate-90 text-slate-400' : 'text-[#1b2b4d]'}`} />
+                                 <span className="text-[10px] font-bold text-brand-dark uppercase tracking-wider">{param.groupName}</span>
+                                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${collapsedGroups.includes(param.groupName) ? '-rotate-90 text-slate-400' : 'text-brand-dark'}`} />
                                </div>
                             </td>
                           </tr>
                         )}
                         {!collapsedGroups.includes(param.groupName) && (
                           <tr 
-                            className={`group transition-colors border-b border-slate-200 relative ${focusedParamId === param.id ? 'bg-[#8bc971]/10' : 'hover:bg-slate-50/30'}`}
+                            className={`group transition-colors border-b border-slate-200 relative ${focusedParamId === param.id ? 'bg-brand-primary/10' : 'hover:bg-slate-50/30'}`}
                           >
                           <td className="px-3 py-1 relative border-r border-slate-200">
-                             {focusedParamId === param.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#8bc971]" />}
-                             <p className="text-[11px] font-bold text-[#1b2b4d] leading-tight uppercase">{param.name}</p>
+                             {focusedParamId === param.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-primary" />}
+                             <p className="text-[11px] font-bold text-brand-dark leading-tight uppercase">{param.name}</p>
                           </td>
                           <td className="px-3 py-1 border-r border-slate-200">
                             {isTitration ? (
@@ -729,7 +729,7 @@ const ResultEntry = () => {
                                         value={cellVal}
                                         onFocus={() => setFocusedParamId(param.id)}
                                         onChange={(e) => handleUpdateGridValue(param.testId, param.id, t, e.target.value)}
-                                        className={`w-full appearance-none border rounded-[2px] py-0.5 pl-2 pr-6 text-[12px] font-bold text-center outline-none transition-all focus:ring-2 focus:ring-[#8bc971]/50 focus:border-[#8bc971] shadow-sm ${isReactive ? 'bg-rose-50 border-rose-400 text-rose-600' : 'bg-slate-50/50 border-slate-400 text-slate-500 hover:border-[#1b2b4d]/40'}`}
+                                        className={`w-full appearance-none border rounded-[2px] py-0.5 pl-2 pr-6 text-[12px] font-bold text-center outline-none transition-all focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary shadow-sm ${isReactive ? 'bg-rose-50 border-rose-400 text-rose-600' : 'bg-slate-50/50 border-slate-400 text-slate-500 hover:border-brand-dark/40'}`}
                                       >
                                         {["-", "REACTIVE", "WEAKLY", "POSITIVE", "NEGATIVE"].map(opt => (
                                           <option key={opt} value={opt}>{opt}</option>
@@ -746,7 +746,7 @@ const ResultEntry = () => {
                               <div className="flex justify-center">
                                 <input 
                                   type="text" 
-                                  className={`w-28 bg-white border border-slate-300 rounded-[2px] px-3 py-0.5 text-[12px] font-bold text-center outline-none transition-all focus:ring-2 focus:ring-[#8bc971]/40 focus:border-[#8bc971] shadow-sm ${validation ? `${validation.bg} ${validation.color} !border-${validation.color.split('-')[1]}-400/30` : 'text-[#1b2b4d] hover:border-slate-400'}`}
+                                  className={`w-28 bg-white border border-slate-300 rounded-[2px] px-3 py-0.5 text-[12px] font-bold text-center outline-none transition-all focus:ring-2 focus:ring-brand-primary/40 focus:border-brand-primary shadow-sm ${validation ? `${validation.bg} ${validation.color} !border-${validation.color.split('-')[1]}-400/30` : 'text-brand-dark hover:border-slate-400'}`}
                                   value={val}
                                   onChange={(e) => handleResultChange(param.testId, param.id, e.target.value)}
                                   onFocus={() => setFocusedParamId(param.id)}
@@ -782,18 +782,18 @@ const ResultEntry = () => {
               {selectedParam ? (
                 <>
                   <div>
-                    <h3 className="text-[12px] font-bold text-[#1b2b4d] leading-tight">{selectedParam.name}</h3>
+                    <h3 className="text-[12px] font-bold text-brand-dark leading-tight">{selectedParam.name}</h3>
                     <p className="text-[8px] font-semibold text-slate-400">Biological Reference</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                      <div>
                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Unit</p>
-                        <p className="text-[11px] font-bold text-[#1b2b4d]">{selectedParam.unit || '---'}</p>
+                        <p className="text-[11px] font-bold text-brand-dark">{selectedParam.unit || '---'}</p>
                      </div>
                      <div>
                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Range</p>
-                        <p className="text-[11px] font-bold text-[#1b2b4d]">{getRefRange(selectedParam)}</p>
+                        <p className="text-[11px] font-bold text-brand-dark">{getRefRange(selectedParam)}</p>
                      </div>
                   </div>
                 </>
@@ -808,7 +808,7 @@ const ResultEntry = () => {
             </div>
           </div>
  
-          <div className="bg-white p-1.5 rounded-md border border-slate-200 shadow-sm">
+           <div className="bg-white p-1.5 rounded-md border border-slate-200 shadow-sm">
              <div className="flex items-center gap-1 mb-0.5">
                <MessageSquare className="w-2.5 h-2.5 text-slate-400" />
                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Observations</p>
@@ -816,7 +816,7 @@ const ResultEntry = () => {
              <textarea 
                value={technicianComment}
                onChange={(e) => setTechnicianComment(e.target.value)}
-               className="w-full h-8 bg-slate-50 border border-slate-200 rounded-sm p-1.5 text-[10px] font-medium text-[#1b2b4d] outline-none focus:bg-white focus:border-[#8bc971] transition-all placeholder:text-slate-300 resize-none"
+               className="w-full h-8 bg-slate-50 border border-slate-200 rounded-sm p-1.5 text-[10px] font-medium text-brand-dark outline-none focus:bg-white focus:border-brand-primary transition-all placeholder:text-slate-300 resize-none"
                placeholder="Notes..."
              />
           </div>
@@ -824,11 +824,11 @@ const ResultEntry = () => {
           <div className="bg-white p-1.5 rounded-md border border-slate-200 shadow-sm space-y-1">
              <div className="flex items-center justify-between">
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Progress</p>
-                <p className="text-[9px] font-bold text-[#1b2b4d] uppercase tracking-tighter">{filledCount}/{totalCount}</p>
+                <p className="text-[9px] font-bold text-brand-dark uppercase tracking-tighter">{filledCount}/{totalCount}</p>
              </div>
              <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
                 <div 
-                  className={`h-full transition-all duration-500 ${progress === 100 ? 'bg-[#8bc971]' : 'bg-amber-400'}`} 
+                  className={`h-full transition-all duration-500 ${progress === 100 ? 'bg-brand-primary' : 'bg-amber-400'}`} 
                   style={{ width: `${progress}%` }} 
                 />
              </div>
@@ -838,7 +838,7 @@ const ResultEntry = () => {
             <button 
               onClick={handleSaveDraft}
               disabled={isSavingDraft || isFinalizing}
-              className={`w-full px-3 py-2 bg-white border border-slate-200 text-[#1b2b4d] rounded-[2px] text-[10px] font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 uppercase tracking-widest hover:bg-slate-50 disabled:opacity-50`}
+              className={`w-full px-3 py-2 bg-white border border-slate-200 text-brand-dark rounded-[2px] text-[10px] font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 uppercase tracking-widest hover:bg-slate-50 disabled:opacity-50`}
             >
               {isSavingDraft ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Draft
@@ -847,7 +847,7 @@ const ResultEntry = () => {
             <button 
               onClick={handleSave}
               disabled={isSavingDraft || isFinalizing || !isAllTestsComplete}
-              className={`w-full px-3 py-2 text-white rounded-[2px] text-[10px] font-bold shadow-md transition-all flex items-center justify-center gap-1.5 uppercase tracking-widest border ${isAllTestsComplete ? 'bg-[#8bc971] border-[#8bc971]/20 hover:bg-[#7ab862] hover:shadow-lg' : 'bg-slate-300 border-slate-200 cursor-not-allowed opacity-80'}`}
+              className={`w-full px-3 py-2 text-white rounded-[2px] text-[10px] font-bold shadow-md transition-all flex items-center justify-center gap-1.5 uppercase tracking-widest border ${isAllTestsComplete ? 'bg-brand-primary border-brand-primary/20 hover:bg-emerald-500 hover:shadow-lg' : 'bg-slate-300 border-slate-200 cursor-not-allowed opacity-80'}`}
             >
               {isFinalizing ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               Finalize Report
@@ -858,8 +858,8 @@ const ResultEntry = () => {
             <div className="flex items-center gap-1">
               {isAllTestsComplete ? (
                 <>
-                  <div className="w-1.5 h-1.5 bg-[#8bc971] rounded-full animate-pulse" />
-                  <p className="text-[8px] font-black text-[#1b2b4d] uppercase tracking-widest">Ready</p>
+                  <div className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse" />
+                  <p className="text-[8px] font-black text-brand-dark uppercase tracking-widest">Ready</p>
                 </>
               ) : (
                 <>
@@ -872,7 +872,7 @@ const ResultEntry = () => {
             <div className="flex items-center gap-1.5">
               <button 
                 onClick={() => navigate(-1)}
-                className="px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-md text-[9px] font-bold text-slate-700 hover:bg-slate-200 hover:text-[#1b2b4d] transition-all shadow-sm uppercase flex items-center justify-center gap-1.5 active:scale-95"
+                className="px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-md text-[9px] font-bold text-slate-700 hover:bg-slate-200 hover:text-brand-dark transition-all shadow-sm uppercase flex items-center justify-center gap-1.5 active:scale-95"
               >
                 <ArrowLeft className="w-3 h-3" /> Back
               </button>

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { Activity, Shield, Zap, Globe, Users, Target, Rocket, ArrowLeft, ChevronRight, Mail, Phone, MapPin } from 'lucide-react';
 
 const AboutUs = () => {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
@@ -58,9 +60,11 @@ const AboutUs = () => {
                         <h1 className="text-xl font-black tracking-tighter uppercase text-brand-dark">Lab <span className="text-brand-primary">Mitra</span></h1>
                     </div>
 
-                    <Link to="/login" className="px-6 py-3 bg-brand-dark text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-brand-dark/20 hover:scale-105 active:scale-95 transition-all">
-                        Sign In
-                    </Link>
+                    {!currentUser && (
+                        <Link to="/login" className="px-6 py-3 bg-brand-dark text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-brand-dark/20 hover:scale-105 active:scale-95 transition-all">
+                            Sign In
+                        </Link>
+                    )}
                 </div>
             </nav>
 
@@ -174,9 +178,15 @@ const AboutUs = () => {
                 <div className="max-w-7xl mx-auto px-6 text-center">
                     <h2 className="text-3xl font-black text-brand-dark mb-10 tracking-tight uppercase">Ready to modernize your lab?</h2>
                     <div className="flex justify-center gap-6">
-                        <Link to="/signup" className="px-10 py-5 bg-brand-primary text-brand-dark font-black rounded-3xl shadow-2xl shadow-brand-primary/20 hover:scale-105 transition-all uppercase text-[11px] tracking-widest">
-                            Join Now
-                        </Link>
+                        {!currentUser ? (
+                            <Link to="/signup" className="px-10 py-5 bg-brand-primary text-brand-dark font-black rounded-3xl shadow-2xl shadow-brand-primary/20 hover:scale-105 transition-all uppercase text-[11px] tracking-widest">
+                                Join Now
+                            </Link>
+                        ) : (
+                            <Link to="/dashboard" className="px-10 py-5 bg-brand-primary text-brand-dark font-black rounded-3xl shadow-2xl shadow-brand-primary/20 hover:scale-105 transition-all uppercase text-[11px] tracking-widest">
+                                Go to Dashboard
+                            </Link>
+                        )}
                         <button className="px-10 py-5 bg-white border-2 border-slate-100 text-brand-dark font-black rounded-3xl hover:bg-slate-50 transition-all uppercase text-[11px] tracking-widest">
                              Contact Sales
                         </button>

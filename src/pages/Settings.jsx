@@ -318,15 +318,15 @@ const Settings = () => {
             <SettingsIcon className="w-5 h-5 text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight">Lab Settings</h1>
-            <p className="text-[13px] font-medium text-[#7B8794] mt-1">Personalize your laboratory experience.</p>
+            <h1 className="text-[20px] font-bold text-brand-dark leading-tight">Lab Settings</h1>
+            <p className="text-[13px] font-medium text-slate-500 mt-1">Personalize your laboratory experience.</p>
           </div>
         </div>
         
         <button 
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all shadow-md hover:bg-brand-secondary active:scale-95 disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-2.5 bg-brand-dark text-white rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all shadow-md hover:bg-brand-secondary active:scale-95 disabled:opacity-50"
         >
           {saving ? <Loader className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> Save Changes</>}
         </button>
@@ -346,7 +346,7 @@ const Settings = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-[12px] transition-all ${activeTab === tab.id ? 'bg-[#1E2A5A] text-white shadow-md' : 'hover:bg-slate-50 text-slate-500 border border-transparent hover:border-slate-100'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-[12px] transition-all ${activeTab === tab.id ? 'bg-brand-dark text-white shadow-md' : 'hover:bg-slate-50 text-slate-500 border border-transparent hover:border-slate-100'}`}
             >
               <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-white' : tab.color}`} />
               {tab.label}
@@ -362,76 +362,76 @@ const Settings = () => {
               <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
                 <div className="flex items-center gap-2 mb-2">
                    <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
-                   <h3 className="text-[16px] font-bold text-[#1F2937]">Basic Information</h3>
+                   <h3 className="text-[16px] font-bold text-brand-dark">Basic Information</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Lab Name (Short)</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Lab Name (Short)</label>
                     <input 
                       type="text" 
                       value={labData?.labName || ''} 
                       onChange={e => setLabData({...labData, labName: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Full Organization Name</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Full Organization Name</label>
                     <input 
                       type="text" 
                       value={labData?.labFullName || ''} 
                       onChange={e => setLabData({...labData, labFullName: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Owner / Director Name</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Owner / Director Name</label>
                     <input 
                       type="text" 
                       value={labData?.ownerName || ''} 
                       onChange={e => setLabData({...labData, ownerName: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Primary Contact No.</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Primary Contact No.</label>
                     <input 
                       type="text" 
                       value={labData?.phone || ''} 
                       onChange={e => setLabData({...labData, phone: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
                     />
                   </div>
                 </div>
 
                 <div className="pt-4 flex items-center gap-2 mb-2">
                    <div className="w-1 h-5 bg-emerald-500 rounded-full"></div>
-                   <h3 className="text-[16px] font-bold text-[#1F2937]">Pathologist Details</h3>
+                   <h3 className="text-[16px] font-bold text-brand-dark">Pathologist Details</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Pathologist Name</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Pathologist Name</label>
                     <input 
                       type="text" 
                       value={labData?.pathologistName || ''} 
                       onChange={e => setLabData({...labData, pathologistName: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm placeholder:text-slate-300 placeholder:font-medium"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm placeholder:text-slate-300 placeholder:font-medium"
                       placeholder="Enter pathologist name"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Pathologist Designation</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Pathologist Designation</label>
                     <input 
                       type="text" 
                       value={labData?.pathologistDesignation || ''} 
                       onChange={e => setLabData({...labData, pathologistDesignation: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm placeholder:text-slate-300 placeholder:font-medium"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm placeholder:text-slate-300 placeholder:font-medium"
                       placeholder="Enter designation"
                     />
                   </div>
                   <div className="col-span-1 md:col-span-2 space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Electronic Signature</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Electronic Signature</label>
                     <div className="flex items-center gap-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl border-dashed">
                       <div className="w-40 h-20 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden">
                         {labData?.pathologistSignature ? (
@@ -444,7 +444,7 @@ const Settings = () => {
                         )}
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className="px-4 py-2 bg-[#1E2A5A] text-white rounded-lg text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-brand-secondary transition-all flex items-center gap-2">
+                        <label className="px-4 py-2 bg-brand-dark text-white rounded-lg text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-brand-secondary transition-all flex items-center gap-2">
                           <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'pathologistSignature')} />
                           <ImageIcon className="w-3 h-3" /> {labData?.pathologistSignature ? 'Change Signature' : 'Upload Signature'}
                         </label>
@@ -456,7 +456,7 @@ const Settings = () => {
                             <Trash2 className="w-3 h-3" /> Remove
                           </button>
                         )}
-                        <p className="text-[9px] text-[#98A2B3] font-medium leading-relaxed max-w-[200px]">
+                        <p className="text-[9px] text-slate-400 font-medium leading-relaxed max-w-[200px]">
                           Upload a transparent PNG signature for best results on reports.
                         </p>
                       </div>
@@ -466,42 +466,42 @@ const Settings = () => {
 
                 <div className="pt-4 flex items-center gap-2 mb-2">
                    <div className="w-1 h-5 bg-slate-300 rounded-full"></div>
-                   <h3 className="text-[16px] font-bold text-[#1F2937]">Location Details</h3>
+                   <h3 className="text-[16px] font-bold text-brand-dark">Location Details</h3>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Official Address</label>
+                    <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Official Address</label>
                     <textarea 
                       rows={2}
                       value={labData?.address || ''} 
                       onChange={e => setLabData({...labData, address: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">City</label>
+                      <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">City</label>
                       <input 
                         type="text" value={labData?.city || ''} 
                         onChange={e => setLabData({...labData, city: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 transition-all shadow-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">State</label>
+                      <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">State</label>
                       <input 
                         type="text" value={labData?.state || ''} 
                         onChange={e => setLabData({...labData, state: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 transition-all shadow-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider ml-1">Pincode</label>
+                      <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Pincode</label>
                       <input 
                         type="text" value={labData?.pincode || ''} 
                         onChange={e => setLabData({...labData, pincode: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-[#1F2937] outline-none focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[13px] text-brand-dark outline-none focus:border-blue-500 transition-all shadow-sm"
                       />
                     </div>
                   </div>
@@ -516,7 +516,7 @@ const Settings = () => {
                 <div className="space-y-6">
                   <div className="flex items-center gap-2">
                      <div className="w-1 h-5 bg-brand-primary rounded-full"></div>
-                     <h3 className="text-[16px] font-bold text-[#1F2937]">Report Branding Styles</h3>
+                     <h3 className="text-[16px] font-bold text-brand-dark">Report Branding Styles</h3>
                   </div>
                   
                   <div className="grid grid-cols-1 gap-6">
@@ -528,8 +528,8 @@ const Settings = () => {
                                 <FileText className="w-4 h-4" />
                              </div>
                              <div>
-                                <span className="text-[12px] font-bold text-[#1F2937] uppercase tracking-wider block">Header Style</span>
-                                <p className="text-[10px] font-medium text-[#7B8794] mt-0.5">Choose how the top area appears</p>
+                                <span className="text-[12px] font-bold text-brand-dark uppercase tracking-wider block">Header Style</span>
+                                <p className="text-[10px] font-medium text-slate-500 mt-0.5">Choose how the top area appears</p>
                              </div>
                           </div>
 
@@ -542,7 +542,7 @@ const Settings = () => {
                                <button 
                                  key={opt.id}
                                  onClick={() => setLabData({ ...labData, reportSettings: { ...labData.reportSettings, headerMode: opt.id, useCustomHeader: opt.id === 'custom' }})}
-                                 className={`flex-1 px-3 py-2 rounded-lg transition-all ${labData.reportSettings.headerMode === opt.id ? 'bg-[#1E2A5A] text-white shadow-sm' : 'text-slate-500 hover:text-slate-600'}`}
+                                 className={`flex-1 px-3 py-2 rounded-lg transition-all ${labData.reportSettings.headerMode === opt.id ? 'bg-brand-dark text-white shadow-sm' : 'text-slate-500 hover:text-slate-600'}`}
                                >
                                   <div className="text-[10px] font-bold uppercase tracking-widest">{opt.label}</div>
                                   <div className={`text-[8px] font-medium uppercase opacity-50 ${labData.reportSettings.headerMode === opt.id ? 'text-white' : 'text-slate-400'}`}>{opt.sub}</div>
@@ -573,9 +573,9 @@ const Settings = () => {
                              )}
                              
                              {labData.reportSettings.headerMode === 'custom' && (
-                                <label className="absolute inset-0 bg-[#1E2A5A]/60 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
+                                <label className="absolute inset-0 bg-brand-dark/60 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
                                    <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'headerImage')} />
-                                   <span className="bg-white px-5 py-2 rounded-xl text-[10px] font-bold uppercase text-[#1E2A5A] tracking-widest shadow-xl transform translate-y-4 hover:scale-105 transition-all">Update Logo</span>
+                                   <span className="bg-white px-5 py-2 rounded-xl text-[10px] font-bold uppercase text-brand-dark tracking-widest shadow-xl transform translate-y-4 hover:scale-105 transition-all">Update Logo</span>
                                 </label>
                              )}
                           </div>
@@ -591,8 +591,8 @@ const Settings = () => {
                                 <MapPin className="w-4 h-4" />
                              </div>
                              <div>
-                                <span className="text-[12px] font-bold text-[#1F2937] uppercase tracking-wider block">Footer Style</span>
-                                <p className="text-[10px] font-medium text-[#7B8794] mt-0.5">Control the bottom signature area</p>
+                                <span className="text-[12px] font-bold text-brand-dark uppercase tracking-wider block">Footer Style</span>
+                                <p className="text-[10px] font-medium text-slate-500 mt-0.5">Control the bottom signature area</p>
                              </div>
                           </div>
 
@@ -605,7 +605,7 @@ const Settings = () => {
                                <button 
                                  key={opt.id}
                                  onClick={() => setLabData({ ...labData, reportSettings: { ...labData.reportSettings, footerMode: opt.id, useCustomFooter: opt.id === 'custom' }})}
-                                 className={`flex-1 px-3 py-2 rounded-lg transition-all ${labData.reportSettings.footerMode === opt.id ? 'bg-[#1E2A5A] text-white shadow-sm' : 'text-slate-500 hover:text-slate-600'}`}
+                                 className={`flex-1 px-3 py-2 rounded-lg transition-all ${labData.reportSettings.footerMode === opt.id ? 'bg-brand-dark text-white shadow-sm' : 'text-slate-500 hover:text-slate-600'}`}
                                >
                                   <div className="text-[10px] font-bold uppercase tracking-widest">{opt.label}</div>
                                   <div className={`text-[8px] font-medium uppercase opacity-50 ${labData.reportSettings.footerMode === opt.id ? 'text-white' : 'text-slate-400'}`}>{opt.sub}</div>
@@ -637,9 +637,9 @@ const Settings = () => {
                              )}
                              
                              {labData.reportSettings.footerMode === 'custom' && (
-                                <label className="absolute inset-0 bg-[#1E2A5A]/60 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
+                                <label className="absolute inset-0 bg-brand-dark/60 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
                                    <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'footerImage')} />
-                                   <span className="bg-white px-4 py-2 rounded-lg text-[9px] font-bold uppercase text-[#1E2A5A] tracking-widest shadow-sm transform translate-y-2 hover:scale-105 transition-all">Update Footer</span>
+                                   <span className="bg-white px-4 py-2 rounded-lg text-[9px] font-bold uppercase text-brand-dark tracking-widest shadow-sm transform translate-y-2 hover:scale-105 transition-all">Update Footer</span>
                                 </label>
                              )}
                           </div>
@@ -701,13 +701,13 @@ const Settings = () => {
                       <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 mb-4">
                          <button 
                            onClick={() => setLabData({ ...labData, reportSettings: { ...labData.reportSettings, watermark: { ...labData.reportSettings.watermark, type: 'text' }}})}
-                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${labData.reportSettings.watermark.type === 'text' ? 'bg-white text-[#1E2A5A] shadow-sm' : 'text-white/40 hover:text-white/60'}`}
+                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${labData.reportSettings.watermark.type === 'text' ? 'bg-white text-brand-dark shadow-sm' : 'text-white/40 hover:text-white/60'}`}
                          >
                             <Type className="w-3.5 h-3.5" /> Text
                          </button>
                          <button 
                            onClick={() => setLabData({ ...labData, reportSettings: { ...labData.reportSettings, watermark: { ...labData.reportSettings.watermark, type: 'image' }}})}
-                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${labData.reportSettings.watermark.type === 'image' ? 'bg-white text-[#1E2A5A] shadow-sm' : 'text-white/40 hover:text-white/60'}`}
+                           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${labData.reportSettings.watermark.type === 'image' ? 'bg-white text-brand-dark shadow-sm' : 'text-white/40 hover:text-white/60'}`}
                          >
                             <ImageIcon className="w-3.5 h-3.5" /> Image
                          </button>
@@ -733,9 +733,9 @@ const Settings = () => {
                               ) : (
                                 <ImageIcon className="w-6 h-6 text-white/10" />
                               )}
-                              <label className="absolute inset-0 bg-[#1E2A5A]/60 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
+                              <label className="absolute inset-0 bg-brand-dark/60 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
                                 <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'watermarkImage')} />
-                                <span className="bg-white px-4 py-2 rounded-lg text-[9px] font-bold uppercase text-[#1E2A5A] tracking-widest shadow-sm">Upload</span>
+                                <span className="bg-white px-4 py-2 rounded-lg text-[9px] font-bold uppercase text-brand-dark tracking-widest shadow-sm">Upload</span>
                               </label>
                            </div>
                         </div>
@@ -812,13 +812,13 @@ const Settings = () => {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                        <div className="w-1 h-5 bg-indigo-500 rounded-full"></div>
-                       <h3 className="text-[16px] font-bold text-[#1F2937]">Staff Management</h3>
+                       <h3 className="text-[16px] font-bold text-brand-dark">Staff Management</h3>
                     </div>
-                    <p className="text-[12px] font-medium text-[#7B8794] ml-1">Manage accounts and granular permissions for your staff.</p>
+                    <p className="text-[12px] font-medium text-slate-500 ml-1">Manage accounts and granular permissions for your staff.</p>
                   </div>
                   <button 
                     onClick={() => { setSelectedStaff(null); setIsStaffModalOpen(true); }}
-                    className="px-4 py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold uppercase tracking-wider shadow-md hover:bg-brand-secondary transition-all active:scale-95"
+                    className="px-4 py-2.5 bg-brand-dark text-white rounded-xl text-[12px] font-bold uppercase tracking-wider shadow-md hover:bg-brand-secondary transition-all active:scale-95"
                   >
                     + Add New Staff
                   </button>
@@ -839,7 +839,7 @@ const Settings = () => {
                   <div className="overflow-x-auto rounded-xl border border-slate-200">
                     <table className="w-full text-left">
                       <thead className="bg-slate-100">
-                        <tr className="text-[10px] font-bold text-[#98A2B3] uppercase tracking-wider">
+                        <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                           <th className="px-4 py-3">Name / ID</th>
                           <th className="px-4 py-3">Role</th>
                           <th className="px-4 py-3">Permissions Summary</th>
@@ -903,7 +903,7 @@ const Settings = () => {
               <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
                 <div className="flex items-center gap-2 mb-4">
                    <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
-                   <h3 className="text-[16px] font-bold text-[#1F2937]">Preferences (Beta)</h3>
+                   <h3 className="text-[16px] font-bold text-brand-dark">Preferences (Beta)</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -914,7 +914,7 @@ const Settings = () => {
                       <div className="flex-1">
                          <div className="flex justify-between items-center mb-1">
                             <div className="flex items-center gap-2">
-                               <p className="text-[12px] font-bold text-[#1F2937] uppercase tracking-wider">Auto Email Notify</p>
+                               <p className="text-[12px] font-bold text-brand-dark uppercase tracking-wider">Auto Email Notify</p>
                                {!checkFeature('Email Support') && (
                                  <span className="bg-amber-100 text-amber-700 text-[8px] font-bold px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-widest">Upgrade Req.</span>
                                )}
@@ -930,7 +930,7 @@ const Settings = () => {
                                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${labData?.reportSettings?.autoEmailNotify ? 'left-5' : 'left-1'}`}></div>
                             </button>
                          </div>
-                         <p className="text-[11px] font-medium text-[#7B8794] leading-tight mt-1">Automatically notify patient when report is finalized.</p>
+                         <p className="text-[11px] font-medium text-slate-500 leading-tight mt-1">Automatically notify patient when report is finalized.</p>
                          <div className={`mt-3 inline-flex items-center px-2 py-1 rounded text-[9px] font-bold uppercase tracking-widest border ${labData?.reportSettings?.autoEmailNotify ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
                          </div>
                       </div>
@@ -942,7 +942,7 @@ const Settings = () => {
                       </div>
                       <div className="flex-1">
                          <div className="flex justify-between items-center mb-1">
-                            <p className="text-[12px] font-bold text-[#1F2937] uppercase tracking-wider">Restrict Unpaid Reports</p>
+                            <p className="text-[12px] font-bold text-brand-dark uppercase tracking-wider">Restrict Unpaid Reports</p>
                             <button 
                                onClick={() => setLabData({
                                   ...labData,
@@ -953,7 +953,7 @@ const Settings = () => {
                                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${labData?.reportSettings?.restrictUnpaidReports ? 'left-5' : 'left-1'}`}></div>
                             </button>
                          </div>
-                         <p className="text-[11px] font-medium text-[#7B8794] leading-tight mt-1">Block Print/Download/Email buttons if payment is pending.</p>
+                         <p className="text-[11px] font-medium text-slate-500 leading-tight mt-1">Block Print/Download/Email buttons if payment is pending.</p>
                          <div className={`mt-3 inline-flex items-center px-2 py-1 rounded text-[9px] font-bold uppercase tracking-widest border ${labData?.reportSettings?.restrictUnpaidReports ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
                            {labData?.reportSettings?.restrictUnpaidReports ? 'Restriction Active' : 'Restriction Disabled'}
                          </div>
@@ -969,7 +969,7 @@ const Settings = () => {
                         <div className="flex-1">
                            <div className="flex justify-between items-center mb-1">
                               <div className="flex items-center gap-2">
-                                 <p className="text-[12px] font-bold text-[#1F2937] uppercase tracking-wider">Daily Email Report</p>
+                                 <p className="text-[12px] font-bold text-brand-dark uppercase tracking-wider">Daily Email Report</p>
                                  {!checkFeature('Email Support') && (
                                    <span className="bg-amber-100 text-amber-700 text-[8px] font-bold px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-widest leading-none">Upgrade Req.</span>
                                  )}
@@ -989,7 +989,7 @@ const Settings = () => {
                                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${labData?.reportSettings?.dailyReport?.enabled ? 'left-5' : 'left-1'}`}></div>
                               </button>
                            </div>
-                           <p className="text-[11px] font-medium text-[#7B8794] mt-1 leading-tight">Receive performance summary every evening.</p>
+                           <p className="text-[11px] font-medium text-slate-500 mt-1 leading-tight">Receive performance summary every evening.</p>
                         </div>
                       </div>
 
@@ -1024,7 +1024,7 @@ const Settings = () => {
                                         dailyReport: { ...labData.reportSettings.dailyReport, notificationEmail: e.target.value }
                                       }
                                    })}
-                                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-bold text-[#1F2937] outline-none focus:border-amber-500 shadow-sm"
+                                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-bold text-brand-dark outline-none focus:border-amber-500 shadow-sm"
                                  />
                               </div>
                            </div>
@@ -1068,8 +1068,8 @@ const Settings = () => {
                            <card.icon className="w-5 h-5" />
                         </div>
                         <div>
-                           <p className="text-[12px] font-bold text-[#1F2937] uppercase tracking-wider">{card.label}</p>
-                           <p className="text-[11px] font-medium text-[#7B8794] mt-1 leading-tight">{card.desc}</p>
+                           <p className="text-[12px] font-bold text-brand-dark uppercase tracking-wider">{card.label}</p>
+                           <p className="text-[11px] font-medium text-slate-500 mt-1 leading-tight">{card.desc}</p>
                            <div className={`mt-3 inline-flex items-center px-2 py-1 rounded text-[8px] font-bold uppercase tracking-widest border bg-slate-100 text-slate-400 border-slate-200`}>
                              Upcoming
                            </div>
@@ -1093,9 +1093,9 @@ const Settings = () => {
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <div className="w-1 h-5 bg-rose-500 rounded-full"></div>
-                          <h3 className="text-[16px] font-bold text-[#1F2937]">Active Subscription</h3>
+                          <h3 className="text-[16px] font-bold text-brand-dark">Active Subscription</h3>
                         </div>
-                        <p className="text-[12px] font-medium text-[#7B8794] ml-1">Current plan and resource consumption.</p>
+                        <p className="text-[12px] font-medium text-slate-500 ml-1">Current plan and resource consumption.</p>
                       </div>
                       
                       {subData && (
@@ -1158,7 +1158,7 @@ const Settings = () => {
                     <div className="pt-6">
                        <div className="flex items-center gap-2 mb-6">
                           <div className="w-1 h-5 bg-brand-primary rounded-full"></div>
-                          <h3 className="text-[16px] font-bold text-[#1F2937]">Available Plans & Comparison</h3>
+                          <h3 className="text-[16px] font-bold text-brand-dark">Available Plans & Comparison</h3>
                        </div>
 
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1414,7 +1414,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-widest ml-1">Full Name</label>
+              <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
               <input 
                 type="text" required value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -1422,7 +1422,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-widest ml-1">Role</label>
+              <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Role</label>
                 <select 
                   value={formData.role} 
                   onChange={e => {
@@ -1444,7 +1444,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-                <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-widest ml-1">Email ID</label>
+                <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Email ID</label>
                 <input 
                   type="email" required value={formData.email} disabled={!!staff}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
@@ -1452,7 +1452,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
                 />
             </div>
             <div className="space-y-1.5">
-                <label className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-widest ml-1">Password {staff && <span className="text-[8px] font-bold tracking-wider text-brand-primary/60 normal-case ml-1">(Leave blank to keep unchanged)</span>}</label>
+                <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Password {staff && <span className="text-[8px] font-bold tracking-wider text-brand-primary/60 normal-case ml-1">(Leave blank to keep unchanged)</span>}</label>
                 <input 
                   type="text" required={!staff} minLength={6} value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
@@ -1466,7 +1466,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
              <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                    <Shield className="w-4 h-4 text-indigo-500" />
-                   <h4 className="text-[14px] font-bold text-[#1F2937]">Permissions Matrix</h4>
+                   <h4 className="text-[14px] font-bold text-brand-dark">Permissions Matrix</h4>
                 </div>
                 {formData.role === 'LabAdmin' && (
                   <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200 uppercase tracking-widest shadow-sm">Admin Access</span>
@@ -1500,7 +1500,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
                      </div>
                      <div className="flex-grow">
                        <div className="flex items-center justify-between mb-0.5">
-                          <p className="text-[11px] font-bold text-[#1F2937] uppercase tracking-wider leading-none group-hover:text-brand-primary transition-colors">{item.label}</p>
+                          <p className="text-[11px] font-bold text-brand-dark uppercase tracking-wider leading-none group-hover:text-brand-primary transition-colors">{item.label}</p>
                           <div className="relative group/info">
                             <Info className="w-3 h-3 text-slate-300 hover:text-brand-primary cursor-help transition-colors" />
                             {/* Detailed Tooltip */}
@@ -1510,7 +1510,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
                             </div>
                           </div>
                        </div>
-                       <p className="text-[9px] font-medium text-[#7B8794] leading-tight">{item.desc}</p>
+                       <p className="text-[9px] font-medium text-slate-500 leading-tight">{item.desc}</p>
                      </div>
                    </label>
                  ))}
@@ -1526,7 +1526,7 @@ const StaffModal = ({ isOpen, onClose, staff, labId, onSave, labData }) => {
             </button>
             <button 
               type="submit" disabled={saving}
-              className="flex-[2] py-3 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold uppercase tracking-wider shadow-md hover:bg-brand-secondary transition-all disabled:opacity-50"
+              className="flex-[2] py-3 bg-brand-dark text-white rounded-xl text-[12px] font-bold uppercase tracking-wider shadow-md hover:bg-brand-secondary transition-all disabled:opacity-50"
             >
               {saving ? 'Saving...' : staff ? 'Commit Changes' : 'Invite Staff Member'}
             </button>
@@ -1563,9 +1563,9 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, deletingUser, isD
         <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center mx-auto mb-4">
            <Trash2 className="w-6 h-6 text-rose-500" />
         </div>
-        <h3 className="text-[18px] font-bold text-[#1F2937] tracking-tight mb-1">Confirm Delete</h3>
-        <p className="text-[13px] font-medium text-[#7B8794] leading-relaxed mb-6">
-          To completely delete <span className="text-[#1E2A5A] font-bold">{deletingUser?.name || 'this user'}</span>, please verify your Admin password.
+        <h3 className="text-[18px] font-bold text-brand-dark tracking-tight mb-1">Confirm Delete</h3>
+        <p className="text-[13px] font-medium text-slate-500 leading-relaxed mb-6">
+          To completely delete <span className="text-brand-dark font-bold">{deletingUser?.name || 'this user'}</span>, please verify your Admin password.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

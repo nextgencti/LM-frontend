@@ -8,19 +8,19 @@ import { toast } from 'react-toastify';
 
 /* ─── Tiny reusable primitives ───────────────────────────────────────────── */
 const Label = ({ children }) => (
-  <label className="block text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider mb-1.5 ml-1">{children}</label>
+  <label className="block text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">{children}</label>
 );
 const Input = React.forwardRef(({ className = '', ...props }, ref) => (
   <input
     ref={ref}
-    className={`w-full px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[13px] font-bold text-[#1F2937] outline-none focus:border-[#1E2A5A]/30 focus:ring-4 focus:ring-[#1E2A5A]/10 transition-all placeholder:text-[#98A2B3] shadow-sm ${className}`}
+    className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-bold text-brand-dark outline-none focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10 transition-all placeholder:text-slate-400 shadow-sm ${className}`}
     {...props}
   />
 ));
 Input.displayName = 'Input';
 const Select = ({ className = '', children, ...props }) => (
   <select
-    className={`w-full px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[13px] font-bold text-[#1F2937] outline-none focus:border-[#1E2A5A]/30 focus:ring-4 focus:ring-[#1E2A5A]/10 transition-all appearance-none cursor-pointer shadow-sm ${className}`}
+    className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-bold text-brand-dark outline-none focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10 transition-all appearance-none cursor-pointer shadow-sm ${className}`}
     {...props}
   >
     {children}
@@ -29,7 +29,7 @@ const Select = ({ className = '', children, ...props }) => (
 const SectionTag = ({ color = 'blue', children }) => {
   const colors = {
     blue: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-    purple: 'bg-[#1E2A5A] text-white border-[#1E2A5A]',
+    purple: 'bg-brand-primary/10 text-brand-primary border-brand-primary/20',
     green: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     amber: 'bg-amber-50 text-amber-600 border-amber-100',
   };
@@ -586,27 +586,30 @@ const Tests = () => {
     <>
     <div className="max-w-full mx-auto w-full flex-1 flex flex-col overflow-hidden p-3 sm:p-4 text-slate-800 animate-in fade-in duration-500">
       
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 px-1">
+      {/* Page Header - Premium */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 px-1">
         <div className="flex items-center gap-4">
-          <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
-            <FlaskConical className="w-5 h-5 text-brand-primary" />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl sm:rounded-[20px] bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 flex items-center justify-center border border-white/60 shadow-[0_8px_32px_rgba(30,42,90,0.08)] relative overflow-hidden group hover:scale-105 transition-all mr-2">
+            <div className="absolute inset-0 bg-white/40 backdrop-blur-sm"></div>
+            <FlaskConical className="w-6 h-6 text-brand-dark relative z-10 drop-shadow-sm group-hover:scale-110 transition-transform" />
           </div>
           <div>
-            <h1 className="text-[20px] font-bold text-[#1F2937] tracking-tight leading-tight">Test Catalog</h1>
-            <p className="text-[#7B8794] text-[10px] font-bold uppercase tracking-wider mt-1 opacity-70">Laboratory Diagnostic Protocol Repository</p>
+            <h1 className="text-xl font-display font-bold text-brand-dark tracking-tight leading-tight">Test Catalog</h1>
+            <div className="flex items-center gap-3 mt-1.5">
+               <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary bg-brand-primary/10 px-2.5 py-0.5 rounded-lg">Diagnostic Protocol</span>
+            </div>
           </div>
         </div>
         {canEditFull && (
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-            <button onClick={handleDownloadSampleCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#E5E7EB] text-[#4B5563] rounded-xl text-[12px] font-bold hover:bg-[#F9FAFB] transition-all shadow-sm">
-              <Download className="w-4 h-4" /> <span>Sample</span>
+            <button onClick={handleDownloadSampleCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200/80 text-brand-dark rounded-[16px] text-[12px] font-bold hover:bg-slate-50 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
+              <Download className="w-4 h-4 text-brand-primary" /> <span>Sample</span>
             </button>
-            <button onClick={() => csvInputRef.current?.click()} disabled={csvImporting} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-[12px] font-bold hover:bg-indigo-100 transition-all shadow-sm">
+            <button onClick={() => csvInputRef.current?.click()} disabled={csvImporting} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-50/80 backdrop-blur-sm border border-indigo-100 text-indigo-700 rounded-[16px] text-[12px] font-bold hover:bg-indigo-100 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
               {csvImporting ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>} <span>Import</span>
             </button>
-            <button onClick={() => { resetForm(); setShowModal(true); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold tracking-wide hover:scale-[1.02] transition-all shadow-lg shadow-[#1E2A5A]/20 active:scale-95 group">
+            <button onClick={() => { resetForm(); setShowModal(true); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-brand-dark to-brand-secondary text-white rounded-[16px] text-[12px] font-bold tracking-wide hover:scale-[1.02] transition-all shadow-[0_8px_30px_rgba(30,42,90,0.2)] active:scale-95 group border border-white/10">
               <Plus className="w-4 h-4 text-white group-hover:rotate-90 transition-transform" /> New Test
             </button>
           </div>
@@ -614,96 +617,100 @@ const Tests = () => {
       </div>
 
       {/* Search and Filters Header */}
-      <div className="flex flex-col lg:flex-row gap-3 mb-6">
+      <div className="flex flex-col lg:flex-row gap-4 mb-6">
         <div className="flex-[2] relative group max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
           <input type="text"
-            className="w-full pl-11 pr-6 py-2.5 bg-white border border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A]/20 transition-all font-bold text-[13px] text-[#1F2937] outline-none placeholder:text-[#98A2B3] shadow-sm"
+            className="w-full pl-12 pr-6 py-3 bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-[20px] focus:ring-4 focus:ring-brand-primary/15 focus:border-brand-primary/40 focus:bg-white transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
             placeholder="Search by test name, code or category..." value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 -mb-1">
-          <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E5E7EB] rounded-xl shadow-sm h-10 shrink-0">
+          <div className="flex items-center gap-1.5 p-1.5 bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] shrink-0">
             {[
               { id: 'active', label: 'Active', color: 'bg-emerald-500', count: statusCounts.Active },
               { id: 'inactive', label: 'Inactive', color: 'bg-rose-500', count: statusCounts.Inactive },
-              { id: 'All', label: 'All Tests', color: 'bg-slate-400', count: statusCounts.All }
+              { id: 'All', label: 'All Tests', color: 'bg-brand-primary', count: statusCounts.All }
             ].map((btn) => (
-              <div key={btn.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F8FAFC] transition-all whitespace-nowrap h-full border border-transparent hover:border-[#E5E7EB]">
-                <div className={`w-1.5 h-1.5 rounded-full ${btn.color}`}></div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#64748B]">{btn.label}</span>
-                <span className="text-[9px] font-black px-1.5 py-0.5 bg-white border border-[#E5E7EB] rounded-md tabular-nums text-[#1F2937]">{btn.count}</span>
+              <div key={btn.id} className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-slate-50/50 hover:bg-slate-100 transition-all whitespace-nowrap border border-transparent hover:border-slate-200 cursor-pointer">
+                <div className={`w-2 h-2 rounded-full ${btn.color} shadow-sm`}></div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-brand-dark">{btn.label}</span>
+                <span className="text-[9px] font-black px-2 py-0.5 bg-white border border-slate-200/60 rounded-md tabular-nums text-slate-700 shadow-sm">{btn.count}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-[#E5E7EB] relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+      <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         {loading ? (
           <div className="py-24 text-center">
-            <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-5" />
-            <p className="text-[11px] font-bold text-[#98A2B3] uppercase tracking-[0.3em]">Hydrating Catalog...</p>
+            <Loader className="w-10 h-10 animate-spin text-brand-primary mx-auto mb-5" />
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em]">Hydrating Catalog...</p>
           </div>
         ) : tests.length === 0 ? (
           <div className="py-32 text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 transition-transform hover:rotate-12">
-              <Beaker className="w-8 h-8 text-slate-200" />
+            <div className="w-20 h-20 bg-slate-50/50 border border-slate-100 rounded-[40px] flex items-center justify-center mx-auto mb-6 transition-transform hover:rotate-12">
+              <Beaker className="w-8 h-8 text-slate-300" />
             </div>
             <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Catalog Empty</p>
           </div>
         ) : (
           <table className="w-full border-collapse">
-            <thead className="border-y border-slate-100">
+            <thead className="border-y border-slate-100/50">
               <tr>
-                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Test Name / ID</th>
-                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-center text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Category</th>
-                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-center text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Base Price</th>
-                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-center text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Status</th>
-                <th className="sticky top-0 z-20 bg-[#F9FAFB] px-4 py-2.5 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Actions</th>
+                <th className="sticky top-0 z-20 bg-white/95 backdrop-blur px-6 py-4 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Test Name / ID</th>
+                <th className="sticky top-0 z-20 bg-white/95 backdrop-blur px-6 py-4 text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Category</th>
+                <th className="sticky top-0 z-20 bg-white/95 backdrop-blur px-6 py-4 text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Base Price</th>
+                <th className="sticky top-0 z-20 bg-white/95 backdrop-blur px-6 py-4 text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                <th className="sticky top-0 z-20 bg-white/95 backdrop-blur px-6 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
                 {paginatedTests.map((test) => (
-                  <tr key={test.id} className="hover:bg-slate-50/40 transition-all group relative">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-3">
-                        <div className="p-1.5 bg-[#F3F4F6] rounded-lg text-[#1E2A5A]">
-                          <Zap className="w-3.5 h-3.5" />
+                  <tr key={test.id} className="hover:bg-[#F8FAFC] transition-colors group relative border-b border-slate-50 last:border-0">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-[14px] bg-brand-light flex items-center justify-center shrink-0 border border-brand-primary/10 group-hover:scale-105 transition-transform">
+                          <FlaskConical className="w-5 h-5 text-brand-primary" />
                         </div>
                         <div>
-                          <div className="text-[14px] font-semibold text-[#1F2937] leading-tight mb-0.5">{test.testName}</div>
-                          <div className="text-[11px] font-medium text-[#7B8794] uppercase tracking-wider">{test.testCode}</div>
+                          <div className="text-[14px] font-semibold text-brand-dark leading-tight mb-0.5">{test.testName}</div>
+                          <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">ID: {test.testCode}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#4B5563]">{test.category}</td>
-                    <td className="px-4 py-2.5 text-center text-[13px] font-bold text-[#1F2937] tabular-nums">₹{parseFloat(test.price||0).toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shadow-sm transition-all ${
+                    <td className="px-6 py-4 text-center">
+                       <span className="inline-block px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[12px] font-semibold border border-slate-200/60 shadow-sm">{test.category}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                       <div className="text-[13px] font-bold text-brand-dark tabular-nums tracking-tight">₹{parseFloat(test.price||0).toLocaleString()}</div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center justify-center text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border shadow-sm transition-all ${
                         test.status === 'inactive' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                       }`}>
-                        <div className="w-1 h-1 rounded-full bg-current opacity-80 mr-1" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-80 shadow-sm" />
                         {test.status === 'inactive' ? 'Inactive' : 'Active'}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                         {userData?.role !== 'Staff' && (test.labId === 'GLOBAL' || test.isGlobal) && (
                           <button
                             onClick={() => handleCloneTest(test)}
                             title="Clone as local lab copy"
-                            className="p-2 bg-[#F3F4F6] text-[#4B5563] rounded-xl hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm group/clone"
+                            className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/10 rounded-[12px] transition-all"
                           >
                             <Copy className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => handleOpenEdit(test)} className="p-2 bg-[#F3F4F6] text-[#4B5563] rounded-xl hover:bg-[#1E2A5A] hover:text-white transition-all shadow-sm">
+                        <button onClick={() => handleOpenEdit(test)} className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/10 rounded-[12px] transition-all">
                           <Edit3 className="w-4 h-4" />
                         </button>
                         {(isSuperAdmin || (isLabAdmin && test.labId === activeLabId)) && (
-                          <button onClick={() => handleDeleteTest(test.id)} className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                          <button onClick={() => handleDeleteTest(test.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-[12px] transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
@@ -718,12 +725,12 @@ const Tests = () => {
 
       <div className="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 px-2 pb-8">
         <div className="flex items-center gap-4">
-          <p className="text-[13px] font-medium text-[#7B8794]">
-            Showing <span className="text-[#1F2937]">{(currentPage - 1) * rowsPerPage + 1} - {Math.min(currentPage * rowsPerPage, filteredTests.length)}</span> of <span className="text-[#1F2937]">{filteredTests.length}</span> Records
+          <p className="text-[13px] font-medium text-slate-500">
+            Showing <span className="text-brand-dark font-semibold">{(currentPage - 1) * rowsPerPage + 1} - {Math.min(currentPage * rowsPerPage, filteredTests.length)}</span> of <span className="text-brand-dark font-semibold">{filteredTests.length}</span> Records
           </p>
-          <div className="h-4 w-px bg-[#E5E7EB] hidden md:block" />
+          <div className="h-4 w-px bg-slate-200 hidden md:block" />
           <select 
-             className="bg-white border border-[#E5E7EB] px-3 py-1.5 rounded-lg text-[13px] font-semibold text-[#7B8794] outline-none cursor-pointer hover:border-[#1E2A5A] transition-all"
+             className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl text-[13px] font-semibold text-slate-600 outline-none cursor-pointer hover:border-brand-primary/50 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
              value={rowsPerPage}
              onChange={e => setRowsPerPage(parseInt(e.target.value))}
            >
@@ -738,7 +745,7 @@ const Tests = () => {
              <button 
                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                disabled={currentPage === 1}
-               className="p-2 bg-white border border-[#E5E7EB] rounded-xl text-[#98A2B3] hover:text-[#1E2A5A] hover:border-[#1E2A5A] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+               className="p-2 bg-white border border-slate-200/80 rounded-xl text-slate-400 hover:text-brand-primary hover:border-brand-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] active:scale-95"
               >
                <ChevronLeft className="w-5 h-5" />
              </button>
@@ -750,8 +757,8 @@ const Tests = () => {
                     onClick={() => setCurrentPage(i + 1)}
                     className={`w-9 h-9 rounded-xl text-[12px] font-semibold transition-all ${
                       currentPage === i + 1 
-                        ? 'bg-[#1E2A5A] text-white shadow-lg shadow-[#1E2A5A]/20 scale-105' 
-                        : 'bg-white text-[#7B8794] hover:bg-[#F3F4F6] border border-[#E5E7EB]'
+                        ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20 scale-105' 
+                        : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
                     }`}
                   >
                     {i + 1}
@@ -762,7 +769,7 @@ const Tests = () => {
              <button 
                onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredTests.length / rowsPerPage), p + 1))}
                disabled={currentPage === Math.ceil(filteredTests.length / rowsPerPage) || Math.ceil(filteredTests.length / rowsPerPage) === 0}
-               className="p-2 bg-white border border-[#E5E7EB] rounded-xl text-[#98A2B3] hover:text-[#1E2A5A] hover:border-[#1E2A5A] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+               className="p-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-400 hover:text-brand-primary hover:border-brand-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
               >
                <ChevronRight className="w-5 h-5" />
              </button>
@@ -772,21 +779,21 @@ const Tests = () => {
 
       {/* ══════════════════════════════ MODAL ══════════════════════════════ */}
       {showModal && (
-        <div className="fixed inset-0 z-[200] bg-[#1F2937]/80 backdrop-blur-md flex items-start justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-md flex items-start justify-center p-4 overflow-y-auto">
           <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-6xl my-6 flex flex-col overflow-hidden text-left animate-in zoom-in-95 duration-200">
 
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-8 py-6 border-b border-[#E5E7EB] bg-[#F9FAFB] shrink-0">
+            <div className="flex justify-between items-center px-8 py-6 border-b border-slate-200 bg-slate-50 shrink-0">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#1E2A5A] rounded-2xl shadow-lg shadow-[#1E2A5A]/20 rotate-3">
+                <div className="p-3 bg-brand-dark rounded-2xl shadow-lg shadow-brand-dark/20 rotate-3">
                   <FlaskConical className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[#1F2937] tracking-tight">{testForm.id ? 'Edit Protocol' : 'New Configuration'}</h2>
-                  <p className="text-[12px] text-[#7B8794] font-medium mt-1">{testForm.testName || 'Protocol setup definition'}</p>
+                  <h2 className="text-xl font-bold text-brand-dark tracking-tight">{testForm.id ? 'Edit Protocol' : 'New Configuration'}</h2>
+                  <p className="text-[12px] text-slate-500 font-medium mt-1">{testForm.testName || 'Protocol setup definition'}</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2.5 bg-white border border-[#E5E7EB] shadow-sm hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all text-[#98A2B3]">
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-white border border-slate-200 shadow-sm hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all text-slate-400">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -798,12 +805,12 @@ const Tests = () => {
               <section>
                 <div className="flex items-center gap-3 mb-6">
                   <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">1. Basic schema</span>
-                  <div className="h-px bg-[#E5E7EB] flex-grow" />
+                  <div className="h-px bg-slate-200 flex-grow" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
                     <Label>Test Code *</Label>
-                    <Input placeholder="CBC001" value={testForm.testCode} disabled={!canEditFull} onChange={e => setTestForm({...testForm, testCode: e.target.value.toUpperCase()})} className="font-mono text-[#1E2A5A] font-bold"/>
+                    <Input placeholder="CBC001" value={testForm.testCode} disabled={!canEditFull} onChange={e => setTestForm({...testForm, testCode: e.target.value.toUpperCase()})} className="font-mono text-brand-dark font-bold"/>
 
                   </div>
                   <div className="col-span-2">
@@ -837,7 +844,7 @@ const Tests = () => {
 
                   <div>
                     <Label>Price (₹) *</Label>
-                    <Input ref={priceInputRef} type="number" value={testForm.price} onChange={e => setTestForm({...testForm, price: parseFloat(e.target.value)})} className="text-[#1E2A5A] font-bold"/>
+                    <Input ref={priceInputRef} type="number" value={testForm.price} onChange={e => setTestForm({...testForm, price: parseFloat(e.target.value)})} className="text-brand-dark font-bold"/>
                   </div>
                   <div>
                     <Label>Report Layout</Label>
@@ -857,25 +864,25 @@ const Tests = () => {
                   <section>
                     <div className="flex items-center gap-3 mb-6">
                       <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100 shadow-sm">2. Parameter Groups</span>
-                      <div className="h-px bg-[#E5E7EB] flex-grow" />
+                      <div className="h-px bg-slate-200 flex-grow" />
                     </div>
                     <div className="space-y-6">
                       <div className="flex gap-3">
                         <Input placeholder="Add logical group (e.g. CBC, Liver Profile)" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddGroup()}/>
-                        <button onClick={handleAddGroup} className="px-6 py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold uppercase tracking-wide flex items-center gap-2 hover:scale-[1.02] transition-all shadow-lg shadow-[#1E2A5A]/20 active:scale-95 whitespace-nowrap">
+                        <button onClick={handleAddGroup} className="px-6 py-2.5 bg-brand-dark text-white rounded-xl text-[12px] font-bold uppercase tracking-wide flex items-center gap-2 hover:scale-[1.02] transition-all shadow-lg shadow-brand-dark/20 active:scale-95 whitespace-nowrap">
                           <FolderPlus className="w-4 h-4 text-white" /> Add Group
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-2.5">
                         {testForm.groups.map((group, idx) => (
                           <div key={idx} onClick={() => { setSelectedGroupIndex(idx); setSelectedParamIndex(-1); }}
-                            className={`px-4 py-2.5 rounded-xl border flex items-center gap-4 cursor-pointer transition-all ${selectedGroupIndex === idx ? 'bg-[#1E2A5A] border-[#1E2A5A] text-white shadow-xl shadow-[#1E2A5A]/20' : 'bg-white border-[#E5E7EB] text-[#7B8794] hover:border-[#1E2A5A] hover:bg-[#F3F4F6]'}`}>
+                            className={`px-4 py-2.5 rounded-xl border flex items-center gap-4 cursor-pointer transition-all ${selectedGroupIndex === idx ? 'bg-brand-dark border-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'bg-white border-slate-200 text-slate-500 hover:border-brand-primary hover:bg-slate-50'}`}>
                             <div className="flex items-center gap-3">
-                              <Folder className={`w-4 h-4 ${selectedGroupIndex === idx ? 'text-white' : 'text-[#98A2B3]'}`} />
+                              <Folder className={`w-4 h-4 ${selectedGroupIndex === idx ? 'text-white' : 'text-slate-400'}`} />
                               <span className="text-sm font-bold tracking-tight">{group.group_name}</span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-lg ${selectedGroupIndex === idx ? 'bg-white/20 text-white' : 'bg-[#F3F4F6] text-[#7B8794]'}`}>{group.parameters.length}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-lg ${selectedGroupIndex === idx ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{group.parameters.length}</span>
                             </div>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteGroup(idx); }} className={`p-1 rounded-lg transition-colors ${selectedGroupIndex === idx ? 'hover:bg-white/20 text-white' : 'hover:bg-rose-100 text-[#98A2B3] hover:text-rose-600'}`}>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteGroup(idx); }} className={`p-1 rounded-lg transition-colors ${selectedGroupIndex === idx ? 'hover:bg-white/20 text-white' : 'hover:bg-rose-100 text-slate-400 hover:text-rose-600'}`}>
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -890,19 +897,19 @@ const Tests = () => {
                     <section>
                       <div className="flex items-center gap-3 mb-6">
                         <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">3. Parameters {selectedGroupIndex >= 0 && `(${testForm.groups[selectedGroupIndex].group_name})`}</span>
-                        <div className="h-px bg-[#E5E7EB] flex-grow" />
+                        <div className="h-px bg-slate-200 flex-grow" />
                       </div>
                       {selectedGroupIndex === -1 ? (
-                        <div className="py-20 text-center border border-[#E5E7EB] border-dashed rounded-3xl bg-[#F9FAFB]">
-                          <Layers className="w-10 h-10 text-[#D1D5DB] mx-auto mb-3" />
-                          <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider">Select group above to manage parameters</p>
+                        <div className="py-20 text-center border border-slate-200 border-dashed rounded-3xl bg-slate-50">
+                          <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                          <p className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Select group above to manage parameters</p>
                         </div>
                       ) : (
                         <div className="space-y-6">
-                           <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-5 space-y-4 relative">
+                           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 relative">
                               <Label>Search & Select from Master Library</Label>
                               <div className="relative group">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
                                 <Input 
                                   ref={paramSearchInputRef}
                                   placeholder="Type to search or click to view all..." 
@@ -912,10 +919,10 @@ const Tests = () => {
                                   className="pl-10"
                                 />
                                 {showParamLibraryMenu && (
-                                  <div className="absolute z-[300] left-0 right-0 mt-2 bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#F3F4F6] p-1">
-                                    <div className="flex justify-between items-center p-2 px-4 bg-[#F9FAFB] rounded-t-xl mb-1 sticky top-0 z-10">
-                                      <span className="text-[10px] font-bold text-[#98A2B3] uppercase tracking-widest">Parameter Library</span>
-                                      <button onClick={(e) => { e.stopPropagation(); setShowParamLibraryMenu(false); }} className="p-1 hover:bg-[#E5E7EB] rounded-lg text-[#98A2B3]">
+                                  <div className="absolute z-[300] left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar divide-y divide-slate-100 p-1">
+                                    <div className="flex justify-between items-center p-2 px-4 bg-slate-50 rounded-t-xl mb-1 sticky top-0 z-10">
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Parameter Library</span>
+                                      <button onClick={(e) => { e.stopPropagation(); setShowParamLibraryMenu(false); }} className="p-1 hover:bg-slate-200 rounded-lg text-slate-400">
                                         <X className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
@@ -931,34 +938,34 @@ const Tests = () => {
                                             e.preventDefault();
                                             handleSelectMasterParam(p);
                                           }} 
-                                          className="w-full text-left px-4 py-3 hover:bg-[#F3F4F6] transition-colors flex items-center justify-between group rounded-xl">
+                                          className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group rounded-xl">
                                           <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-[#1F2937] group-hover:text-[#1E2A5A] transition-colors">{p.name}</span>
-                                            <span className="text-[10px] text-[#98A2B3] font-bold uppercase tracking-widest">{p.code} <span className="text-[#E5E7EB] mx-1">|</span> {p.unit || 'No unit'}</span>
+                                            <span className="text-sm font-bold text-brand-dark group-hover:text-brand-primary transition-colors">{p.name}</span>
+                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{p.code} <span className="text-slate-200 mx-1">|</span> {p.unit || 'No unit'}</span>
                                           </div>
-                                          <Plus className="w-4 h-4 text-[#D1D5DB] group-hover:text-[#1E2A5A] transition-all group-active:scale-125" />
+                                          <Plus className="w-4 h-4 text-slate-300 group-hover:text-brand-primary transition-all group-active:scale-125" />
                                         </button>
                                       ))}
                                     {masterParams.length > 0 && masterParams.filter(p => !paramSearch || p.name?.toLowerCase().includes(paramSearch.toLowerCase()) || p.code?.toLowerCase().includes(paramSearch.toLowerCase())).length === 0 && (
-                                      <div className="p-10 text-center text-[11px] font-bold text-[#98A2B3] uppercase tracking-wider">No match found</div>
+                                      <div className="p-10 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">No match found</div>
                                     )}
                                   </div>
                                 )}
                               </div>
-                              <p className="text-[11px] text-[#7B8794] font-medium px-1 italic">Select from master catalog to add into this test.</p>
+                              <p className="text-[11px] text-slate-500 font-medium px-1 italic">Select from master catalog to add into this test.</p>
                            </div>
 
-                           <div className="max-h-80 overflow-y-auto border border-[#E5E7EB] rounded-2xl divide-y divide-[#F3F4F6] bg-white shadow-sm custom-scrollbar">
+                           <div className="max-h-80 overflow-y-auto border border-slate-200 rounded-2xl divide-y divide-slate-100 bg-white shadow-sm custom-scrollbar">
                               {testForm.groups[selectedGroupIndex].parameters.map((p, pi) => (
                                 <div key={pi} onClick={() => { setSelectedParamIndex(pi); setParamInput({...p}); setSelectedRuleIndex(-1); setRuleInput({ gender: 'Any', ageMin: 0, ageMax: 100, ageUnit: 'Years', normalRange: '', criticalLow: '', criticalHigh: '' }); }}
-                                  className={`px-5 py-4 flex items-center justify-between cursor-pointer group transition-all ${selectedParamIndex === pi ? 'bg-[#F3F4F6] border-l-4 border-[#1E2A5A]' : 'hover:bg-[#F9FAFB]'}`}>
+                                  className={`px-5 py-4 flex items-center justify-between cursor-pointer group transition-all ${selectedParamIndex === pi ? 'bg-slate-50 border-l-4 border-brand-primary' : 'hover:bg-slate-50'}`}>
                                   <div>
-                                    <div className="text-sm font-bold text-[#1F2937]">{p.name}</div>
-                                    <div className="text-[11px] font-medium text-[#7B8794] uppercase flex items-center gap-2 mt-1">
-                                      <span>{p.code}</span> <span className="text-[#E5E7EB]">|</span> <span>{p.unit || 'No unit'}</span>
+                                    <div className="text-sm font-bold text-brand-dark">{p.name}</div>
+                                    <div className="text-[11px] font-medium text-slate-500 uppercase flex items-center gap-2 mt-1">
+                                      <span>{p.code}</span> <span className="text-slate-200">|</span> <span>{p.unit || 'No unit'}</span>
                                     </div>
                                   </div>
-                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(selectedGroupIndex, pi); }} className="p-2 text-[#98A2B3] hover:text-rose-500 rounded-lg transition-all">
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(selectedGroupIndex, pi); }} className="p-2 text-slate-400 hover:text-rose-500 rounded-lg transition-all">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
@@ -972,16 +979,16 @@ const Tests = () => {
                     <section>
                       <div className="flex items-center gap-3 mb-6">
                         <span className="text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">4. Rules {selectedParamIndex >= 0 && `(${testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].name})`}</span>
-                        <div className="h-px bg-[#E5E7EB] flex-grow" />
+                        <div className="h-px bg-slate-200 flex-grow" />
                       </div>
                       {selectedParamIndex === -1 ? (
-                        <div className="py-20 text-center border border-[#E5E7EB] border-dashed rounded-3xl bg-[#F9FAFB]">
-                          <Zap className="w-10 h-10 text-[#D1D5DB] mx-auto mb-3" />
-                          <p className="text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider">Select parameter to manage rules</p>
+                        <div className="py-20 text-center border border-slate-200 border-dashed rounded-3xl bg-slate-50">
+                          <Zap className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                          <p className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Select parameter to manage rules</p>
                         </div>
                       ) : (
                         <div className="space-y-6">
-                           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm border-t-4 border-t-[#1E2A5A]/10 space-y-5">
+                           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm border-t-4 border-t-brand-primary/10 space-y-5">
                               <div className="grid grid-cols-4 gap-4">
                                 <div><Label>Gender</Label><Select value={ruleInput.gender} onChange={e => setRuleInput({...ruleInput, gender: e.target.value})}><option>Any</option><option>Male</option><option>Female</option></Select></div>
                                 <div><Label>Min Age</Label><Input type="number" value={ruleInput.ageMin} onChange={e => setRuleInput({...ruleInput, ageMin: parseInt(e.target.value)})}/></div>
@@ -998,37 +1005,37 @@ const Tests = () => {
                                   </button>
                                 ) : (
                                   <>
-                                    <button onClick={handleUpdateRule} disabled={!hasRuleChanged()} className="flex-grow py-2.5 bg-[#1E2A5A] text-white rounded-xl text-[12px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 hover:scale-[1.02] disabled:opacity-50">Update Rule</button>
-                                    <button onClick={handleClearRule} className="px-6 py-2.5 bg-[#F3F4F6] text-[#7B8794] rounded-xl text-[12px] font-bold uppercase hover:bg-[#E5E7EB] hover:text-[#1F2937] transition-all">Clear</button>
+                                    <button onClick={handleUpdateRule} disabled={!hasRuleChanged()} className="flex-grow py-2.5 bg-brand-dark text-white rounded-xl text-[12px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 hover:scale-[1.02] disabled:opacity-50">Update Rule</button>
+                                    <button onClick={handleClearRule} className="px-6 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-[12px] font-bold uppercase hover:bg-slate-200 hover:text-brand-dark transition-all">Clear</button>
                                   </>
                                 )}
                               </div>
                            </div>
 
-                           <div className="max-h-56 overflow-y-auto border border-[#E5E7EB] rounded-2xl bg-white shadow-sm overflow-x-auto custom-scrollbar">
+                           <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-2xl bg-white shadow-sm overflow-x-auto custom-scrollbar">
                               <table className="w-full text-left">
-                                <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB] sticky top-0">
+                                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
                                   <tr>
-                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Gender</th>
-                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Age Range</th>
-                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider">Normal Range</th>
-                                    <th className="px-5 py-3 text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider text-right">Actions</th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Gender</th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Age Range</th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Normal Range</th>
+                                    <th className="px-5 py-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[#F3F4F6]">
+                                <tbody className="divide-y divide-slate-100">
                                   {testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].rules?.map((rule, idx) => (
                                     <tr key={idx} onClick={() => { setSelectedRuleIndex(idx); setRuleInput({...rule}); }}
-                                      className={`cursor-pointer transition-all ${selectedRuleIndex === idx ? 'bg-emerald-50/50 border-l-4 border-emerald-500' : 'hover:bg-[#F9FAFB]'}`}>
-                                      <td className="px-5 py-3 text-[13px] font-bold text-[#1F2937]">{rule.gender}</td>
-                                      <td className="px-5 py-3 text-[13px] font-medium text-[#4B5563]">{rule.ageMin}-{rule.ageMax} {rule.ageUnit}</td>
+                                      className={`cursor-pointer transition-all ${selectedRuleIndex === idx ? 'bg-emerald-50/50 border-l-4 border-emerald-500' : 'hover:bg-slate-50'}`}>
+                                      <td className="px-5 py-3 text-[13px] font-bold text-brand-dark">{rule.gender}</td>
+                                      <td className="px-5 py-3 text-[13px] font-medium text-slate-600">{rule.ageMin}-{rule.ageMax} {rule.ageUnit}</td>
                                       <td className="px-5 py-3 text-[13px] font-bold text-emerald-600">{rule.normalRange}</td>
                                       <td className="px-5 py-3 text-right">
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteRule(idx); }} className="p-1.5 text-[#98A2B3] hover:text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteRule(idx); }} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                                       </td>
                                     </tr>
                                   ))}
                                   {(!testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].rules?.length) && (
-                                    <tr><td colSpan={4} className="p-10 text-center text-[12px] font-semibold text-[#98A2B3] uppercase tracking-wider">No rules defined for this parameter</td></tr>
+                                    <tr><td colSpan={4} className="p-10 text-center text-[12px] font-semibold text-slate-400 uppercase tracking-wider">No rules defined for this parameter</td></tr>
                                   )}
                                 </tbody>
                               </table>
@@ -1042,12 +1049,12 @@ const Tests = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-8 py-5 border-t border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-between shrink-0 select-none">
-              <div className="flex items-center gap-4 text-[11px] text-[#7B8794] font-bold uppercase tracking-wider">
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#1E2A5A]" /> {testForm.groups?.length || 0} Parameter Groups</div>
+            <div className="px-8 py-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0 select-none">
+              <div className="flex items-center gap-4 text-[11px] text-slate-500 font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-dark" /> {testForm.groups?.length || 0} Parameter Groups</div>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => setShowModal(false)} className="px-6 py-2.5 text-[12px] font-bold text-[#7B8794] uppercase hover:text-[#1F2937] transition-colors">Cancel</button>
+                <button onClick={() => setShowModal(false)} className="px-6 py-2.5 text-[12px] font-bold text-slate-500 uppercase hover:text-brand-dark transition-colors">Cancel</button>
                 <button onClick={handleCreateTest} disabled={saving} className="px-10 py-2.5 bg-emerald-600 text-white rounded-xl text-[12px] font-bold uppercase tracking-wide hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100 active:scale-95 disabled:opacity-50">
                   {saving ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                   {testForm.id ? 'Update Test' : 'Publish Test'}

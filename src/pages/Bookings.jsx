@@ -841,18 +841,18 @@ const Bookings = () => {
           {/* 1. Page Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
             <div>
-              <h1 className="text-[20px] font-bold text-[#1F2937] leading-tight flex items-center">
+              <h1 className="text-xl font-display font-bold text-brand-dark leading-tight flex items-center">
                 <div className="p-2 bg-brand-light rounded-xl mr-3 shadow-sm border border-brand-primary/10 transition-transform hover:scale-110">
                   <Calendar className="w-5 h-5 text-brand-primary" />
                 </div>
                 Bookings
               </h1>
-              <p className="text-[11px] font-medium text-[#7B8794] mt-1 tracking-wide">Catalog and manage diagnostic orders and patient records.</p>
+              <p className="text-[11px] font-medium text-slate-500 mt-1 tracking-wide">Catalog and manage diagnostic orders and patient records.</p>
             </div>
             
             <button 
               onClick={handleNewBooking}
-              className="w-full md:w-auto bg-[#1E2A5A] text-white px-5 py-2.5 rounded-xl font-bold tracking-widest text-[10px] uppercase shadow-lg hover:shadow-[#1E2A5A]/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
+              className="w-full md:w-auto bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold tracking-widest text-[10px] uppercase shadow-lg hover:shadow-brand-primary/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
             >
               <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-500" />
               New Booking
@@ -863,10 +863,10 @@ const Bookings = () => {
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {/* Search Bar */}
             <div className="flex-1 min-w-[280px] relative group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98A2B3] group-focus-within:text-[#1E2A5A] transition-colors" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
               <input 
                 type="text" 
-                className="w-full h-10 pl-11 pr-4 bg-white border border-[#E5E7EB] rounded-[5px] focus:ring-4 focus:ring-[#1E2A5A]/5 focus:border-[#1E2A5A] transition-all font-bold text-[13px] text-[#1F2937] outline-none placeholder:text-slate-300 shadow-sm"
+                className="w-full h-10 pl-11 pr-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary/30 transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-300 shadow-sm"
                 placeholder="Search by patient name, ID or booking ID..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -874,20 +874,20 @@ const Bookings = () => {
             </div>
 
             {/* Date Filters */}
-            <div className="flex items-center gap-2 p-1 bg-white border border-[#E5E7EB] rounded-[5px] shadow-sm h-10">
+            <div className="flex items-center gap-2 p-1 bg-white border border-slate-200 rounded-xl shadow-sm h-10">
               <div className="flex items-center gap-2 px-3">
-                <Calendar className="w-4 h-4 text-[#98A2B3]" />
+                <Calendar className="w-4 h-4 text-slate-400" />
                 <div className="flex items-center gap-1.5">
                   <input 
                     type="date" 
-                    className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] focus:ring-0 p-0 w-[100px] cursor-pointer"
+                    className="bg-transparent border-none text-[11px] font-bold text-brand-dark focus:ring-0 p-0 w-[100px] cursor-pointer"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
-                  <span className="text-[10px] font-bold text-[#98A2B3] uppercase tracking-widest">To</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">To</span>
                   <input 
                     type="date" 
-                    className="bg-transparent border-none text-[11px] font-bold text-[#1F2937] focus:ring-0 p-0 w-[100px] cursor-pointer"
+                    className="bg-transparent border-none text-[11px] font-bold text-brand-dark focus:ring-0 p-0 w-[100px] cursor-pointer"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -896,15 +896,15 @@ const Bookings = () => {
             </div>
 
             {/* Quick Priority Filter */}
-            <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E5E7EB] rounded-[5px] shadow-sm h-10">
+            <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-xl shadow-sm h-10">
               {['All', 'STAT', 'Urgent'].map((p) => (
                 <button
                   key={p}
                   onClick={() => setUrgencyFilter(p)}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
                     urgencyFilter === p 
-                      ? 'bg-[#1E2A5A] text-white shadow-sm' 
-                      : 'text-[#64748B] hover:bg-[#F8FAFC]'
+                      ? 'bg-brand-primary text-white shadow-sm' 
+                      : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
                   {p}
@@ -923,7 +923,7 @@ const Bookings = () => {
                   setUrgencyFilter('All');
                   setPaymentFilter('All');
                 }}
-                className="w-10 h-10 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-xl text-[#64748B] hover:text-[#1E2A5A] hover:bg-[#F8FAFC] transition-all shadow-sm group"
+                className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-brand-primary hover:bg-slate-50 transition-all shadow-sm group"
                 title="Reset Filters"
               >
                 <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
@@ -931,9 +931,9 @@ const Bookings = () => {
 
               <button 
                 onClick={handleExportCSV}
-                className="flex items-center gap-2 px-4 h-10 bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl text-[10px] font-bold text-[#1F2937] hover:bg-[#1E2A5A] hover:text-white transition-all uppercase tracking-widest shadow-sm active:scale-95 group"
+                className="flex items-center gap-2 px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-brand-dark hover:bg-brand-primary hover:text-white transition-all uppercase tracking-widest shadow-sm active:scale-95 group"
               >
-                <Download className="w-3.5 h-3.5 text-[#1E2A5A] group-hover:text-white transition-colors" />
+                <Download className="w-3.5 h-3.5 text-brand-primary group-hover:text-white transition-colors" />
                 CSV
               </button>
             </div>
@@ -941,7 +941,7 @@ const Bookings = () => {
 
           {/* Quick Status Chips (Billing Style) */}
           <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 -mb-1 mb-6">
-            <div className="flex items-center gap-1 p-1 bg-white border border-[#E5E7EB] rounded-[5px] shadow-sm h-10 shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-white border border-slate-200 rounded-[5px] shadow-sm h-10 shrink-0">
               {[
                 { id: 'All', label: 'All', color: 'bg-slate-400', count: statusCounts.Total },
                 { id: 'Active', label: 'Active', color: 'bg-blue-500', count: statusCounts.Total - statusCounts.Delivered - statusCounts.Cancelled },
@@ -956,14 +956,14 @@ const Bookings = () => {
                   onClick={() => setStatusFilter(btn.id)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap h-full ${
                     statusFilter === btn.id 
-                      ? 'bg-[#1E2A5A] text-white shadow-sm' 
-                      : 'text-[#64748B] hover:bg-[#F8FAFC]'
+                      ? 'bg-brand-dark text-white shadow-sm' 
+                      : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
                   <div className={`w-1.5 h-1.5 rounded-full ${statusFilter === btn.id ? 'bg-white' : btn.color}`}></div>
                   <span className="text-[10px] font-bold uppercase tracking-wider">{btn.label}</span>
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md tabular-nums ${
-                    statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
+                    statusFilter === btn.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
                   }`}>
                     {btn.count}
                   </span>
@@ -972,25 +972,25 @@ const Bookings = () => {
             </div>
           </div>
 
-          <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-[#E5E7EB] relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+          <div className="flex-grow overflow-y-auto pr-2 -mr-2 custom-scrollbar min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 relative" style={{ maxHeight: 'calc(100vh - 280px)' }}>
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Booking ID</th>
-                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Patient / Doctor</th>
-                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Tests</th>
-                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Status</th>
-                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Amount</th>
-                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-left text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Date</th>
-                  <th className="sticky top-0 z-20 bg-[#F9FAFB] px-6 py-3 text-right text-[10px] font-semibold text-[#98A2B3] uppercase tracking-wider shadow-sm">Actions</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Booking ID</th>
+                  <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Patient / Doctor</th>
+                  <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Tests</th>
+                  <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Status</th>
+                  <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Amount</th>
+                  <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Date</th>
+                  <th className="sticky top-0 z-20 bg-slate-50 px-6 py-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider shadow-sm">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
+              <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
                     <td colSpan="7" className="py-24 text-center">
-                       <Loader className="w-10 h-10 animate-spin text-[#1E2A5A] mx-auto mb-5" />
-                       <p className="text-[14px] font-medium text-[#7B8794]">Synchronizing Records...</p>
+                       <Loader className="w-10 h-10 animate-spin text-brand-primary mx-auto mb-5" />
+                       <p className="text-[14px] font-medium text-slate-500">Synchronizing Records...</p>
                     </td>
                   </tr>
                 ) : filteredBookings.length === 0 ? (
@@ -999,30 +999,30 @@ const Bookings = () => {
                        <div className="w-20 h-20 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 transition-transform hover:rotate-12">
                          <Database className="w-8 h-8 text-slate-200" />
                        </div>
-                       <p className="text-[16px] font-medium text-[#98A2B3]">Zero Matching Records Found</p>
+                       <p className="text-[16px] font-medium text-slate-400">Zero Matching Records Found</p>
                     </td>
                   </tr>
                 ) : paginatedBookings.map((b) => (
-                  <tr key={b.id} className={`hover:bg-[#F9FAFB] transition-colors group border-b border-[#F3F4F6] ${activeDropdownId === b.id ? 'z-50' : 'z-auto'}`}>
+                  <tr key={b.id} className={`hover:bg-slate-50/50 transition-colors group border-b border-slate-100 ${activeDropdownId === b.id ? 'z-50' : 'z-auto'}`}>
                     <td className="px-6 py-2.5">
-                      <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${b.balance > 0 ? 'bg-rose-600 text-white shadow-sm' : 'text-[#1E2A5A] bg-slate-100'}`}>
+                      <div className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold transition-all ${b.balance > 0 ? 'bg-rose-600 text-white shadow-sm' : 'text-brand-primary bg-slate-100'}`}>
                         {b.billId || b.bookingId}
                       </div>
                     </td>
                     <td className="px-6 py-2.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-[#F1F5F9] flex items-center justify-center text-[#1E2A5A] font-bold text-xs border border-[#E5E7EB] shadow-sm group-hover:scale-110 transition-transform">
+                        <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-brand-primary font-bold text-xs border border-slate-200 shadow-sm group-hover:scale-110 transition-transform">
                           {getInitials(b.patientName)}
                         </div>
                         <div>
-                          <div className="text-[14px] font-semibold text-[#1F2937] leading-tight group-hover:text-brand-primary transition-colors">{b.patientName}</div>
-                          <div className="text-[11px] font-medium text-[#7B8794] mt-0.5 uppercase tracking-wider">Dr. {b.doctorName || 'DIRECT VISIT'}</div>
+                          <div className="text-[14px] font-semibold text-brand-dark leading-tight group-hover:text-brand-primary transition-colors">{b.patientName}</div>
+                          <div className="text-[11px] font-medium text-slate-500 mt-0.5 uppercase tracking-wider">Dr. {b.doctorName || 'DIRECT VISIT'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-2.5 max-w-[200px]">
-                      <div className="text-[11px] font-medium text-[#4B5563] leading-tight mb-0.5">{b.testIds?.length} Tests</div>
-                      <div className="text-[11px] font-medium text-[#7B8794] truncate" title={b.testNames}>{b.testNames}</div>
+                      <div className="text-[11px] font-medium text-slate-600 leading-tight mb-0.5">{b.testIds?.length} Tests</div>
+                      <div className="text-[11px] font-medium text-slate-400 truncate" title={b.testNames}>{b.testNames}</div>
                     </td>
                     <td className="px-6 py-2.5">
                        <div className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm border ${getStatusStyles(b.status || 'Pending')}`}>
@@ -1101,12 +1101,12 @@ const Bookings = () => {
           {/* 6. Professional Pagination Footer */}
           <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 px-6 pb-6">
             <div className="flex items-center gap-4">
-              <p className="text-[11px] font-medium text-[#7B8794] uppercase tracking-wider">
-                Records <span className="text-[#1F2937] font-bold px-1">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredBookings.length)}</span> of <span className="text-[#1F2937] font-bold">{filteredBookings.length}</span>
+              <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+                Records <span className="text-brand-dark font-bold px-1">{(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filteredBookings.length)}</span> of <span className="text-brand-dark font-bold">{filteredBookings.length}</span>
               </p>
-              <div className="h-3 w-[1px] bg-[#E5E7EB] hidden md:block" />
+              <div className="h-3 w-[1px] bg-slate-200 hidden md:block" />
               <select 
-                 className="bg-[#F8FAFC] border border-[#E5E7EB] px-3 py-1.5 rounded-[5px] text-[11px] font-bold text-[#1F2937] outline-none cursor-pointer hover:bg-white transition-all uppercase tracking-wider"
+                 className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-[5px] text-[11px] font-bold text-brand-dark outline-none cursor-pointer hover:bg-white transition-all uppercase tracking-wider"
                  value={rowsPerPage}
                  onChange={e => {
                     setRowsPerPage(parseInt(e.target.value));
@@ -1124,7 +1124,7 @@ const Bookings = () => {
               <button 
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="w-10 h-10 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-xl text-[#64748B] hover:text-[#1E2A5A] hover:bg-[#F8FAFC] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-brand-primary hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -1136,8 +1136,8 @@ const Bookings = () => {
                     onClick={() => setCurrentPage(i + 1)}
                     className={`w-10 h-10 rounded-xl text-[11px] font-bold transition-all duration-200 ${
                       currentPage === i + 1 
-                        ? 'bg-[#1E2A5A] text-white shadow-md' 
-                        : 'bg-white text-[#64748B] hover:bg-[#F8FAFC] border border-[#E5E7EB]'
+                        ? 'bg-brand-primary text-white shadow-md' 
+                        : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
                     }`}
                   >
                     {i + 1}
@@ -1148,7 +1148,7 @@ const Bookings = () => {
               <button 
                 onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredBookings.length / rowsPerPage), p + 1))}
                 disabled={currentPage === Math.ceil(filteredBookings.length / rowsPerPage)}
-                className="w-10 h-10 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-xl text-[#64748B] hover:text-[#1E2A5A] hover:bg-[#F8FAFC] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-brand-primary hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

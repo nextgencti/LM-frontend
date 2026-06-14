@@ -8,17 +8,17 @@ import { useAuth } from '../context/AuthContext';
 
 /* ─── Tiny reusable primitives ───────────────────────────────────────────── */
 const Label = ({ children }) => (
-  <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">{children}</label>
+  <label className="block text-[10px] font-bold text-gray-500 mb-0.5 uppercase tracking-wide">{children}</label>
 );
 const Input = ({ className = '', ...props }) => (
   <input
-    className={`w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-800 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all placeholder:text-gray-300 ${className}`}
+    className={`w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs font-medium text-gray-800 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all placeholder:text-gray-300 ${className}`}
     {...props}
   />
 );
 const Select = ({ className = '', children, ...props }) => (
   <select
-    className={`w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-800 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all appearance-none cursor-pointer ${className}`}
+    className={`w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs font-medium text-gray-800 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all appearance-none cursor-pointer ${className}`}
     {...props}
   >
     {children}
@@ -332,62 +332,62 @@ const GlobalTestCatalog = () => {
 
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="p-3 md:p-5 max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500">
       
       {/* ── HEADER ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2.5 bg-red-600 rounded-2xl shadow-lg shadow-red-200">
-              <Database className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-2 mb-0.5">
+            <div className="p-1.5 bg-red-600 rounded-xl shadow-md shadow-red-200">
+              <Database className="w-4 h-4 text-white" />
             </div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Master Catalog</h1>
+            <h1 className="text-lg font-black text-gray-900 tracking-tight">Master Catalog</h1>
           </div>
-          <p className="text-gray-400 font-medium text-sm flex items-center gap-2">
-            <Globe className="w-4 h-4 text-red-400" /> Standardized Global Diagnostic Definitions
+          <p className="text-gray-400 font-medium text-[10px] flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5 text-red-400" /> Standardized Global Diagnostic Definitions
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-red-500 transition-colors" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-red-500 transition-colors" />
             <input 
               type="text"
               placeholder="Search tests..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold uppercase tracking-widest outline-none focus:bg-white focus:border-red-400 focus:ring-4 focus:ring-red-50 transition-all w-64"
+              className="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-[10px] font-bold uppercase tracking-widest outline-none focus:bg-white focus:border-red-400 focus:ring-4 focus:ring-red-50 transition-all w-48"
             />
           </div>
-          <button onClick={() => { resetForm(); setShowAddModal(true); }} className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-100">
-            <Plus className="w-4 h-4" /> New Master Test
+          <button onClick={() => { resetForm(); setShowAddModal(true); }} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-red-700 transition-all shadow-md shadow-red-100">
+            <Plus className="w-3 h-3" /> New Master Test
           </button>
         </div>
       </div>
 
       {/* ── TABLE ── */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="py-24 flex flex-col items-center gap-3">
-            <Loader className="w-8 h-8 animate-spin text-red-500" />
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Warming up catalog…</p>
+          <div className="py-16 flex flex-col items-center gap-2">
+            <Loader className="w-6 h-6 animate-spin text-red-500" />
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Warming up catalog…</p>
           </div>
         ) : tests.length === 0 ? (
-          <div className="py-24 text-center space-y-3">
-            <Beaker className="w-16 h-16 text-gray-100 mx-auto" />
-            <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">No master tests defined</p>
+          <div className="py-16 text-center space-y-2">
+            <Beaker className="w-12 h-12 text-gray-100 mx-auto" />
+            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No master tests defined</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-gray-50/50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+              <thead className="bg-gray-50/50 border-b border-gray-100 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
                 <tr>
-                  <th className="px-8 py-5">Diagnostic Test</th>
-                  <th className="px-8 py-5">Code / Sample</th>
-                  <th className="px-8 py-5">Configuration</th>
-                  <th className="px-8 py-5 text-right">Actions</th>
+                  <th className="px-3 py-2 md:px-5 md:py-2.5">Diagnostic Test</th>
+                  <th className="px-3 py-2 md:px-5 md:py-2.5">Code / Sample</th>
+                  <th className="px-3 py-2 md:px-5 md:py-2.5">Configuration</th>
+                  <th className="px-3 py-2 md:px-5 md:py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 text-xs">
                 {tests
                   .filter(t => 
                     !searchQuery || 
@@ -397,61 +397,61 @@ const GlobalTestCatalog = () => {
                   )
                   .map(test => (
                     <tr key={test.id} className="group hover:bg-gray-50/50 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="font-bold text-gray-900 text-base">{test.testName}</div>
-                      <div className="text-xs text-gray-400 font-medium mt-0.5">{test.category} · {test.methodology || 'No Method'}</div>
+                    <td className="px-3 py-2 md:px-5 md:py-2.5">
+                      <div className="font-bold text-gray-900 text-xs">{test.testName}</div>
+                      <div className="text-[10px] text-gray-400 font-medium mt-0.5">{test.category} · {test.methodology || 'No Method'}</div>
                     </td>
-                    <td className="px-8 py-6">
-                      <span className="px-2.5 py-1 bg-red-50 text-red-700 rounded-lg text-[10px] font-black border border-red-100 uppercase tracking-wider">{test.testCode}</span>
-                      <div className="text-[11px] text-gray-400 font-bold mt-1.5 uppercase tracking-tighter">{test.sampleType}</div>
+                    <td className="px-3 py-2 md:px-5 md:py-2.5">
+                      <span className="px-1.5 py-0.5 bg-red-50 text-red-700 rounded-md text-[8.5px] font-black border border-red-100 uppercase tracking-wider">{test.testCode}</span>
+                      <div className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">{test.sampleType}</div>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100">
-                          <span className="text-sm font-black text-gray-700">{getParamCount(test)}</span>
+                    <td className="px-3 py-2 md:px-5 md:py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100">
+                          <span className="text-xs font-black text-gray-700">{getParamCount(test)}</span>
                         </div>
                         <div>
-                          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Parameters</div>
-                          <div className="text-xs font-bold text-gray-900 mt-0.5">{test.groups?.length || 0} Groups</div>
+                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Parameters</div>
+                          <div className="text-[10px] font-bold text-gray-900 mt-0.5">{test.groups?.length || 0} Groups</div>
                         </div>
                       </div>
-                      <span className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest border ${test.reportLayout === 'Tabular table' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                      <span className={`mt-1 inline-flex items-center px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${test.reportLayout === 'Tabular table' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                         {test.reportLayout === 'Tabular table' ? 'Tabular' : 'Standard'}
                       </span>
                     </td>
-                    <td className="px-8 py-6 text-right">
+                    <td className="px-3 py-2 md:px-5 md:py-2.5 text-right">
                         {confirmDeleteId === test.id ? (
-                          <div className="flex items-center gap-1 bg-red-50 p-1 rounded-xl border border-red-100 animate-in fade-in slide-in-from-right-2 duration-200">
+                          <div className="flex items-center gap-1 bg-red-50 p-1 rounded-lg border border-red-100 justify-end animate-in fade-in slide-in-from-right-2 duration-200">
                             <button 
                               onClick={() => handleDeleteTest(test.id)} 
                               disabled={deletingId === test.id}
-                              className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                              className="px-2 py-1 bg-red-600 text-white text-[8.5px] font-black uppercase rounded hover:bg-red-700 transition-colors shadow-sm"
                             >
-                              {deletingId === test.id ? <Loader className="w-3 h-3 animate-spin mx-2" /> : "Confirm Delete"}
+                              {deletingId === test.id ? <Loader className="w-2.5 h-2.5 animate-spin mx-1" /> : "Confirm Delete"}
                             </button>
                             <button 
                               onClick={() => setConfirmDeleteId(null)} 
-                              className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
+                              className="p-1 text-gray-400 hover:text-gray-600 rounded"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-end gap-2 transition-all">
+                          <div className="flex items-center justify-end gap-1.5 transition-all">
                             <button 
                               onClick={() => { setTestForm({...test, groups: test.groups || []}); setShowAddModal(true); }} 
-                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Edit Test"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button 
                               onClick={() => setConfirmDeleteId(test.id)} 
                               disabled={deletingId === test.id}
-                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                               title="Delete Test"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         )}
@@ -467,31 +467,31 @@ const GlobalTestCatalog = () => {
       {/* ── MODAL ── */}
       {showAddModal && (
         <div className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl w-full max-w-6xl my-6 flex flex-col overflow-hidden text-left animate-in zoom-in-95 duration-200">
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-5xl my-4 flex flex-col overflow-hidden text-left animate-in zoom-in-95 duration-200">
 
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-8 py-5 border-b border-gray-100 bg-gray-50/50 shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="p-2.5 bg-red-50 rounded-2xl border border-red-100">
-                  <Database className="w-5 h-5 text-red-600" />
+            <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-100 bg-gray-50/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-red-50 rounded-xl border border-red-100">
+                  <Database className="w-4 h-4 text-red-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-gray-900">{testForm.id ? 'Edit Master Definition' : 'Define Master Test'}</h2>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">{testForm.testName || 'New Configuration'}</p>
+                  <h2 className="text-sm font-black text-gray-900">{testForm.id ? 'Edit Master Definition' : 'Define Master Test'}</h2>
+                  <p className="text-[8.5px] text-gray-400 font-bold uppercase tracking-[0.2em]">{testForm.testName || 'New Configuration'}</p>
                 </div>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2.5 hover:bg-gray-100 rounded-2xl transition-colors text-gray-400 hover:text-gray-700">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowAddModal(false)} className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-700">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-8 space-y-10 overflow-y-auto flex-grow max-h-[80vh] custom-scrollbar">
+            <div className="p-4 space-y-4 overflow-y-auto flex-grow max-h-[80vh] custom-scrollbar">
 
               {/* ── 1. Details ── */}
               <section>
                 <SectionTag color="red">1. Test Details</SectionTag>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <Label>Test Code *</Label>
                     <Input placeholder="CBC001" value={testForm.testCode} onChange={e => setTestForm({...testForm, testCode: e.target.value.toUpperCase()})} className="font-mono text-red-700 font-bold"/>
@@ -520,7 +520,7 @@ const GlobalTestCatalog = () => {
                           placeholder="Type Custom Methodology..." 
                           value={testForm.methodology} 
                           onChange={e => setTestForm({...testForm, methodology: e.target.value})}
-                          className="pr-10"
+                          className="pr-8"
                         />
                         <button 
                           type="button"
@@ -530,7 +530,7 @@ const GlobalTestCatalog = () => {
                           }}
                           className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 transition-colors"
                         >
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ) : (
@@ -569,24 +569,24 @@ const GlobalTestCatalog = () => {
               {/* ── 2. Groups ── */}
               <section>
                 <SectionTag color="blue">2. Parameter Groups</SectionTag>
-                <div className="space-y-5">
-                  <div className="flex gap-3">
+                <div className="space-y-3">
+                  <div className="flex gap-2">
                     <Input placeholder="Add logical group (e.g. Red Cell Indices, Liver Profile)" value={groupNameInput} onChange={e => setGroupNameInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddGroup()}/>
-                    <button onClick={handleAddGroup} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-50">
-                      <FolderPlus className="w-4 h-4" /> Add
+                    <button onClick={handleAddGroup} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 hover:bg-blue-700 transition-all shadow-md shadow-blue-50">
+                      <FolderPlus className="w-3.5 h-3.5" /> Add
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-2.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {testForm.groups.map((group, idx) => (
                       <div key={idx} onClick={() => { setSelectedGroupIndex(idx); setSelectedParamIndex(-1); }}
-                        className={`px-5 py-2.5 rounded-2xl border flex items-center gap-4 cursor-pointer transition-all ${selectedGroupIndex === idx ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-100 translate-y-[-2px]' : 'bg-white border-gray-100 text-gray-500 hover:border-blue-200 hover:bg-blue-50/30'}`}>
-                        <div className="flex items-center gap-3">
-                          <Folder className={`w-4 h-4 ${selectedGroupIndex === idx ? 'text-blue-100' : 'text-blue-400'}`} />
-                          <span className="text-sm font-bold tracking-tight">{group.name}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-lg ${selectedGroupIndex === idx ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>{group.parameters.length}</span>
+                        className={`px-3 py-1.5 rounded-xl border flex items-center gap-2.5 cursor-pointer text-xs transition-all ${selectedGroupIndex === idx ? 'bg-blue-600 border-blue-600 text-white shadow-lg translate-y-[-1px]' : 'bg-white border-gray-100 text-gray-500 hover:border-blue-200'}`}>
+                        <div className="flex items-center gap-2">
+                          <Folder className={`w-3.5 h-3.5 ${selectedGroupIndex === idx ? 'text-blue-100' : 'text-blue-400'}`} />
+                          <span className="text-xs font-bold tracking-tight">{group.name}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-md ${selectedGroupIndex === idx ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>{group.parameters.length}</span>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteGroup(idx); }} className={`p-1 rounded-lg transition-colors ${selectedGroupIndex === idx ? 'hover:bg-blue-500 text-blue-100' : 'hover:bg-red-100 text-gray-300 hover:text-red-600'}`}>
-                          <X className="w-3.5 h-3.5" />
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteGroup(idx); }} className={`p-0.5 rounded transition-colors ${selectedGroupIndex === idx ? 'hover:bg-blue-500 text-blue-100' : 'hover:bg-red-100 text-gray-300 hover:text-red-600'}`}>
+                          <X className="w-3 h-3" />
                         </button>
                       </div>
                     ))}
@@ -595,37 +595,37 @@ const GlobalTestCatalog = () => {
               </section>
 
               {/* ── Parameters & Rules Grid ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* ── 3. Params ── */}
                 <section>
                   <SectionTag color="purple">3. Parameters {selectedGroupIndex >= 0 && `(${testForm.groups[selectedGroupIndex].name})`}</SectionTag>
                   {selectedGroupIndex === -1 ? (
-                    <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-3xl">
-                      <Layers className="w-10 h-10 text-gray-100 mx-auto mb-3" />
-                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Select group to manage parameters</p>
+                    <div className="py-10 text-center border-2 border-dashed border-gray-100 rounded-2xl">
+                      <Layers className="w-6 h-6 text-gray-100 mx-auto mb-2" />
+                      <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Select group to manage parameters</p>
                     </div>
                   ) : (
-                    <div className="space-y-5">
+                    <div className="space-y-3">
                       {/* Searchable Library Selection */}
                       <div className="relative">
                         <Label>Search & Select from Parameter Library</Label>
                         <div className="relative group">
-                          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-300 group-focus-within:text-red-400 transition-colors" />
+                          <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-300 group-focus-within:text-red-400 transition-colors" />
                           <Input 
                             ref={paramSearchInputRef}
                             placeholder="Type to search or click to view all..." 
                             value={paramSearch} 
                             onChange={e => setParamSearch(e.target.value)}
                             onFocus={() => setShowParamLibraryMenu(true)}
-                            className="pl-10"
+                            className="pl-8"
                           />
                         </div>
                         {showParamLibraryMenu && (
-                          <div className="absolute z-[300] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-64 overflow-y-auto overflow-x-hidden custom-scrollbar divide-y divide-gray-50 border-t-0 p-1">
+                          <div className="absolute z-[300] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-48 overflow-y-auto overflow-x-hidden custom-scrollbar divide-y divide-gray-50 border-t-0 p-1">
                             {/* Option to close the menu if clicked outside or no selection made */}
-                            <div className="absolute top-0 right-0 p-2 z-[310]">
-                               <button onClick={() => setShowParamLibraryMenu(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400">
-                                 <X className="w-3.5 h-3.5" />
+                            <div className="absolute top-0 right-0 p-1 z-[310]">
+                               <button onClick={() => setShowParamLibraryMenu(false)} className="p-0.5 hover:bg-gray-100 rounded text-gray-400">
+                                 <X className="w-3 h-3" />
                                </button>
                             </div>
 
@@ -634,21 +634,21 @@ const GlobalTestCatalog = () => {
                                 if (!paramSearch) return true; // Show all if no search string
                                 return p.name?.toLowerCase().includes(paramSearch.toLowerCase()) || 
                                        p.code?.toLowerCase().includes(paramSearch.toLowerCase());
-                              })
+                               })
                               .slice(0, 50).map(p => (
                                 <button key={p.id} 
                                   onMouseDown={(e) => {
                                     e.preventDefault(); // Prevent onBlur from hiding list before click
                                     handleSelectMasterParam(p);
                                   }} 
-                                  className="w-full text-left px-5 py-3 hover:bg-red-50 transition-colors flex items-center justify-between group">
+                                  className="w-full text-left px-3 py-1.5 hover:bg-red-50 transition-colors flex items-center justify-between group">
                                   <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-gray-800 group-hover:text-red-700">{p.name}</span>
-                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{p.code} · {p.unit || 'No unit'}</span>
+                                    <span className="text-xs font-bold text-gray-800 group-hover:text-red-700">{p.name}</span>
+                                    <span className="text-[8.5px] text-gray-400 font-bold uppercase tracking-widest">{p.code} · {p.unit || 'No unit'}</span>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[9px] font-black text-gray-300 uppercase px-2 py-0.5 border border-gray-100 rounded-md">{p.dataType}</span>
-                                    <Plus className="w-4 h-4 text-gray-200 group-hover:text-red-400" />
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[8px] font-black text-gray-300 uppercase px-1.5 py-0.5 border border-gray-100 rounded-md">{p.dataType}</span>
+                                    <Plus className="w-3 h-3 text-gray-200 group-hover:text-red-400" />
                                   </div>
                                 </button>
                               ))}
@@ -656,18 +656,18 @@ const GlobalTestCatalog = () => {
                                 !paramSearch || p.name?.toLowerCase().includes(paramSearch.toLowerCase()) || 
                                 p.code?.toLowerCase().includes(paramSearch.toLowerCase())
                               ).length === 0 && (
-                              <div className="p-5 text-center text-xs font-bold text-gray-300 uppercase tracking-widest">No match found in library</div>
+                              <div className="p-3 text-center text-xs font-bold text-gray-300 uppercase tracking-widest">No match found in library</div>
                             )}
                             {masterParams.length === 0 && (
-                              <div className="p-5 text-center text-xs font-bold text-gray-300 uppercase tracking-widest">Library is empty</div>
+                              <div className="p-3 text-center text-xs font-bold text-gray-300 uppercase tracking-widest">Library is empty</div>
                             )}
                           </div>
                         )}
                       </div>
 
-                      <div className="h-px bg-gray-50 mx-[-32px]" />
+                      <div className="h-px bg-gray-50 mx-[-16px]" />
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
                           <Label>Parameter Name *</Label>
                           <Input placeholder="e.g. Hemoglobin" value={paramInput.name} onChange={e => setParamInput({...paramInput, name: e.target.value})}/>
@@ -695,32 +695,32 @@ const GlobalTestCatalog = () => {
                           <Input type="number" value={paramInput.decimals} onChange={e => setParamInput({...paramInput, decimals: parseInt(e.target.value)})}/>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5">
                         {selectedParamIndex === -1 ? (
-                          <button onClick={handleAddParameter} className="flex-grow py-2.5 bg-purple-600 text-white rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 hover:bg-purple-700 shadow-lg shadow-purple-50">
-                            <Plus className="w-4 h-4" /> Add Parameter
+                          <button onClick={handleAddParameter} className="flex-grow py-1.5 bg-purple-600 text-white rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1.5 hover:bg-purple-700 shadow-md shadow-purple-50">
+                            <Plus className="w-3.5 h-3.5" /> Add Parameter
                           </button>
                         ) : (
                           <>
-                            <button onClick={handleUpdateParameter} disabled={!hasParamChanged()} className="flex-grow py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-30 shadow-lg shadow-blue-50">
-                              <Save className="w-4 h-4" /> Update
+                            <button onClick={handleUpdateParameter} disabled={!hasParamChanged()} className="flex-grow py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1.5 hover:bg-blue-700 disabled:opacity-30 shadow-md shadow-blue-50">
+                              <Save className="w-3.5 h-3.5" /> Update
                             </button>
-                            <button onClick={handleClearParameter} className="px-6 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold uppercase hover:bg-gray-200">Clear</button>
+                            <button onClick={handleClearParameter} className="px-3.5 py-1.5 bg-gray-100 text-gray-500 rounded-lg text-[9px] font-black uppercase hover:bg-gray-200">Clear</button>
                           </>
                         )}
                       </div>
-                      <div className="max-h-64 overflow-y-auto border border-gray-100 rounded-2xl divide-y divide-gray-50 bg-white shadow-inner custom-scrollbar">
+                      <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50 bg-white shadow-inner custom-scrollbar">
                         {testForm.groups[selectedGroupIndex].parameters.map((p, idx) => (
                           <div key={idx} onClick={() => { setSelectedParamIndex(idx); setSelectedRuleIndex(-1); setParamInput({...p}); setOriginalParamData({...p}); setOriginalRuleData(null); }}
-                            className={`px-5 py-4 flex items-center justify-between cursor-pointer group transition-all ${selectedParamIndex === idx ? 'bg-purple-50 border-l-4 border-purple-500' : 'hover:bg-gray-50/50'}`}>
+                            className={`px-3 py-2 flex items-center justify-between cursor-pointer group text-xs transition-all ${selectedParamIndex === idx ? 'bg-purple-50 border-l-4 border-purple-500' : 'hover:bg-gray-50/50'}`}>
                             <div>
-                              <div className="text-sm font-bold text-gray-900 leading-tight">{p.name}</div>
-                              <div className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-2 mt-1">
+                              <div className="font-bold text-gray-900 leading-tight">{p.name}</div>
+                              <div className="text-[8.5px] font-bold text-gray-400 uppercase flex items-center gap-1.5 mt-0.5">
                                 <span>{p.code || 'NO-CODE'}</span> <span className="text-gray-200">|</span> <span>{p.unit || 'NO-UNIT'}</span>
                               </div>
                             </div>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(idx); }} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-                              <Trash2 className="w-4 h-4" />
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteParameter(idx); }} className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all">
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}
@@ -733,13 +733,13 @@ const GlobalTestCatalog = () => {
                 <section>
                   <SectionTag color="green">4. Ref Range Rules {selectedParamIndex >= 0 && `(${testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].name})`}</SectionTag>
                   {selectedParamIndex === -1 ? (
-                    <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-3xl">
-                      <Zap className="w-10 h-10 text-gray-100 mx-auto mb-3" />
-                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Select parameter to manage rules</p>
+                    <div className="py-10 text-center border-2 border-dashed border-gray-100 rounded-2xl">
+                      <Zap className="w-6 h-6 text-gray-100 mx-auto mb-2" />
+                      <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Select parameter to manage rules</p>
                     </div>
                   ) : (
-                    <div className="space-y-5">
-                      <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-4 gap-2">
                         <div>
                           <Label>Gender</Label>
                           <Select value={ruleInput.gender} onChange={e => setRuleInput({...ruleInput, gender: e.target.value})}>
@@ -773,39 +773,39 @@ const GlobalTestCatalog = () => {
                           <Input placeholder="H" value={ruleInput.criticalHigh} onChange={e => setRuleInput({...ruleInput, criticalHigh: e.target.value})} className="text-red-500 font-bold"/>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5">
                         {selectedRuleIndex === -1 ? (
-                          <button onClick={handleAddRule} className="flex-grow py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-50">
-                            <Plus className="w-4 h-4" /> Add Rule
+                          <button onClick={handleAddRule} className="flex-grow py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1.5 hover:bg-emerald-700 shadow-md shadow-emerald-50">
+                            <Plus className="w-3.5 h-3.5" /> Add Rule
                           </button>
                         ) : (
                           <>
-                            <button onClick={handleUpdateRule} disabled={!hasRuleChanged()} className="flex-grow py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-30 shadow-lg shadow-blue-50">
-                              <Save className="w-4 h-4" /> Update
+                            <button onClick={handleUpdateRule} disabled={!hasRuleChanged()} className="flex-grow py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1.5 hover:bg-blue-700 disabled:opacity-30 shadow-md shadow-blue-50">
+                              <Save className="w-3.5 h-3.5" /> Update
                             </button>
-                            <button onClick={handleClearRule} className="px-6 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold uppercase hover:bg-gray-200">Clear</button>
+                            <button onClick={handleClearRule} className="px-3.5 py-1.5 bg-gray-100 text-gray-500 rounded-lg text-[9px] font-black uppercase hover:bg-gray-200">Clear</button>
                           </>
                         )}
                       </div>
-                      <div className="max-h-64 overflow-y-auto border border-gray-100 rounded-2xl bg-white shadow-inner custom-scrollbar overflow-x-auto">
+                      <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-xl bg-white shadow-inner custom-scrollbar overflow-x-auto">
                         <table className="w-full text-left text-xs">
                           <thead className="bg-gray-50/50 border-b border-gray-100 sticky top-0">
                             <tr>
-                              <th className="p-3 font-black text-gray-400 uppercase tracking-tighter">Gen</th>
-                              <th className="p-3 font-black text-gray-400 uppercase tracking-tighter">Age</th>
-                              <th className="p-3 font-black text-emerald-600 uppercase tracking-tighter">Normal Range</th>
-                              <th className="p-3 text-right"></th>
+                              <th className="p-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Gen</th>
+                              <th className="p-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Age</th>
+                              <th className="p-2 text-[9px] font-black text-emerald-600 uppercase tracking-tighter">Normal Range</th>
+                              <th className="p-2 text-[9px] text-right"></th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-50 font-bold text-[10px] uppercase">
+                          <tbody className="divide-y divide-gray-50 font-bold text-[8.5px] uppercase">
                             {testForm.groups[selectedGroupIndex].parameters[selectedParamIndex].rules.map((rule, idx) => (
                               <tr key={idx} onClick={() => { setSelectedRuleIndex(idx); setRuleInput({...rule}); setOriginalRuleData({...rule}); }}
                                 className={`cursor-pointer transition-all ${selectedRuleIndex === idx ? 'bg-emerald-50 border-l-2 border-emerald-500 text-gray-900' : 'hover:bg-gray-50/50 text-gray-500'}`}>
-                                <td className="p-3">{rule.gender.charAt(0)}</td>
-                                <td className="p-3 whitespace-nowrap font-mono">{rule.ageMin}-{rule.ageMax}{rule.ageUnit.charAt(0)}</td>
-                                <td className="p-3 text-emerald-600 font-black">{rule.normalRange}</td>
-                                <td className="p-3 text-right">
-                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteRule(idx); }} className="p-1.5 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                <td className="p-2">{rule.gender.charAt(0)}</td>
+                                <td className="p-2 whitespace-nowrap font-mono">{rule.ageMin}-{rule.ageMax}{rule.ageUnit.charAt(0)}</td>
+                                <td className="p-2 text-emerald-600 font-black">{rule.normalRange}</td>
+                                <td className="p-2 text-right">
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteRule(idx); }} className="p-1 hover:text-red-500 transition-colors"><Trash2 className="w-3 h-3" /></button>
                                 </td>
                               </tr>
                             ))}
@@ -819,27 +819,27 @@ const GlobalTestCatalog = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-8 py-5 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-6 text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> {testForm.groups.length} Groups</div>
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500" /> {getParamCount(testForm)} Parameters</div>
+            <div className="px-4 py-2.5 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3 text-[9px] text-gray-400 font-black uppercase tracking-widest">
+                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> {testForm.groups.length} Groups</div>
+                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-purple-500" /> {getParamCount(testForm)} Parameters</div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 {testForm.id && (
-                  <label className="flex items-center gap-3 cursor-pointer group pr-4 border-r border-gray-100 mr-2">
+                  <label className="flex items-center gap-2 cursor-pointer group pr-3 border-r border-gray-100 mr-1.5">
                     <input 
                       type="checkbox" 
                       checked={syncToLabs} 
                       onChange={(e) => setSyncToLabs(e.target.checked)}
-                      className="w-4 h-4 rounded-lg border-gray-300 text-red-600 focus:ring-red-500 transition-all cursor-pointer"
+                      className="w-3.5 h-3.5 rounded border-gray-300 text-red-600 focus:ring-red-500 transition-all cursor-pointer"
                     />
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-red-600 transition-colors">Sync with all Labs</span>
+                    <span className="text-[8.5px] font-black text-gray-400 uppercase tracking-widest group-hover:text-red-600 transition-colors">Sync with all Labs</span>
                   </label>
                 )}
-                <button onClick={() => setShowAddModal(false)} className="px-6 py-2.5 text-xs font-bold text-gray-500 uppercase hover:text-gray-900 transition-colors">Cancel</button>
+                <button onClick={() => setShowAddModal(false)} className="px-3 py-1.5 text-[9px] font-bold text-gray-500 uppercase hover:text-gray-900 transition-colors">Cancel</button>
 
-                <button onClick={handleSaveAll} disabled={saving} className="px-10 py-2.5 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-xl shadow-emerald-50 disabled:opacity-50">
-                  {saving ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                <button onClick={handleSaveAll} disabled={saving} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-md shadow-emerald-50 disabled:opacity-50">
+                  {saving ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                   {testForm.id ? 'Save Master Definition' : 'Publish to Catalog'}
                 </button>
               </div>

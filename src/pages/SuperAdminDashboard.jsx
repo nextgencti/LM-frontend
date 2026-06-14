@@ -3,7 +3,8 @@ import { db } from '../firebase';
 import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, where } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2, ChevronRight, Zap, Calendar, Clock } from 'lucide-react';
+import { Shield, Plus, Loader, Activity, CheckCircle, AlertTriangle, Users, ExternalLink, Search, Filter, Lock, X, Globe, FileText, CreditCard, FlaskConical, Settings, BookOpen, User, Trash2, ChevronRight, Zap, Calendar, Clock, HelpCircle } from 'lucide-react';
+
 import GlobalTestCatalog from '../components/GlobalTestCatalog';
 import GlobalSettings from '../components/GlobalSettings';
 import MasterParameters from './MasterParameters';
@@ -20,6 +21,11 @@ const SuperAdminDashboard = () => {
   const [activeView, setActiveView] = useState('labs'); // 'labs', 'tests', 'requests', 'token_requests', 'validity_requests'
   const [tokenRequests, setTokenRequests] = useState([]);
   const [validityRequests, setValidityRequests] = useState([]);
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [ticketResponse, setTicketResponse] = useState('');
+  const [ticketStatus, setTicketStatus] = useState('Open');
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
   const [tokenForm, setTokenForm] = useState({ labId: '', amount: '100', labName: '' });
 
@@ -147,8 +153,48 @@ const SuperAdminDashboard = () => {
       fetchRequests();
       fetchTokenRequests();
       fetchValidityRequests();
+      fetchSupportTickets();
     }
   }, [isPinVerified]);
+
+  const fetchSupportTickets = async () => {
+    setLoadingTickets(true);
+    try {
+      const q = query(collection(db, 'supportTickets'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      setSupportTickets(snap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt?.toDate ? d.data().createdAt.toDate().toISOString() : d.data().createdAt || new Date().toISOString()
+      })));
+    } catch (error) {
+      console.error('Error fetching support tickets:', error);
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
+  const handleResolveTicket = async () => {
+    if (!selectedTicket) return;
+    setProcessingRequestId(selectedTicket.id);
+    try {
+      await updateDoc(doc(db, 'supportTickets', selectedTicket.id), {
+        adminResponse: ticketResponse,
+        status: ticketStatus,
+        updatedAt: serverTimestamp()
+      });
+      toast.success('Ticket updated successfully!');
+      setSelectedTicket(null);
+      setTicketResponse('');
+      setTicketStatus('Open');
+      await fetchSupportTickets();
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      toast.error('Failed to update ticket: ' + error.message);
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
 
   const fetchTokenRequests = async () => {
     try {
@@ -722,8 +768,8 @@ const SuperAdminDashboard = () => {
                     autoComplete="off"
                     className={`w-full h-12 md:h-20 text-center text-xl md:text-3xl font-black rounded-xl md:rounded-[22px] border-2 transition-all duration-300 outline-none
                       ${digit 
-                        ? 'border-brand-primary bg-brand-primary/10 text-white shadow-[0_0_30px_rgba(163,230,53,0.3)] ring-2 ring-brand-primary/10' 
-                        : 'border-white/5 bg-white/5 text-transparent focus:border-brand-primary focus:bg-white/10 focus:shadow-[0_0_20px_rgba(163,230,53,0.2)]'}`}
+                        ? 'border-brand-primary bg-brand-primary/10 text-white shadow-[0_0_30px_rgba(16,185,129,0.3)] ring-2 ring-brand-primary/10' 
+                        : 'border-white/5 bg-white/5 text-transparent focus:border-brand-primary focus:bg-white/10 focus:shadow-[0_0_20px_rgba(16,185,129,0.2)]'}`}
                     autoFocus={i === 0}
                   />
                   {!digit && (
@@ -745,7 +791,7 @@ const SuperAdminDashboard = () => {
               ) : verifying ? (
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex gap-2">
-                    {[0,1,2].map(n => <div key={n} className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-bounce shadow-[0_0_10px_rgba(163,230,53,0.5)]" style={{ animationDelay: `${n * 0.1}s` }}></div>)}
+                    {[0,1,2].map(n => <div key={n} className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-bounce shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ animationDelay: `${n * 0.1}s` }}></div>)}
                   </div>
                   <span className="text-brand-primary/80 text-[9px] font-black uppercase tracking-[0.4em]">Validation Active</span>
                 </div>
@@ -794,140 +840,74 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-4 md:py-6 w-full animate-in fade-in duration-500">
-      {/* Navigation Tabs */}
-      <div className="flex overflow-x-auto no-scrollbar bg-slate-50 p-1 rounded-full md:rounded-[1.5rem] w-full md:w-fit mb-4 md:mb-5 border border-slate-100 shadow-inner">
-        <div className="flex gap-1 shrink-0">
-          <button 
-            onClick={() => setActiveView('labs')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'labs' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <Users className="w-3 h-3 md:w-3.5 md:h-3.5" /> Labs
-          </button>
-          <button 
-            onClick={() => setActiveView('tests')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'tests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <FlaskConical className="w-3 h-3 md:w-3.5 md:h-3.5" /> Global Tests
-          </button>
-          <button 
-            onClick={() => setActiveView('settings')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'settings' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <Settings className="w-3 h-3 md:w-3.5 md:h-3.5" /> Global Settings
-          </button>
-          <button 
-            onClick={() => setActiveView('parameters')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'parameters' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <BookOpen className="w-3 h-3 md:w-3.5 md:h-3.5" /> Parameters
-          </button>
-          <button 
-            onClick={() => setActiveView('plans')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all whitespace-nowrap ${activeView === 'plans' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <CreditCard className="w-3 h-3 md:w-3.5 md:h-3.5" /> Pricing Plans
-          </button>
-          <button 
-            onClick={() => setActiveView('token_requests')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all relative whitespace-nowrap ${activeView === 'token_requests' ? 'bg-amber-500 text-white shadow-xl shadow-amber-500/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <Zap className="w-3 h-3 md:w-3.5 md:h-3.5" /> 
-            Tokens
-            {tokenRequests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-amber-600 text-white text-[7px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
-                {tokenRequests.filter(r => r.status === 'pending').length}
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveView('validity_requests')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all relative whitespace-nowrap ${activeView === 'validity_requests' ? 'bg-[#9BCF83] text-[#1E2A5A] shadow-xl shadow-[#9BCF83]/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5" /> 
-            Validity
-            {validityRequests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-[#1E2A5A] text-white text-[7px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
-                {validityRequests.filter(r => r.status === 'pending').length}
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveView('requests')}
-            className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2 md:py-2.5 rounded-full md:rounded-[1.2rem] font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all relative whitespace-nowrap ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-xl shadow-brand-dark/20' : 'text-slate-400 hover:text-brand-dark'}`}
-          >
-            <User className="w-3 h-3 md:w-3.5 md:h-3.5" /> 
-            Requests
-            {requests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-rose-500 text-white text-[7px] flex items-center justify-center rounded-full animate-bounce shadow-lg ring-2 ring-white">
-                {requests.filter(r => r.status === 'pending').length}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {activeView === 'labs' ? (
+    <div className="w-full min-h-screen animate-in fade-in duration-500">
+      
+      {/* Outer Flex Layout to place Sidebar on the Right */}
+      <div className="flex flex-col lg:flex-row w-full items-stretch min-h-screen">
+        
+        {/* Main Content Area */}
+        <div className="flex-grow order-2 lg:order-1 min-w-0 px-4 py-4 md:px-8 md:py-8 max-w-7xl mx-auto w-full">
+          {activeView === 'labs' ? (
         <>
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-4 md:mb-5 bg-white p-3 md:p-5 rounded-2xl md:rounded-[28px] shadow-[0_15px_40px_rgb(0,0,0,0.01)] border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 md:gap-4 mb-3 md:mb-4 bg-white p-2.5 md:p-3.5 rounded-xl md:rounded-2xl shadow-[0_8px_24px_rgb(0,0,0,0.01)] border border-slate-100">
             <div className="w-full lg:w-auto">
-              <div className="flex items-center gap-3">
-                <div className="p-2 md:p-3 bg-brand-light rounded-xl md:rounded-[18px] border border-brand-primary/10 transition-transform rotate-3">
-                  <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-primary" />
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 md:p-2 bg-brand-light rounded-lg md:rounded-xl border border-brand-primary/10 transition-transform rotate-3">
+                  <Shield className="w-4 h-4 md:w-5 md:h-5 text-brand-primary" />
                 </div>
                 <div>
-                  <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                  <h1 className="text-base md:text-lg font-display font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
                     Admin <span className="text-brand-primary/80">Dashboard</span>
                   </h1>
-                  <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1 line-clamp-1">Manage all labs and their subscriptions here.</p>
+                  <p className="text-[7.5px] md:text-[8.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-0.5 line-clamp-1">Manage all labs and their subscriptions here.</p>
                 </div>
               </div>
               {activeLabId && (
-                <div className="mt-3 md:mt-4 flex items-center gap-2.5 opacity-0 animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-forwards" style={{ animationDelay: '0.2s' }}>
-                   <div className="px-3.5 md:px-4 py-1.5 md:py-2 bg-brand-light/40 text-brand-dark rounded-full text-[8px] md:text-[9.5px] font-black uppercase tracking-widest border border-brand-primary/10 flex items-center gap-2.5 shadow-sm">
+                <div className="mt-2 md:mt-3 flex items-center gap-2 opacity-0 animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-forwards" style={{ animationDelay: '0.2s' }}>
+                   <div className="px-3 md:px-3.5 py-1 md:py-1.5 bg-brand-light/40 text-brand-dark rounded-full text-[7.5px] md:text-[8.5px] font-black uppercase tracking-widest border border-brand-primary/10 flex items-center gap-2 shadow-sm">
                       <div className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse"></div>
                       <span className="truncate max-w-[120px] md:max-w-none">Managing: {activeLabId}</span>
-                      <button onClick={() => setActiveLabId(null)} className="ml-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm">&times;</button>
+                      <button onClick={() => setActiveLabId(null)} className="ml-1 w-3.5 h-3.5 bg-white rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm text-[10px]">&times;</button>
                    </div>
                 </div>
               )}
             </div>
             <button 
               onClick={() => setShowRegisterModal(true)}
-              className="w-full lg:w-auto flex items-center justify-center gap-2.5 px-6 md:px-8 py-3 md:py-4 bg-brand-dark text-white rounded-2xl md:rounded-[20px] text-[9.5px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-brand-dark/20 hover:bg-brand-secondary active:scale-[0.98] border border-white/10 group"
+              className="w-full lg:w-auto flex items-center justify-center gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-brand-dark text-white rounded-xl md:rounded-2xl text-[8.5px] md:text-[9px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-brand-dark/15 hover:bg-brand-secondary active:scale-[0.98] border border-white/10 group"
             >
-              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-primary group-hover:rotate-90 transition-transform" /> Add Lab
+              <Plus className="w-3 h-3 md:w-3.5 md:h-3.5 text-brand-primary group-hover:rotate-90 transition-transform" /> Add Lab
             </button>
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-8 mb-5 md:mb-8">
-            <StatCard icon={<Users className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Total Labs" value={stats.total} color="from-brand-dark to-brand-secondary" gradient />
-            <StatCard icon={<CheckCircle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Active Labs" value={stats.active} color="from-brand-primary to-lime-600" gradient />
-            <StatCard icon={<Clock className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Demo Labs" value={stats.demo || 0} color="from-violet-500 to-purple-700" gradient />
-            <StatCard icon={<AlertTriangle className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Expired Labs" value={stats.expired} color="from-rose-500 to-rose-700" gradient />
-            <StatCard icon={<Activity className="text-white w-5 h-5 md:w-6 md:h-6" />} label="Pro Labs" value={stats.pro} color="from-brand-secondary to-blue-700" gradient />
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3 mb-3 md:mb-4">
+            <StatCard icon={<Users className="text-white w-4 h-4 md:w-5 md:h-5" />} label="Total Labs" value={stats.total} color="from-brand-dark to-brand-secondary" gradient />
+            <StatCard icon={<CheckCircle className="text-white w-4 h-4 md:w-5 md:h-5" />} label="Active Labs" value={stats.active} color="from-brand-primary to-lime-600" gradient />
+            <StatCard icon={<Clock className="text-white w-4 h-4 md:w-5 md:h-5" />} label="Demo Labs" value={stats.demo || 0} color="from-violet-500 to-purple-700" gradient />
+            <StatCard icon={<AlertTriangle className="text-white w-4 h-4 md:w-5 md:h-5" />} label="Expired Labs" value={stats.expired} color="from-rose-500 to-rose-700" gradient />
+            <StatCard icon={<Activity className="text-white w-4 h-4 md:w-5 md:h-5" />} label="Pro Labs" value={stats.pro} color="from-brand-secondary to-blue-700" gradient />
           </div>
 
           {/* Lab Management Table */}
-          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-[0_32px_128px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden mb-8 flex flex-col max-h-[60vh]">
-            <div className="p-3 md:p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 md:gap-4 items-center bg-slate-50 sticky top-0 z-20">
+          <div className="bg-white rounded-2xl md:rounded-[28px] shadow-[0_16px_64px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden mb-5 flex flex-col max-h-[65vh]">
+            <div className="px-3 py-2 md:px-4 md:py-2.5 border-b border-slate-100 flex flex-col md:flex-row gap-2 md:gap-3 items-center bg-slate-50/80 sticky top-0 z-20">
               <div className="relative flex-grow group w-full md:w-auto">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-brand-primary transition-colors" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5 group-focus-within:text-brand-primary transition-colors" />
                 <input 
                   type="text" 
                   placeholder="Search labs..."
-                  className="w-full pl-12 pr-6 py-2.5 bg-white border border-slate-200 rounded-[14px] text-[11px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary/30 transition-all shadow-sm placeholder:text-slate-300"
+                  className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary/30 transition-all shadow-sm placeholder:text-slate-300"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex bg-white p-1 rounded-[16px] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
+              <div className="flex bg-white p-0.5 rounded-xl border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
                 {['All', 'Active', 'Demo', 'Expired', 'Pro'].map(f => (
                   <button 
                     key={f}
                     onClick={() => setFilter(f)}
-                    className={`px-4.5 py-2.5 rounded-[14px] text-[9.5px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === f ? 'bg-brand-dark text-white shadow-lg' : 'text-slate-400 hover:text-brand-dark'}`}
+                    className={`px-3 md:px-3.5 py-1.5 rounded-lg text-[8.5px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filter === f ? 'bg-brand-dark text-white shadow-md' : 'text-slate-400 hover:text-brand-dark'}`}
                   >
                     {f}
                   </button>
@@ -950,11 +930,11 @@ const SuperAdminDashboard = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-brand-dark sticky top-0 z-10 shadow-sm">
-                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Lab Name</th>
-                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] text-center bg-brand-dark sticky top-0">Plan</th>
-                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Status</th>
-                      <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">License</th>
-                      <th className="px-5 py-3 md:px-8 md:py-4 text-right text-[10px] md:text-[11px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Actions</th>
+                      <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Lab Name</th>
+                      <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-[0.15em] text-center bg-brand-dark sticky top-0">Plan</th>
+                      <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Status</th>
+                      <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">License</th>
+                      <th className="px-3 py-2 md:px-5 md:py-2.5 text-right text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-[0.15em] bg-brand-dark sticky top-0">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 bg-white">
@@ -964,88 +944,88 @@ const SuperAdminDashboard = () => {
                       
                       return (
                         <tr key={lab.id} className="hover:bg-brand-light/10 transition-colors group/row border-b border-slate-50 last:border-0">
-                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 whitespace-nowrap">
-                            <div className="font-black text-brand-dark text-[12px] md:text-sm tracking-tight uppercase leading-tight">{lab.labName}</div>
-                            <div className="flex flex-col gap-0.5 mt-1">
-                               <div className="text-[9px] md:text-[10px] text-slate-300 font-bold uppercase tracking-widest flex items-center gap-2">
+                          <td className="px-3 py-2 md:px-5 md:py-2.5 whitespace-nowrap">
+                            <div className="font-black text-brand-dark text-[11px] md:text-xs tracking-tight uppercase leading-tight">{lab.labName}</div>
+                            <div className="flex flex-col gap-0 mt-0.5">
+                               <div className="text-[8px] md:text-[9px] text-slate-300 font-bold uppercase tracking-widest flex items-center gap-1.5">
                                   <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
                                   ID: {lab.labId}
                                </div>
-                               <div className="text-[9px] md:text-[10px] text-brand-primary font-black uppercase tracking-widest flex items-center gap-2">
+                               <div className="text-[8px] md:text-[9px] text-brand-primary font-black uppercase tracking-widest flex items-center gap-1.5">
                                   <div className="w-1 h-1 bg-brand-primary/30 rounded-full"></div>
                                   Admin: {lab.ownerName || 'Admin'}
                                </div>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-center">
-                            <span className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest border transition-all ${
+                          <td className="px-3 py-2 md:px-5 md:py-2.5 text-center">
+                            <span className={`px-2 py-0.5 md:px-2.5 md:py-1 rounded-md text-[8px] md:text-[9px] font-black uppercase tracking-widest border transition-all ${
                               lab.plan === 'demo'
-                                ? 'bg-violet-500 text-white border-violet-500 shadow-lg shadow-violet-500/10'
+                                ? 'bg-violet-500 text-white border-violet-500 shadow-md shadow-violet-500/10'
                                 : lab.plan === 'pro' 
-                                  ? 'bg-brand-dark text-white border-brand-dark shadow-lg shadow-brand-dark/10' 
+                                  ? 'bg-brand-dark text-white border-brand-dark shadow-md shadow-brand-dark/10' 
                                   : lab.plan === 'pay_as_you_go'
-                                    ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/10'
+                                    ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/10'
                                     : 'bg-brand-light/50 text-brand-dark border-brand-primary/10'
                             }`}>
                               {lab.plan?.replace(/_/g, ' ') || 'basic'}
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 whitespace-nowrap">
-                            <div className="flex items-center space-x-2.5">
+                          <td className="px-3 py-2 md:px-5 md:py-2.5 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
                               <div className={`w-1.5 h-1.5 rounded-full shadow-sm ${lab.status === 'active' && !isExp ? 'bg-brand-primary animate-pulse shadow-brand-primary/50' : 'bg-rose-500 shadow-rose-500/50'}`} />
-                              <span className="text-[10px] md:text-[11px] font-black text-brand-dark uppercase tracking-wide">
+                              <span className="text-[9px] md:text-[10px] font-black text-brand-dark uppercase tracking-wide">
                                 {lab.status === 'active' && !isExp ? 'Active' : isExp ? 'Expired' : 'Suspended'}
                               </span>
                             </div>
-                            <div className="flex flex-col mt-1 ml-4 shadow-inner">
-                              <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest scale-95 origin-left">Exp: {formatDisplayDate(lab.expiryDate)}</span>
-                              <span className={`text-[7.5px] md:text-[8.5px] font-black uppercase tracking-[0.1em] mt-0.5 ${isExp ? 'text-rose-500' : getRemainingDays(lab.expiryDate) < 7 ? 'text-amber-500' : 'text-brand-primary'}`}>
+                            <div className="flex flex-col mt-0.5 ml-3.5">
+                              <span className="text-[7.5px] md:text-[8.5px] font-bold text-slate-400 uppercase tracking-widest">Exp: {formatDisplayDate(lab.expiryDate)}</span>
+                              <span className={`text-[7px] md:text-[8px] font-black uppercase tracking-[0.1em] mt-0 ${isExp ? 'text-rose-500' : getRemainingDays(lab.expiryDate) < 7 ? 'text-amber-500' : 'text-brand-primary'}`}>
                                 {isExp ? 'EXPIRED' : `${getRemainingDays(lab.expiryDate)}d Left`}
                               </span>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5 md:px-8 md:py-4.5">
-                            <code className="bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg text-[9px] md:text-[11px] font-bold font-mono text-brand-secondary shadow-inner">{lab.license_key}</code>
+                          <td className="px-3 py-2 md:px-5 md:py-2.5">
+                            <code className="bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md text-[8px] md:text-[10px] font-bold font-mono text-brand-secondary">{lab.license_key}</code>
                           </td>
-                          <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-right">
-                            <div className="flex justify-end gap-1.5 md:gap-2.5">
+                          <td className="px-3 py-2 md:px-5 md:py-2.5 text-right">
+                            <div className="flex justify-end gap-1 md:gap-1.5">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setActiveLabId(lab.labId); }}
-                                className={`flex items-center gap-2 px-3.5 py-2 md:px-5 md:py-2.5 rounded-lg font-black uppercase tracking-widest text-[9.5px] md:text-[10px] transition-all ${activeLabId === lab.labId ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-white border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95'}`}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-md font-black uppercase tracking-widest text-[8px] md:text-[9px] transition-all ${activeLabId === lab.labId ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20 scale-105' : 'bg-white border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95'}`}
                               >
-                                <ExternalLink className="w-3.5 h-3.5" />
+                                <ExternalLink className="w-3 h-3" />
                                 <span className="hidden sm:inline">{activeLabId === lab.labId ? 'Managing' : 'Enter'}</span>
                               </button>
                               <button 
                                 onClick={() => { setEditingLab({...lab}); setShowEditModal(true); setActiveTab('basic'); }}
-                                className="p-2 rounded-lg transition-all border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95"
+                                className="p-1.5 rounded-md transition-all border border-slate-100 text-slate-400 hover:border-brand-primary hover:text-brand-primary shadow-sm active:scale-95"
                                 title="Edit Lab Details"
                               >
-                                <Settings className="w-4 h-4" />
+                                <Settings className="w-3.5 h-3.5" />
                               </button>
                               <button 
                                 onClick={() => { setEditingLab({...lab}); setShowExtendModal(true); }}
-                                className="p-2 rounded-lg transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
+                                className="p-1.5 rounded-md transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
                                 title="Extend Subscription"
                               >
-                                <CreditCard className="w-4 h-4" />
+                                <CreditCard className="w-3.5 h-3.5" />
                               </button>
                               <button 
                                 onClick={() => { 
                                   setTokenForm({ labId: lab.labId, amount: '100', labName: lab.labName });
                                   setIsTokenModalOpen(true);
                                 }}
-                                className="p-2 rounded-lg transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
+                                className="p-1.5 rounded-md transition-all border border-slate-100 text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm active:scale-95"
                                 title="Add Tokens"
                               >
-                                <Zap className="w-4 h-4" />
+                                <Zap className="w-3.5 h-3.5" />
                               </button>
                               <button 
                                 onClick={() => handleToggleStatus(lab.id, lab.status)}
-                                className={`p-2 rounded-lg transition-all border ${lab.status === 'active' ? 'text-rose-400 border-rose-50 hover:bg-rose-500 hover:text-white' : 'text-brand-primary border-brand-light hover:bg-brand-primary hover:text-white'} shadow-sm active:scale-95`}
+                                className={`p-1.5 rounded-md transition-all border ${lab.status === 'active' ? 'text-rose-400 border-rose-50 hover:bg-rose-500 hover:text-white' : 'text-brand-primary border-brand-light hover:bg-brand-primary hover:text-white'} shadow-sm active:scale-95`}
                                 title={lab.status === 'active' ? "Terminate" : "Authorize"}
                               >
-                                <Shield className="w-4 h-4" />
+                                <Shield className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1068,15 +1048,15 @@ const SuperAdminDashboard = () => {
         <GlobalSettings />
       ) : activeView === 'token_requests' ? (
         <div className="animate-in fade-in duration-700">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-8 md:mb-10 bg-white p-5 md:p-8 rounded-2xl md:rounded-[28px] shadow-sm border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 md:gap-4 mb-3 md:mb-4 bg-white p-2.5 md:p-3.5 rounded-xl md:rounded-2xl shadow-[0_8px_24px_rgb(0,0,0,0.01)] border border-slate-100">
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+              <h1 className="text-base md:text-lg font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
                 Token <span className="text-amber-500">Requests</span>
               </h1>
-              <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1">Manage token purchase requests from laboratories.</p>
+              <p className="text-[7.5px] md:text-[8.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-0.5 line-clamp-1">Manage token purchase requests from laboratories.</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto">
               {[
                 { id: 'all', label: 'All', count: trCounts.all, color: 'slate' },
                 { id: 'pending', label: 'Pending', count: trCounts.pending, color: 'amber' },
@@ -1086,14 +1066,14 @@ const SuperAdminDashboard = () => {
                 <button
                   key={f.id}
                   onClick={() => setTrFilter(f.id)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[8.5px] font-black uppercase tracking-widest transition-all ${
                     trFilter === f.id 
-                    ? `bg-${f.color === 'emerald' ? 'emerald-500' : f.color === 'rose' ? 'rose-500' : f.color === 'amber' ? 'amber-500' : 'brand-dark'} text-white shadow-xl scale-105` 
+                    ? `bg-${f.color === 'emerald' ? 'emerald-500' : f.color === 'rose' ? 'rose-500' : f.color === 'amber' ? 'amber-500' : 'brand-dark'} text-white shadow-md` 
                     : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-white active:scale-95'
                   }`}
                 >
                   {f.label}
-                  <span className={`px-1.5 py-0.5 rounded-lg text-[9px] ${trFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black ${trFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
                     {f.count}
                   </span>
                 </button>
@@ -1101,39 +1081,39 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-[0_16px_64px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden mb-5">
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-amber-500 text-white">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-amber-500 text-white sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Laboratory</th>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Admin Details</th>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest text-center">Amount</th>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Date</th>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-right text-[10px] md:text-[11px] font-black uppercase tracking-widest">Actions</th>
+                    <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em]">Laboratory</th>
+                    <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em]">Admin Details</th>
+                    <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] text-center">Amount</th>
+                    <th className="px-3 py-2 md:px-5 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em]">Date</th>
+                    <th className="px-3 py-2 md:px-5 md:py-2.5 text-right text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 bg-white">
                   {filteredTokenRequests.length === 0 ? (
-                    <tr><td colSpan="5" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No {trFilter} requests found.</td></tr>
+                    <tr><td colSpan="5" className="p-16 text-center font-black text-slate-300 uppercase tracking-widest text-[10px]">No {trFilter} requests found.</td></tr>
                   ) : filteredTokenRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-amber-50/30 transition-colors border-b border-slate-50 last:border-0 font-sans">
-                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
-                        <div className="font-black text-brand-dark text-[12px] md:text-sm tracking-tight uppercase leading-tight">{req.labName}</div>
-                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">ID: {req.labId}</div>
+                    <tr key={req.id} className="hover:bg-amber-50/10 transition-colors border-b border-slate-50 last:border-0 font-sans">
+                      <td className="px-3 py-2 md:px-5 md:py-2.5">
+                        <div className="font-black text-brand-dark text-[11px] md:text-xs tracking-tight uppercase leading-tight">{req.labName}</div>
+                        <div className="text-[8px] md:text-[9px] text-slate-300 font-bold uppercase tracking-widest mt-0.5">ID: {req.labId}</div>
                       </td>
-                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
-                        <div className="font-bold text-slate-700 uppercase text-[11px] leading-tight">{req.adminName || 'Admin'}</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">{req.adminEmail || 'N/A'}</div>
-                        {req.adminPhone && <div className="text-[10px] text-brand-primary font-bold mt-1 tracking-wider">{req.adminPhone}</div>}
+                      <td className="px-3 py-2 md:px-5 md:py-2.5">
+                        <div className="font-bold text-slate-700 uppercase text-[10px] leading-tight">{req.adminName || 'Admin'}</div>
+                        <div className="text-[9px] text-slate-400 mt-0.5">{req.adminEmail || 'N/A'}</div>
+                        {req.adminPhone && <div className="text-[8.5px] text-brand-primary font-bold mt-0.5 tracking-wider">{req.adminPhone}</div>}
                       </td>
-                      <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-center">
-                        <span className="px-4 py-1.5 bg-amber-100 text-amber-700 rounded-lg font-black text-xs shadow-sm ring-1 ring-amber-200">
-                          {req.requestedAmount} <span className="text-[9px] opacity-70">TKNS</span>
+                      <td className="px-3 py-2 md:px-5 md:py-2.5 text-center">
+                        <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-md font-black text-[10px] shadow-sm ring-1 ring-amber-200">
+                          {req.requestedAmount} <span className="text-[8px] opacity-70">TKNS</span>
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
-                        <div className="text-[11px] font-bold text-slate-600">
+                      <td className="px-3 py-2 md:px-5 md:py-2.5">
+                        <div className="text-[10px] font-bold text-slate-600">
                           {(() => {
                             const dateObj = req.createdAt;
                             if (!dateObj) return '—';
@@ -1141,26 +1121,26 @@ const SuperAdminDashboard = () => {
                             return (
                               <div className="flex flex-col leading-tight">
                                 <span>{date.toLocaleDateString('en-GB')}</span>
-                                <span className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">{date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-[8px] text-slate-400 uppercase tracking-widest mt-0.5">{date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
                             );
                           })()}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 md:px-8 md:py-4.5 text-right">
+                      <td className="px-3 py-2 md:px-5 md:py-2.5 text-right">
                         {req.status === 'pending' ? (
-                          <div className="flex items-center justify-end gap-2.5">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button 
                               disabled={processingRequestId === req.id}
                               onClick={() => handleRejectTokenRequest(req.id)}
-                              className="px-4 py-2 bg-white text-rose-500 border border-rose-100 rounded-xl text-[9.5px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50"
+                              className="px-2.5 py-1.5 bg-white text-rose-500 border border-rose-100 rounded-lg text-[8.5px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50"
                             >
                               Reject
                             </button>
                             <button 
                               disabled={processingRequestId === req.id}
                               onClick={() => handleApproveTokenRequest(req)}
-                              className="px-4 py-2 bg-brand-dark text-white rounded-xl text-[9.5px] font-black uppercase tracking-widest hover:bg-black shadow-xl shadow-brand-dark/10 transition-all border border-white/5 disabled:opacity-50 active:scale-95 flex items-center gap-2"
+                              className="px-2.5 py-1.5 bg-brand-dark text-white rounded-lg text-[8.5px] font-black uppercase tracking-widest hover:bg-black shadow-md transition-all border border-white/5 disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
                             >
                               {processingRequestId === req.id ? (
                                 <Loader className="w-3 h-3 animate-spin" />
@@ -1168,14 +1148,14 @@ const SuperAdminDashboard = () => {
                             </button>
                           </div>
                         ) : req.status === 'approved' ? (
-                          <div className="flex items-center justify-end gap-2 text-emerald-500">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Approved</span>
+                          <div className="flex items-center justify-end gap-1 text-emerald-500">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Approved</span>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-end gap-2 text-rose-500">
-                            <X className="w-5 h-5" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Rejected</span>
+                          <div className="flex items-center justify-end gap-1 text-rose-500">
+                            <X className="w-4 h-4" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Rejected</span>
                           </div>
                         )}
                       </td>
@@ -1188,20 +1168,20 @@ const SuperAdminDashboard = () => {
         </div>
       ) : activeView === 'validity_requests' ? (
         <div className="animate-in fade-in duration-700">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-8 md:mb-10 bg-white p-5 md:p-8 rounded-2xl md:rounded-[28px] shadow-sm border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 mb-3 bg-white p-2.5 rounded-xl shadow-sm border border-slate-100">
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
-                Validity <span className="text-[#9BCF83]">Requests</span>
+              <h1 className="text-[13px] font-display font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                Validity <span className="text-brand-primary">Requests</span>
               </h1>
-              <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1">Review and approve subscription extension requests.</p>
+              <p className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5 line-clamp-1">Review and approve subscription extension requests.</p>
             </div>
 
-            <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100 w-full lg:w-auto">
+            <div className="flex bg-slate-50 p-0.5 rounded-lg border border-slate-100 w-full lg:w-auto overflow-x-auto no-scrollbar">
               {['all', 'pending', 'approved', 'rejected'].map((f) => (
                 <button 
                   key={f}
                   onClick={() => setVrFilter(f)}
-                  className={`flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${vrFilter === f ? 'bg-brand-dark text-white shadow-lg' : 'text-slate-400 hover:text-brand-dark'}`}
+                  className={`flex-1 lg:flex-none px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${vrFilter === f ? 'bg-brand-dark text-white shadow-sm' : 'text-slate-400 hover:text-brand-dark'}`}
                 >
                   {f} ({vrCounts[f]})
                 </button>
@@ -1209,21 +1189,21 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {filteredValidityRequests.length === 0 ? (
-               <div className="md:col-span-2 lg:col-span-3 p-20 text-center font-black text-slate-300 uppercase tracking-widest bg-white rounded-[42px] border border-slate-100">
+               <div className="md:col-span-2 lg:col-span-3 p-8 text-center font-black text-slate-300 uppercase tracking-widest bg-white rounded-xl border border-slate-100 text-[9px]">
                  No {vrFilter} validity requests found.
                </div>
             ) : filteredValidityRequests.map((req) => (
-              <div key={req.id} className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                <div className={`absolute top-0 right-0 w-24 h-24 blur-3xl opacity-10 rounded-full -mr-12 -mt-12 transition-colors ${req.status === 'pending' ? 'bg-amber-500' : req.status === 'approved' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+              <div key={req.id} className="bg-white rounded-xl border border-slate-100 p-3 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                <div className={`absolute top-0 right-0 w-12 h-12 blur-xl opacity-10 rounded-full -mr-6 -mt-6 transition-colors ${req.status === 'pending' ? 'bg-amber-500' : req.status === 'approved' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                 
-                <div className="flex justify-between items-start mb-6">
+                <div className="flex justify-between items-start mb-2.5">
                    <div>
-                      <div className="font-black text-brand-dark text-lg uppercase tracking-tight leading-tight">{req.labName}</div>
-                      <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Lab ID: {req.labId}</div>
+                      <div className="font-black text-brand-dark text-[10px] uppercase tracking-tight leading-tight">{req.labName}</div>
+                      <div className="text-[7.5px] text-slate-300 font-bold uppercase tracking-widest mt-0.5">Lab ID: {req.labId}</div>
                    </div>
-                   <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                   <div className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${
                      req.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                      req.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                      'bg-rose-50 text-rose-600 border-rose-100'
@@ -1232,19 +1212,19 @@ const SuperAdminDashboard = () => {
                    </div>
                 </div>
 
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6">
-                   <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-brand-primary shadow-sm">
-                         <Calendar className="w-5 h-5" />
+                <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 mb-2.5">
+                   <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-md bg-white border border-slate-100 flex items-center justify-center text-brand-primary shadow-sm">
+                         <Calendar className="w-2.5 h-2.5" />
                       </div>
                       <div>
-                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Requested Duration</p>
-                         <p className="text-xl font-black text-brand-dark leading-none">{req.requestedMonths} <span className="text-[10px] opacity-40">Months</span></p>
+                         <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Requested Duration</p>
+                         <p className="text-xs font-black text-brand-dark leading-none">{req.requestedMonths} <span className="text-[8px] opacity-40">Months</span></p>
                       </div>
                    </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-6">
+                <div className="flex items-center justify-between text-[8px] font-bold text-slate-400 uppercase tracking-widest px-0.5 mb-2.5">
                    <span>Request Date</span>
                    <span className="text-slate-600">
                      {req.createdAt?.toDate ? req.createdAt.toDate().toLocaleDateString('en-GB') : 'N/A'}
@@ -1252,20 +1232,20 @@ const SuperAdminDashboard = () => {
                 </div>
 
                 {req.status === 'pending' && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button 
                       disabled={processingRequestId === req.id}
                       onClick={() => handleRejectValidityRequest(req.id)}
-                      className="py-3 bg-white text-rose-500 border border-rose-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50"
+                      className="py-1 bg-white text-rose-500 border border-rose-100 rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50"
                     >
                       Reject
                     </button>
                     <button 
                       disabled={processingRequestId === req.id}
                       onClick={() => handleApproveValidityRequest(req)}
-                      className="py-3 bg-brand-dark text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-xl shadow-brand-dark/10 transition-all border border-white/5 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                      className="py-1 bg-brand-dark text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-black shadow-sm transition-all border border-white/5 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-1"
                     >
-                      {processingRequestId === req.id ? <Loader className="w-3 h-3 animate-spin" /> : 'Approve'}
+                      {processingRequestId === req.id ? <Loader className="w-2.5 h-2.5 animate-spin" /> : 'Approve'}
                     </button>
                   </div>
                 )}
@@ -1275,42 +1255,42 @@ const SuperAdminDashboard = () => {
         </div>
       ) : activeView === 'requests' ? (
         <div className="animate-in fade-in duration-700">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-8 mb-8 md:mb-10 bg-white p-5 md:p-8 rounded-2xl md:rounded-[28px] shadow-sm border border-slate-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 mb-3 bg-white p-2.5 rounded-xl shadow-sm border border-slate-100">
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+              <h1 className="text-[13px] font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
                 Registration <span className="text-brand-primary">Requests</span>
               </h1>
-              <p className="text-[8px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1">Verify and approve new laboratory signups.</p>
+              <p className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5 line-clamp-1">Verify and approve new laboratory signups.</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-[32px] md:rounded-[42px] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden mb-5">
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-brand-dark text-white/70">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-brand-dark text-white/70 sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Lab Details</th>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Admin Details</th>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest">Status</th>
-                    <th className="px-5 py-3 md:px-8 md:py-4 text-right text-[10px] md:text-[11px] font-black uppercase tracking-widest">Actions</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Lab Details</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Admin Details</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Status</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-right text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 bg-white">
                   {requests.length === 0 ? (
-                    <tr><td colSpan="4" className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">No requests yet.</td></tr>
+                    <tr><td colSpan="4" className="p-8 text-center font-black text-slate-300 uppercase tracking-widest text-[9px]">No requests yet.</td></tr>
                   ) : requests.map((req) => (
                     <tr key={req.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0 font-sans">
-                      <td className="px-5 py-3.5 md:px-8 md:py-4.5">
-                        <div className="font-black text-brand-dark text-[12px] md:text-sm tracking-tight uppercase leading-tight">{req.labFullName || req.labName}</div>
-                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">{req.labType} // {req.city}, {req.state}</div>
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <div className="font-black text-brand-dark text-[10px] tracking-tight uppercase leading-tight">{req.labFullName || req.labName}</div>
+                        <div className="text-[7.5px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{req.labType} // {req.city}, {req.state}</div>
                       </td>
-                      <td className="px-6 py-4 md:px-10 md:py-6">
-                        <div className="font-bold text-slate-700">{req.ownerName}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">{req.email}</div>
-                        <div className="text-[11px] text-slate-400">{req.phone}</div>
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <div className="font-bold text-slate-700 text-[10px] leading-tight">{req.ownerName}</div>
+                        <div className="text-[8px] text-slate-400 mt-0.5">{req.email}</div>
+                        <div className="text-[8px] text-slate-400">{req.phone}</div>
                       </td>
-                      <td className="px-6 py-4 md:px-10 md:py-6">
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-widest ${
                           req.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
                           req.status === 'approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
                           'bg-slate-100 text-slate-500 border border-slate-200'
@@ -1318,16 +1298,16 @@ const SuperAdminDashboard = () => {
                           {req.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 md:px-10 md:py-6 text-right">
-                        <div className="flex justify-end gap-3">
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5 text-right">
+                        <div className="flex justify-end gap-1">
                           {req.status === 'pending' && (
                             <>
                               <button 
                                 onClick={() => handleRejectRequest(req.id)}
                                 disabled={processingRequestId === req.id}
-                                className="px-6 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2 min-w-[100px] justify-center"
+                                className="px-2 py-1 bg-rose-50 text-rose-600 rounded-md text-[7.5px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-1 min-w-[50px] justify-center"
                               >
-                                {processingRequestId === req.id ? <Loader className="w-3 h-3 animate-spin" /> : 'Reject'}
+                                {processingRequestId === req.id ? <Loader className="w-2.5 h-2.5 animate-spin" /> : 'Reject'}
                               </button>
                               <button 
                                 onClick={() => {
@@ -1349,7 +1329,7 @@ const SuperAdminDashboard = () => {
                                   setActiveTab('basic');
                                   setShowRegisterModal(true);
                                 }}
-                                className="px-6 py-2.5 bg-brand-primary text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-dark hover:text-white transition-all shadow-lg shadow-brand-primary/10"
+                                className="px-2 py-1 bg-brand-primary text-brand-dark rounded-md text-[7.5px] font-black uppercase tracking-widest hover:bg-brand-dark hover:text-white transition-all shadow-sm"
                               >
                                 Verify & Approve
                               </button>
@@ -1358,10 +1338,10 @@ const SuperAdminDashboard = () => {
                           <button 
                             onClick={() => confirmDelete(req)}
                             disabled={processingRequestId === req.id}
-                            className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
+                            className="p-1 bg-slate-100 text-slate-400 rounded-md hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
                             title="Delete Request"
                           >
-                            {processingRequestId === req.id ? <Loader className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            {processingRequestId === req.id ? <Loader className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                           </button>
                         </div>
                       </td>
@@ -1378,46 +1358,340 @@ const SuperAdminDashboard = () => {
         <MasterParameters />
       ) : activeView === 'plans' ? (
         <PlansTab />
+      ) : activeView === 'support_tickets' ? (
+        <div className="animate-in fade-in duration-700">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 mb-3 bg-white p-2.5 rounded-xl shadow-sm border border-slate-100">
+            <div>
+              <h1 className="text-[13px] font-display font-black text-brand-dark tracking-tighter uppercase whitespace-nowrap">
+                Support <span className="text-sky-500">Tickets</span>
+              </h1>
+              <p className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5 line-clamp-1">View and resolve support queries submitted by laboratory users.</p>
+            </div>
+            <button
+              onClick={fetchSupportTickets}
+              disabled={loadingTickets}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-sky-600 shadow-sm transition-all disabled:opacity-50"
+            >
+              <Loader className={`w-2.5 h-2.5 ${loadingTickets ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden mb-5">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-brand-dark text-white/70 sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Ticket</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Lab / User</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Category</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Priority</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Status</th>
+                    <th className="px-2.5 py-1.5 md:px-3 md:py-2 text-right text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 bg-white">
+                  {loadingTickets ? (
+                    <tr><td colSpan="6" className="p-8 text-center"><Loader className="w-5 h-5 animate-spin text-sky-500 mx-auto" /></td></tr>
+                  ) : supportTickets.length === 0 ? (
+                    <tr><td colSpan="6" className="p-8 text-center font-black text-slate-300 uppercase tracking-widest text-[9px]">No support tickets yet.</td></tr>
+                  ) : supportTickets.map(ticket => (
+                    <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0">
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <div className="font-mono text-[8.5px] text-sky-600 font-black">TKT-{ticket.id.substring(0,8).toUpperCase()}</div>
+                        <div className="text-[10px] font-black text-brand-dark tracking-tight uppercase leading-tight mt-0.5 max-w-[150px] truncate">{ticket.subject}</div>
+                      </td>
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <div className="font-bold text-slate-700 text-[10px] leading-tight">{ticket.labName || 'N/A'}</div>
+                        <div className="text-[8px] text-slate-400 mt-0.5">{ticket.userName || ticket.userEmail || 'Unknown'}</div>
+                      </td>
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <span className="text-[8px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded-sm border border-slate-100">{ticket.category}</span>
+                      </td>
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-wider ${
+                          ticket.priority === 'Critical' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                          ticket.priority === 'High' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                          ticket.priority === 'Medium' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                          'bg-slate-100 text-slate-500 border border-slate-200'
+                        }`}>{ticket.priority}</span>
+                      </td>
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5">
+                        <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest border ${
+                          ticket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                          ticket.status === 'Under Review' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                          'bg-sky-50 text-sky-600 border-sky-100'
+                        }`}>{ticket.status}</span>
+                      </td>
+                      <td className="px-2.5 py-2 md:px-3 md:py-2.5 text-right">
+                        <button
+                          onClick={() => { setSelectedTicket(ticket); setTicketResponse(ticket.adminResponse || ''); setTicketStatus(ticket.status || 'Open'); }}
+                          className="px-2 py-1 bg-brand-dark text-white rounded-md text-[7.5px] font-black uppercase tracking-widest hover:bg-black shadow-sm transition-all border border-white/5 active:scale-95"
+                        >
+                          {ticket.status === 'Resolved' ? 'View' : 'Resolve'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : (
         <GlobalSettings />
+      )}
+        </div>
+
+        {/* Full-Height Right Sidebar Control Panel */}
+        <div className="w-full lg:w-48 shrink-0 order-1 lg:order-2 bg-white border-b lg:border-b-0 lg:border-l border-slate-100 lg:sticky lg:top-0 lg:h-screen flex flex-col z-30">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] p-4 border-b border-slate-50 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-brand-primary" />
+            <span>Console</span>
+          </div>
+          <div className="flex flex-col gap-1 p-2.5 flex-grow overflow-y-auto custom-scrollbar">
+            <button 
+              onClick={() => setActiveView('labs')}
+              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent ${activeView === 'labs' ? 'bg-brand-dark text-white shadow-lg shadow-brand-dark/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span>Labs</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('tests')}
+              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent ${activeView === 'tests' ? 'bg-brand-dark text-white shadow-lg shadow-brand-dark/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <FlaskConical className="w-3.5 h-3.5 shrink-0" />
+              <span>Global Tests</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('settings')}
+              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent ${activeView === 'settings' ? 'bg-brand-dark text-white shadow-lg shadow-brand-dark/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <Settings className="w-3.5 h-3.5 shrink-0" />
+              <span>Global Settings</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('parameters')}
+              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent ${activeView === 'parameters' ? 'bg-brand-dark text-white shadow-lg shadow-brand-dark/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+              <span>Parameters</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('plans')}
+              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent ${activeView === 'plans' ? 'bg-brand-dark text-white shadow-lg shadow-brand-dark/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <CreditCard className="w-3.5 h-3.5 shrink-0" />
+              <span>Pricing Plans</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('token_requests')}
+              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent relative ${activeView === 'token_requests' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5 shrink-0" />
+                <span>Tokens</span>
+              </div>
+              {tokenRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-md text-[7.5px] font-black ${activeView === 'token_requests' ? 'bg-white text-amber-600 shadow-sm' : 'bg-amber-500 text-white'}`}>
+                  {tokenRequests.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => setActiveView('validity_requests')}
+              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent relative ${activeView === 'validity_requests' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                <span>Validity</span>
+              </div>
+              {validityRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-md text-[7.5px] font-black ${activeView === 'validity_requests' ? 'bg-white text-brand-primary shadow-sm' : 'bg-brand-dark text-white'}`}>
+                  {validityRequests.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => setActiveView('requests')}
+              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent relative ${activeView === 'requests' ? 'bg-brand-dark text-white shadow-lg shadow-brand-dark/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <div className="flex items-center gap-2">
+                <User className="w-3.5 h-3.5 shrink-0 animate-in fade-in" />
+                <span>Requests</span>
+              </div>
+              {requests.filter(r => r.status === 'pending').length > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-md text-[7.5px] font-black ${activeView === 'requests' ? 'bg-white text-brand-primary font-black shadow-sm' : 'bg-rose-500 text-white'}`}>
+                  {requests.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => setActiveView('support_tickets')}
+              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[8.5px] transition-all border border-transparent relative ${activeView === 'support_tickets' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/15 scale-[1.01]' : 'text-slate-400 hover:bg-slate-50 hover:text-brand-dark hover:scale-[1.01]'}`}
+            >
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Support</span>
+              </div>
+              {supportTickets.filter(t => t.status === 'Open').length > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-md text-[7.5px] font-black ${activeView === 'support_tickets' ? 'bg-white text-sky-600 shadow-sm' : 'bg-sky-500 text-white'}`}>
+                  {supportTickets.filter(t => t.status === 'Open').length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+      </div>
+      {/* SUPPORT TICKET RESOLVE MODAL */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="bg-sky-500 p-4 text-white relative shrink-0">
+              <div className="flex items-center gap-2.5 mb-1">
+                <HelpCircle className="w-5 h-5 opacity-60" />
+                <div>
+                  <h2 className="text-sm font-black uppercase tracking-tighter">Ticket Details</h2>
+                  <p className="text-[8px] font-black uppercase tracking-[0.3em] mt-0.5 opacity-80">TKT-{selectedTicket.id.substring(0,8).toUpperCase()}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedTicket(null)} className="absolute top-4 right-4 p-1 hover:bg-white/10 rounded-lg transition-all border-none bg-transparent text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 space-y-4 overflow-y-auto flex-grow custom-scrollbar">
+              {/* Ticket Info Grid */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Lab Name</span>
+                  <p className="text-xs font-black text-brand-dark mt-0.5">{selectedTicket.labName || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Submitted By</span>
+                  <p className="text-xs font-black text-brand-dark mt-0.5">{selectedTicket.userName || 'Unknown'}</p>
+                  <p className="text-[8.5px] text-slate-400 font-bold mt-0.5">{selectedTicket.userEmail}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Category</span>
+                  <p className="text-xs font-bold text-slate-700 mt-0.5">{selectedTicket.category}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Priority</span>
+                  <p className={`text-xs font-black mt-0.5 ${
+                    selectedTicket.priority === 'Critical' || selectedTicket.priority === 'High' ? 'text-rose-600' : 'text-slate-700'
+                  }`}>{selectedTicket.priority}</p>
+                </div>
+              </div>
+
+              {/* Subject & Description */}
+              <div>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Subject</label>
+                <p className="text-xs font-bold text-brand-dark">{selectedTicket.subject}</p>
+              </div>
+              <div>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Description</label>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {selectedTicket.description}
+                </div>
+              </div>
+
+              <hr className="border-slate-100" />
+
+              {/* Admin Response & Status */}
+              <div>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Admin Response</label>
+                <textarea
+                  rows={4}
+                  value={ticketResponse}
+                  onChange={(e) => setTicketResponse(e.target.value)}
+                  placeholder="Type your resolution / response for the user here..."
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs rounded-xl p-2.5 outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500/30 font-bold resize-none leading-relaxed transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Update Status</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Open', 'Under Review', 'Resolved'].map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setTicketStatus(s)}
+                      className={`px-3.5 py-1.5 rounded-lg font-black text-[8.5px] uppercase tracking-widest transition-all border-2 ${
+                        ticketStatus === s
+                          ? s === 'Resolved' ? 'bg-emerald-500 border-emerald-500 text-white shadow-md'
+                            : s === 'Under Review' ? 'bg-amber-500 border-amber-500 text-white shadow-md'
+                            : 'bg-sky-500 border-sky-500 text-white shadow-md'
+                          : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3.5 bg-slate-50 border-t border-slate-100 flex gap-2.5 shrink-0">
+              <button
+                onClick={() => setSelectedTicket(null)}
+                className="flex-1 py-2 rounded-lg bg-white border border-slate-200 text-slate-400 font-black uppercase text-[9px] tracking-widest hover:bg-slate-100 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResolveTicket}
+                disabled={processingRequestId === selectedTicket.id}
+                className="flex-[2] py-2 rounded-lg bg-brand-dark text-white font-black uppercase text-[9px] tracking-[0.2em] shadow-md hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {processingRequestId === selectedTicket.id ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <><CheckCircle className="w-3.5 h-3.5" /> Save & Update Ticket</>}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MANUAL TOKEN ADD MODAL */}
       {isTokenModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="bg-amber-500 p-8 text-white relative">
-              <Zap className="w-12 h-12 mb-4 opacity-50" />
-              <h2 className="text-2xl font-black uppercase tracking-tighter">Add Tokens</h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-1 opacity-80">Manual Laboratory Recharge</p>
-              <button onClick={() => setIsTokenModalOpen(false)} className="absolute top-8 right-8 p-2 hover:bg-white/10 rounded-full">
-                <X className="w-6 h-6" />
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-amber-500 p-4 text-white relative">
+              <Zap className="w-6 h-6 mb-2 opacity-50" />
+              <h2 className="text-sm font-black uppercase tracking-tighter">Add Tokens</h2>
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] mt-0.5 opacity-80">Manual Laboratory Recharge</p>
+              <button onClick={() => setIsTokenModalOpen(false)} className="absolute top-4 right-4 p-1 hover:bg-white/10 rounded-lg">
+                <X className="w-4 h-4" />
               </button>
             </div>
             
-            <form onSubmit={handleManualAddTokens} className="p-10 space-y-6">
+            <form onSubmit={handleManualAddTokens} className="p-4 space-y-4">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Laboratory</label>
-                <div className="font-black text-brand-dark text-lg uppercase">{tokenForm.labName}</div>
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {tokenForm.labId}</div>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Laboratory</label>
+                <div className="font-black text-brand-dark text-sm uppercase">{tokenForm.labName}</div>
+                <div className="text-[8.5px] text-slate-400 font-bold uppercase tracking-widest">ID: {tokenForm.labId}</div>
               </div>
               
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Token Quantity</label>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Token Quantity</label>
                 <input 
                   type="number" 
                   value={tokenForm.amount}
                   onChange={(e) => setTokenForm({...tokenForm, amount: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-xl font-black outline-none focus:ring-8 focus:ring-amber-500/5 focus:border-amber-500/30 transition-all font-mono"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-lg p-2.5 text-xs font-black outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500/30 transition-all font-mono"
                   placeholder="Enter Amount"
                   autoFocus
                 />
               </div>
 
-              <div className="pt-6">
+              <div className="pt-2">
                 <button 
                   type="submit"
-                  className="w-full py-5 bg-brand-dark text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand-dark/20 hover:bg-black transition-all active:scale-95"
+                  className="w-full py-2 bg-brand-dark text-white rounded-lg font-black uppercase tracking-[0.2em] shadow-md hover:bg-black transition-all active:scale-[0.98] text-[9px]"
                 >
                   Confirm Recharge
                 </button>
@@ -2018,13 +2292,13 @@ const SuperAdminDashboard = () => {
 
 /* ─── Tiny Reusable Stat Cards ───────────────────────────────────────────── */
 const StatCard = ({ icon, label, value, color, gradient }) => (
-  <div className={`p-4 md:p-5 rounded-[24px] border border-slate-100 transition-all hover:scale-[1.02] shadow-[0_10px_30px_rgb(0,0,0,0.01)] flex items-center gap-4 ${gradient ? `bg-gradient-to-br ${color} text-white border-transparent` : 'bg-white'}`}>
-    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-[16px] flex items-center justify-center shadow-sm border ${gradient ? 'bg-white/20 border-white/20' : `${color} border-transparent`}`}>
-      {React.cloneElement(icon, { className: 'w-5 h-5 md:w-6 md:h-6' })}
+  <div className={`px-3 py-2.5 md:px-4 md:py-3 rounded-xl md:rounded-2xl border border-slate-100 transition-all hover:scale-[1.02] shadow-[0_6px_20px_rgb(0,0,0,0.01)] flex items-center gap-3 ${gradient ? `bg-gradient-to-br ${color} text-white border-transparent` : 'bg-white'}`}>
+    <div className={`w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center shadow-sm border ${gradient ? 'bg-white/20 border-white/20' : `${color} border-transparent`}`}>
+      {React.cloneElement(icon, { className: 'w-4 h-4 md:w-5 md:h-5' })}
     </div>
     <div>
-      <div className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 ${gradient ? 'text-white/60' : 'text-slate-400'}`}>{label}</div>
-      <div className="text-xl md:text-2xl font-black tracking-tighter tabular-nums">{value}</div>
+      <div className={`text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] mb-0 ${gradient ? 'text-white/60' : 'text-slate-400'}`}>{label}</div>
+      <div className="text-lg md:text-xl font-black tracking-tighter tabular-nums">{value}</div>
     </div>
   </div>
 );
