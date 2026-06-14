@@ -7,14 +7,14 @@ export default {
     extend: {
       colors: {
         brand: {
-          light: '#F8FAFC',
-          primary: '#10B981',
-          secondary: '#64748B',
-          accent: '#0EA5E9',
-          dark: '#0F172A',
+          light: '#EEFABD',
+          primary: '#9BCF83',
+          secondary: '#6B85A8',
+          accent: '#14B8A6',
+          dark: '#2D3250',
         },
         muted: {
-          label: '#94A3B8',
+          label: '#98A2B3',
         }
       },
       fontFamily: {
