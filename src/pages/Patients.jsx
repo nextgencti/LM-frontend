@@ -33,9 +33,8 @@ const Patients = () => {
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
+  const fetchPatients = async () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
-    
     setLoading(true);
     let q;
     if (activeLabId) {
@@ -44,24 +43,27 @@ const Patients = () => {
       q = query(collection(db, 'patients'));
     }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    try {
+      const snapshot = await getDocs(q);
       const pts = [];
       snapshot.forEach((doc) => {
         pts.push({ id: doc.id, ...doc.data() });
       });
       pts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setPatients(pts);
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+    } finally {
       setLoading(false);
-    }, (error) => {
-      console.error('Error in patients listener:', error);
-      setLoading(false);
-    });
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
 
     if (isSuperAdmin && !activeLabId) {
       fetchLabs();
     }
-
-    return () => unsubscribe();
   }, [userData, activeLabId]);
 
   // Real-time Honorific logic
@@ -264,13 +266,22 @@ const Patients = () => {
           <p className="text-[11px] font-medium text-slate-500 mt-1.5">Comprehensive medical record directory.</p>
         </div>
         
-        <button
-          onClick={() => { setEditingId(null); setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '', honorific: 'Mr.', isAuto: true }); setShowAddModal(true); }}
-          className="w-full md:w-auto bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold tracking-wider text-[12px] shadow-lg hover:shadow-brand-primary/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
-        >
-          <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-500" />
-          Add Patient
-        </button>
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          <button
+            onClick={() => fetchPatients()}
+            className="w-full md:w-auto bg-white border border-slate-200 text-brand-primary px-4 py-2.5 rounded-xl font-bold tracking-wider text-[12px] shadow-sm hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+          >
+            <Loader className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={() => { setEditingId(null); setNewPatient({ name: '', age: '', ageUnit: 'Years', gender: 'Male', phone: '', email: '', address: '', labId: '', honorific: 'Mr.', isAuto: true }); setShowAddModal(true); }}
+            className="w-full md:w-auto bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold tracking-wider text-[12px] shadow-lg hover:shadow-brand-primary/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
+          >
+            <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-500" />
+            Add Patient
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters Header */}

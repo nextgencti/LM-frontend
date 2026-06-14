@@ -63,16 +63,18 @@ const Bookings = () => {
     const params = new URLSearchParams(location.search);
     const isEditMode = params.get('edit');
     
-    // Only fetch the full list if we are NOT in immediate edit mode (to avoid flicker)
-    // or if the modal is NOT shown.
+    // Only fetch the full list if we are NOT in immediate edit mode
     if (!isEditMode) {
       fetchBookings();
     }
-    
-    if (showAddModal) {
+  }, [userData, activeLabId]);
+
+  useEffect(() => {
+    // Only fetch reference data when modal opens AND we don't have it yet
+    if (showAddModal && patients.length === 0 && tests.length === 0) {
       fetchCreationData();
     }
-  }, [userData, activeLabId, showAddModal, location.search]);
+  }, [showAddModal, activeLabId]);
 
   // Handle URL Param for Editing
   useEffect(() => {

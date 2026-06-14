@@ -121,17 +121,27 @@ const Reports = () => {
     setIsDeducting(null);
   };
 
-  // ─── Fetch reports from Firestore ─────────────────────────────────────────
-  useEffect(() => {
+  // ─── Fetch reports and bookings from Firestore ──────────────────────────
+  const fetchData = async () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
     setLoading(true);
-    let q = activeLabId
+    
+    let qReports = activeLabId
       ? query(collection(db, 'reports'), where('labId', '==', activeLabId))
       : query(collection(db, 'reports'));
+      
+    let qBookings = activeLabId
+      ? query(collection(db, 'bookings'), where('labId', '==', activeLabId))
+      : query(collection(db, 'bookings'));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    try {
+      const [reportsSnap, bookingsSnap] = await Promise.all([
+        getDocs(qReports),
+        getDocs(qBookings)
+      ]);
+
       const items = [];
-      snapshot.forEach((d) => {
+      reportsSnap.forEach((d) => {
         const data = d.data();
         if (data.status !== 'Cancelled') {
           items.push({ id: d.id, ...data });
@@ -147,25 +157,20 @@ const Reports = () => {
         return t(b.updatedAt || b.createdAt) - t(a.updatedAt || a.createdAt);
       });
       setReports(items);
+
+      const bItems = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setBookings(bItems);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      toast.error("Failed to fetch reports");
+    } finally {
       setLoading(false);
-    }, () => setLoading(false));
+    }
+  };
 
-    return () => unsubscribe();
-  }, [userData, activeLabId]);
-
-  // Fetch Bookings to cross-reference doctor names and payment status
   useEffect(() => {
-    if (!activeLabId && userData?.role !== 'SuperAdmin') return;
-    let q = activeLabId
-      ? query(collection(db, 'bookings'), where('labId', '==', activeLabId))
-      : query(collection(db, 'bookings'));
-      
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setBookings(items);
-    });
-    return () => unsubscribe();
-  }, [activeLabId, userData]);
+    fetchData();
+  }, [userData, activeLabId]);
 
   // Fetch Doctors for filter
   useEffect(() => {
@@ -893,7 +898,16 @@ const Reports = () => {
             className="flex items-center justify-center p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
             title="Reset Filters"
           >
-            <RefreshCw className="w-4 h-4" />
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* Refresh Data */}
+          <button 
+            onClick={() => fetchData()}
+            className="flex items-center justify-center p-2.5 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-xl hover:bg-brand-primary hover:text-white transition-all shadow-sm"
+            title="Refresh Data"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
