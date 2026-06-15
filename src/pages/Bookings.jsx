@@ -67,7 +67,7 @@ const Bookings = () => {
     if (!isEditMode) {
       fetchBookings();
     }
-  }, [userData, activeLabId]);
+  }, [userData, activeLabId, startDate, endDate]);
 
   useEffect(() => {
     // Only fetch reference data when modal opens AND we don't have it yet
@@ -368,11 +368,25 @@ const Bookings = () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
     setLoading(true);
     try {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
       let q;
       if (activeLabId) {
-        q = query(collection(db, 'bookings'), where('labId', '==', activeLabId));
+        q = query(
+          collection(db, 'bookings'), 
+          where('labId', '==', activeLabId),
+          where('createdAt', '>=', start),
+          where('createdAt', '<=', end)
+        );
       } else {
-        q = query(collection(db, 'bookings'));
+        q = query(
+          collection(db, 'bookings'),
+          where('createdAt', '>=', start),
+          where('createdAt', '<=', end)
+        );
       }
       
       const snapB = await getDocs(q);
@@ -393,6 +407,27 @@ const Bookings = () => {
       setBookings(rawBookings);
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      if (error.message && error.message.includes('requires an index')) {
+         const urlMatch = error.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
+         const indexUrl = urlMatch ? urlMatch[0] : null;
+         
+         toast.error(
+           (t) => (
+             <div className="flex flex-col gap-2">
+               <span className="font-bold">Database Index Required!</span>
+               <span className="text-xs">To enable Date Filtering and save reads, please create a Firebase Index.</span>
+               {indexUrl && (
+                 <a href={indexUrl} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold text-center mt-1">
+                   Create Index Now
+                 </a>
+               )}
+             </div>
+           ),
+           { duration: 15000, position: 'top-center' }
+         );
+      } else {
+         toast.error("Failed to load bookings");
+      }
     } finally {
       setLoading(false);
     }

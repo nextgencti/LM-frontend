@@ -13,6 +13,10 @@ const Bills = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('Unpaid');
+  const [dateRange, setDateRange] = useState({ 
+    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
+    end: new Date().toISOString().split('T')[0] 
+  });
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -220,17 +224,31 @@ const Bills = () => {
 
   useEffect(() => {
     fetchBills();
-  }, [userData, activeLabId]);
+  }, [userData, activeLabId, dateRange.start, dateRange.end]);
 
   const fetchBills = async () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
     setLoading(true);
     try {
+      const start = new Date(dateRange.start);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(dateRange.end);
+      end.setHours(23, 59, 59, 999);
+
       let q;
       if (activeLabId) {
-        q = query(collection(db, 'bookings'), where('labId', '==', activeLabId));
+        q = query(
+          collection(db, 'bookings'), 
+          where('labId', '==', activeLabId),
+          where('createdAt', '>=', start),
+          where('createdAt', '<=', end)
+        );
       } else {
-        q = query(collection(db, 'bookings'));
+        q = query(
+          collection(db, 'bookings'),
+          where('createdAt', '>=', start),
+          where('createdAt', '<=', end)
+        );
       }
       
       const querySnapshot = await getDocs(q);
@@ -251,6 +269,27 @@ const Bills = () => {
       setBills(items);
     } catch (error) {
       console.error('Error fetching bills:', error);
+      if (error.message && error.message.includes('requires an index')) {
+         const urlMatch = error.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
+         const indexUrl = urlMatch ? urlMatch[0] : null;
+         
+         toast.error(
+           (t) => (
+             <div className="flex flex-col gap-2">
+               <span className="font-bold">Database Index Required!</span>
+               <span className="text-xs">To enable Date Filtering and save reads, please create a Firebase Index.</span>
+               {indexUrl && (
+                 <a href={indexUrl} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold text-center mt-1">
+                   Create Index Now
+                 </a>
+               )}
+             </div>
+           ),
+           { duration: 15000, position: 'top-center' }
+         );
+      } else {
+         toast.error("Failed to load bills");
+      }
     } finally {
       setLoading(false);
     }
@@ -372,6 +411,23 @@ const Bills = () => {
                 </span>
               </button>
             ))}
+          </div>
+          
+          {/* Date Picker */}
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-sm h-10 shrink-0 px-2 overflow-hidden">
+             <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                className="bg-transparent text-[11px] font-bold text-slate-600 outline-none cursor-pointer w-[110px]"
+             />
+             <span className="text-slate-300 mx-1">-</span>
+             <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                className="bg-transparent text-[11px] font-bold text-slate-600 outline-none cursor-pointer w-[110px]"
+             />
           </div>
         </div>
       </div>
@@ -604,19 +660,40 @@ const Bills = () => {
              </button>
              
              <div className="flex items-center gap-2">
-               {[...Array(Math.ceil(filteredBills.length / rowsPerPage))].map((_, i) => (
-                  <button 
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-9 h-9 rounded-xl text-[12px] font-bold transition-all duration-300 ${
-                      currentPage === i + 1 
-                        ? 'bg-brand-dark text-white shadow-lg' 
-                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-               ))}
+               {(() => {
+                 const totalPages = Math.ceil(filteredBills.length / rowsPerPage);
+                 if (totalPages === 0) return null;
+                 
+                 let pages = [];
+                 if (totalPages <= 7) {
+                   for (let i = 1; i <= totalPages; i++) pages.push(i);
+                 } else {
+                   if (currentPage <= 4) {
+                     pages = [1, 2, 3, 4, 5, '...', totalPages];
+                   } else if (currentPage >= totalPages - 3) {
+                     pages = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                   } else {
+                     pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+                   }
+                 }
+                 
+                 return pages.map((p, i) => (
+                    <button 
+                      key={i}
+                      onClick={() => p !== '...' && setCurrentPage(p)}
+                      disabled={p === '...'}
+                      className={`w-9 h-9 rounded-xl text-[12px] font-bold transition-all duration-300 flex items-center justify-center ${
+                        currentPage === p 
+                          ? 'bg-brand-dark text-white shadow-lg' 
+                          : p === '...' 
+                            ? 'bg-transparent text-slate-400 cursor-default border-none'
+                            : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                 ));
+               })()}
              </div>
 
              <button 

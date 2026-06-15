@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { Lock, Mail, AlertCircle, Loader, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader, ChevronRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import PreLoader from '../components/PreLoader';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { currentUser, loading: authLoading } = useAuth();
@@ -97,13 +98,21 @@ const Login = () => {
                 <Lock className="h-4 w-4 text-slate-300 group-focus-within:text-brand-primary transition-colors" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pl-10 w-full pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all placeholder:text-slate-400 shadow-inner"
+                className="pl-10 w-full pr-12 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-brand-dark outline-none focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary/30 focus:bg-white transition-all placeholder:text-slate-400 shadow-inner"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-primary transition-colors"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
             <Link to="/forgot-password" className="inline-block text-[10px] font-bold uppercase tracking-wider text-brand-primary hover:underline ml-1">Forgot Password?</Link>
           </div>

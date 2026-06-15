@@ -86,10 +86,10 @@ const Dashboard = () => {
       let todayRev = 0;
       let monthRev = 0;
       let pending = 0;
-      let completed = 0;
+      let delivered = 0;
       let todayBookingsCount = 0;
       let todayCollectionsCount = 0;
-      let todayReportsCount = 0;
+      let todayDeliveredCount = 0;
       let urgentReportsCount = 0;
 
       const finishedStatuses = ['Final', 'Completed', 'Delivered'];
@@ -115,8 +115,8 @@ const Dashboard = () => {
              todayCollectionsCount++;
           }
 
-          if (finishedStatuses.includes(data.status) && updatedDate >= startOfToday) {
-             todayReportsCount++;
+          if (data.status === 'Delivered' && updatedDate >= startOfToday) {
+             todayDeliveredCount++;
           }
         }
         
@@ -125,8 +125,8 @@ const Dashboard = () => {
            if (data.urgency === 'Urgent' || data.urgency === 'STAT') {
               urgentReportsCount++;
            }
-        } else if (data.status !== 'Cancelled') {
-           completed++;
+        } else if (data.status === 'Delivered') {
+           delivered++;
         }
       });
 
@@ -179,11 +179,11 @@ const Dashboard = () => {
         revenue: totalRev,
         doctors: dSnap.size,
         pendingReports: pending,
-        completedReports: completed,
+        deliveredReports: delivered,
         todayPatients: todayPatientsCount,
         todayBookings: todayBookingsCount,
         todayCollections: todayCollectionsCount,
-        todayReports: todayReportsCount,
+        todayDelivered: todayDeliveredCount,
         todayRevenue: todayRev,
         thisMonthRevenue: monthRev,
         urgentReports: urgentReportsCount
@@ -245,8 +245,8 @@ const Dashboard = () => {
           {[
             { label: 'Patients', val: stats.patients, sub: `+${stats.todayPatients} today`, icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-100/20' },
             { label: 'Bookings', val: stats.bookings, sub: `+${stats.todayBookings} today`, icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-100/20' },
-            { label: 'Completed', val: stats.completedReports, sub: `+3 today`, icon: FileCheck, color: 'text-purple-500', bg: 'bg-purple-100/20' },
-            { label: 'Pending', val: stats.pendingReports, urgent: 2, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100/20' },
+            { label: 'Delivered', val: stats.deliveredReports, sub: `+${stats.todayDelivered || 0} today`, icon: FileCheck, color: 'text-purple-500', bg: 'bg-purple-100/20' },
+            { label: 'Pending', val: stats.pendingReports, urgent: stats.urgentReports || 0, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100/20' },
             { label: "Total Revenue", val: `₹${stats.revenue}`, sub: `+₹${stats.todayRevenue} today`, icon: IndianRupee, color: 'text-emerald-600', bg: 'bg-emerald-100/20' },
           ].map((s, idx) => (
             <div key={idx} className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group relative overflow-hidden">

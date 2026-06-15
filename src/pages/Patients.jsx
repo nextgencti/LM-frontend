@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { Search, Plus, Loader, Users, FileText, Edit, Trash2, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { generateLabId } from '../utils/idGenerator';
+import { toast } from 'react-toastify';
 
 const Patients = () => {
   const { userData, activeLabId } = useAuth();
@@ -38,9 +39,18 @@ const Patients = () => {
     setLoading(true);
     let q;
     if (activeLabId) {
-      q = query(collection(db, 'patients'), where('labId', '==', activeLabId));
+      q = query(
+        collection(db, 'patients'), 
+        where('labId', '==', activeLabId),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
     } else {
-      q = query(collection(db, 'patients'));
+      q = query(
+        collection(db, 'patients'),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
     }
 
     try {
@@ -49,10 +59,30 @@ const Patients = () => {
       snapshot.forEach((doc) => {
         pts.push({ id: doc.id, ...doc.data() });
       });
+      // Sorting already handled by orderBy, but keeping this just in case
       pts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setPatients(pts);
     } catch (error) {
       console.error('Error fetching patients:', error);
+      if (error.message && error.message.includes('requires an index')) {
+         const urlMatch = error.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
+         const indexUrl = urlMatch ? urlMatch[0] : null;
+         
+         toast.error(
+           (t) => (
+             <div className="flex flex-col gap-2">
+               <span className="font-bold">Database Index Required!</span>
+               <span className="text-xs">To enable limit optimization, please create a Firebase Index for Patients.</span>
+               {indexUrl && (
+                 <a href={indexUrl} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold text-center mt-1">
+                   Create Index Now
+                 </a>
+               )}
+             </div>
+           ),
+           { duration: 15000, position: 'top-center' }
+         );
+      }
     } finally {
       setLoading(false);
     }

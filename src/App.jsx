@@ -187,6 +187,7 @@ const Layout = ({ children }) => {
           {userData?.role === 'SuperAdmin' && (
             <Link 
               to="/superadmin" 
+              title={isSidebarCollapsed ? "SuperAdmin" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/superadmin' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <Shield className={`h-4 w-4 shrink-0 ${location.pathname === '/superadmin' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -196,6 +197,7 @@ const Layout = ({ children }) => {
           
           <Link 
             to={userData?.role === 'SuperAdmin' ? (activeLabId ? '/dashboard' : '/superadmin') : '/dashboard'} 
+            title={isSidebarCollapsed ? "Dashboard" : ""}
             className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/dashboard' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
           >
             <Activity className={`h-4 w-4 shrink-0 ${location.pathname === '/dashboard' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -205,6 +207,7 @@ const Layout = ({ children }) => {
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_add_patients) && (
             <Link 
               to="/patients" 
+              title={isSidebarCollapsed ? "Patients" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/patients' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <Users className={`h-4 w-4 shrink-0 ${location.pathname === '/patients' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -215,6 +218,7 @@ const Layout = ({ children }) => {
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_manage_doctors) && (
             <Link 
               to="/doctors" 
+              title={isSidebarCollapsed ? "Doctors" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/doctors' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <Stethoscope className={`h-4 w-4 shrink-0 ${location.pathname === '/doctors' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -225,6 +229,7 @@ const Layout = ({ children }) => {
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_manage_masters) && (
             <Link 
               to="/tests" 
+              title={isSidebarCollapsed ? "Tests" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/tests' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <FileText className={`h-4 w-4 shrink-0 ${location.pathname === '/tests' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -235,6 +240,7 @@ const Layout = ({ children }) => {
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_book_tests) && (
             <Link 
               to="/bookings" 
+              title={isSidebarCollapsed ? "Bookings" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/bookings' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <Calendar className={`h-4 w-4 shrink-0 ${location.pathname === '/bookings' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -245,6 +251,7 @@ const Layout = ({ children }) => {
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_view_billing) && (
             <Link 
               to="/billing" 
+              title={isSidebarCollapsed ? "Bills" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/billing' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <IndianRupee className={`h-4 w-4 shrink-0 ${location.pathname === '/billing' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -254,6 +261,7 @@ const Layout = ({ children }) => {
           
           <Link 
             to="/reports" 
+            title={isSidebarCollapsed ? "Reports" : ""}
             className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname.startsWith('/reports') ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
           >
             <FileText className={`h-4 w-4 shrink-0 ${location.pathname.startsWith('/reports') ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -263,6 +271,7 @@ const Layout = ({ children }) => {
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_view_analytics) && (
             <Link 
               to="/analytics" 
+              title={isSidebarCollapsed ? "Analytics" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/analytics' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <BarChart3 className={`h-4 w-4 shrink-0 ${location.pathname === '/analytics' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -273,6 +282,7 @@ const Layout = ({ children }) => {
           {(userData?.role === 'LabAdmin' || userData?.role === 'SuperAdmin' || userData?.permissions?.can_access_settings) && (
             <Link 
               to="/settings" 
+              title={isSidebarCollapsed ? "Settings" : ""}
               className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/settings' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
             >
               <SettingsIcon className={`h-4 w-4 shrink-0 ${location.pathname === '/settings' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -282,6 +292,7 @@ const Layout = ({ children }) => {
 
           <Link 
             to="/help" 
+            title={isSidebarCollapsed ? "Help & Support" : ""}
             className={`flex items-center rounded-lg font-medium text-[13px] transition-all relative overflow-hidden group ${isSidebarCollapsed ? 'w-9 h-9 justify-center p-0 mx-auto' : 'w-full px-3 py-1.5 space-x-2.5'} ${location.pathname === '/help' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-brand-primary/10 hover:text-brand-primary'}`}
           >
             <HelpCircle className={`h-4 w-4 shrink-0 ${location.pathname === '/help' ? 'text-white' : 'group-hover:text-brand-primary'}`} />
@@ -294,7 +305,7 @@ const Layout = ({ children }) => {
 
         <div className="p-3 border-t border-white/5 mt-auto">
           <div className={`flex items-center group cursor-pointer transition-all duration-300 ${isSidebarCollapsed ? 'justify-center mb-4 p-0 bg-transparent border-0' : 'p-2 mb-2.5 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10'}`}>
-            <div className={`h-8 w-8 min-w-[32px] rounded-lg bg-brand-primary flex items-center justify-center text-brand-dark font-bold text-sm ${isSidebarCollapsed ? '' : 'mr-3'}`}>
+            <div title={isSidebarCollapsed ? userData?.name || "User" : ""} className={`h-8 w-8 min-w-[32px] rounded-lg bg-brand-primary flex items-center justify-center text-brand-dark font-bold text-sm ${isSidebarCollapsed ? '' : 'mr-3'}`}>
               {userData?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             {!isSidebarCollapsed && (
@@ -307,6 +318,7 @@ const Layout = ({ children }) => {
           
           <button 
             onClick={handleLogout}
+            title={isSidebarCollapsed ? "Logout" : ""}
             className={`flex items-center justify-center border border-rose-500/30 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all duration-300 group mx-auto ${isSidebarCollapsed ? 'w-9 h-9 p-0' : 'w-full space-x-3 py-1.5 px-4'}`}
           >
             <LogOut className="h-3.5 w-3.5 opacity-80 group-hover:scale-110 transition-transform duration-300 shrink-0" />

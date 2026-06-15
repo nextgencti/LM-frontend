@@ -345,14 +345,14 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
   return (
     <div className={`fixed inset-0 z-[300] bg-gray-900/95 ${isPublicView ? '' : 'backdrop-blur-xl p-2 sm:p-6'} flex flex-col print:static print:bg-transparent print:p-0`}>
-      {(loading || pdfLoading) && !pdfData && (
+      {loading && !pdfData && (
         <div className="absolute inset-0 z-[310] bg-gray-900/95 backdrop-blur-xl flex flex-col items-center justify-center">
           <Loader className="w-12 h-12 animate-spin mb-4 text-emerald-500" />
           <p className="font-bold tracking-widest uppercase text-[10px] text-white">Fetching Diagnostic Data...</p>
         </div>
       )}
 
-      {pdfData && (
+      {!loading && (
         <div className={`w-full h-full ${isPublicView ? 'max-w-full' : 'max-w-[1600px]'} mx-auto flex flex-row ${!isPublicView ? 'gap-6' : ''} relative animate-in fade-in zoom-in duration-500 items-stretch`}>
           {/* Clinical & Financial Context Sidebar - SEPARATE CARD */}
           {!isPublicView && (

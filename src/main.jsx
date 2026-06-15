@@ -1,3 +1,26 @@
+// Polyfill for older browsers (Chrome on Windows 7)
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function () {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
+// Polyfill for URL.parse (for Chrome < 126)
+if (typeof URL.parse !== 'function') {
+  URL.parse = function (url, base) {
+    try {
+      return new URL(url, base);
+    } catch (e) {
+      return null;
+    }
+  };
+}
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

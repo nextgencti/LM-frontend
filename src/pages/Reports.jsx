@@ -34,7 +34,10 @@ const Reports = () => {
   const [statusFilter, setStatusFilter] = useState('Active'); 
   const [doctorFilter, setDoctorFilter] = useState('All Doctors');
   const [typeFilter, setTypeFilter] = useState('All Types');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [dateRange, setDateRange] = useState({ 
+    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
+    end: new Date().toISOString().split('T')[0] 
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [doctors, setDoctors] = useState([]);
@@ -85,7 +88,7 @@ const Reports = () => {
     }
   };
 
-  const handlePreviewClick = async (e, group) => {
+  const handlePreviewClick = (e, group) => {
     e.stopPropagation();
 
     // 1. If already deducted or not pay_as_you_go, open immediately
@@ -95,30 +98,30 @@ const Reports = () => {
       return;
     }
 
-    // 2. Perform one-time token deduction
-    setIsDeducting(group.groupKey);
-    const success = await deductTokenAction(`Preview & Print: ${group.patientName}`);
-    
-    if (success) {
-      try {
-        // Update ALL reports in this group to mark as deducted
-        const batch = writeBatch(db);
-        group.tests.forEach(test => {
-          const reportRef = doc(db, 'reports', test.id);
-          batch.update(reportRef, { tokenDeducted: true });
-        });
-        await batch.commit();
-        
-        // Now open the preview
-        setPreviewGroupId(group.groupKey);
-        handleMarkDelivered(group);
-      } catch (err) {
-        console.error("Error updating token status:", err);
-        toast.error("Process failed, but token might have been deducted. Contact support if balance is wrong.");
+    // 2. Open the preview immediately for fast UI
+    setPreviewGroupId(group.groupKey);
+    handleMarkDelivered(group);
+
+    // 3. Perform token deduction in the background
+    (async () => {
+      setIsDeducting(group.groupKey);
+      const success = await deductTokenAction(`Preview & Print: ${group.patientName}`);
+      
+      if (success) {
+        try {
+          const batch = writeBatch(db);
+          group.tests.forEach(test => {
+            const reportRef = doc(db, 'reports', test.id);
+            batch.update(reportRef, { tokenDeducted: true });
+          });
+          await batch.commit();
+        } catch (err) {
+          console.error("Error updating token status:", err);
+          toast.error("Process failed, but token might have been deducted. Contact support if balance is wrong.");
+        }
       }
-    }
-    
-    setIsDeducting(null);
+      setIsDeducting(null);
+    })();
   };
 
   // ─── Fetch reports and bookings from Firestore ──────────────────────────
@@ -126,13 +129,31 @@ const Reports = () => {
     if (!activeLabId && userData?.role !== 'SuperAdmin') return;
     setLoading(true);
     
-    let qReports = activeLabId
-      ? query(collection(db, 'reports'), where('labId', '==', activeLabId))
-      : query(collection(db, 'reports'));
-      
-    let qBookings = activeLabId
-      ? query(collection(db, 'bookings'), where('labId', '==', activeLabId))
-      : query(collection(db, 'bookings'));
+    let start, end;
+    if (dateRange.start) {
+      start = new Date(dateRange.start);
+      start.setHours(0, 0, 0, 0);
+    }
+    if (dateRange.end) {
+      end = new Date(dateRange.end);
+      end.setHours(23, 59, 59, 999);
+    }
+    
+    let qReportsParams = [];
+    let qBookingsParams = [];
+    
+    if (activeLabId) {
+      qReportsParams.push(where('labId', '==', activeLabId));
+      qBookingsParams.push(where('labId', '==', activeLabId));
+    }
+    
+    if (start && end) {
+      qReportsParams.push(where('createdAt', '>=', start), where('createdAt', '<=', end));
+      qBookingsParams.push(where('createdAt', '>=', start), where('createdAt', '<=', end));
+    }
+
+    let qReports = query(collection(db, 'reports'), ...qReportsParams);
+    let qBookings = query(collection(db, 'bookings'), ...qBookingsParams);
 
     try {
       const [reportsSnap, bookingsSnap] = await Promise.all([
@@ -162,7 +183,27 @@ const Reports = () => {
       setBookings(bItems);
     } catch (err) {
       console.error("Error fetching data:", err);
-      toast.error("Failed to fetch reports");
+      if (err.message && err.message.includes('requires an index')) {
+         const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
+         const indexUrl = urlMatch ? urlMatch[0] : null;
+         
+         toast.error(
+           (t) => (
+             <div className="flex flex-col gap-2">
+               <span className="font-bold">Database Index Required!</span>
+               <span className="text-xs">To enable Date Filtering and save reads, please create a Firebase Index.</span>
+               {indexUrl && (
+                 <a href={indexUrl} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold text-center mt-1">
+                   Create Index Now
+                 </a>
+               )}
+             </div>
+           ),
+           { duration: 15000, position: 'top-center' }
+         );
+      } else {
+         toast.error("Failed to fetch reports");
+      }
     } finally {
       setLoading(false);
     }
@@ -170,7 +211,7 @@ const Reports = () => {
 
   useEffect(() => {
     fetchData();
-  }, [userData, activeLabId]);
+  }, [userData, activeLabId, dateRange.start, dateRange.end]);
 
   // Fetch Doctors for filter
   useEffect(() => {
@@ -453,6 +494,9 @@ const Reports = () => {
         updatedAt: serverTimestamp(),
       });
       
+      const now = new Date();
+      setReports(prev => prev.map(r => r.id === selectedReport.id ? { ...r, results: editedResults, status: 'In Progress', updatedAt: now } : r));
+      
       // Trigger Booking Sync
       const group = groupedReports.find(g => g.tests.some(t => t.id === selectedReport.id));
       if (group) triggerBookingSync(selectedReport.id, 'In Progress', group);
@@ -494,6 +538,16 @@ const Reports = () => {
       }
 
       await updateDoc(doc(db, 'reports', reportId), updatePayload);
+      
+      const now = new Date();
+      setReports(prev => prev.map(r => r.id === reportId ? { 
+         ...r, 
+         status: 'Final', 
+         reported_at: now, 
+         updatedAt: now,
+         viewToken: updatePayload.viewToken || r.viewToken
+      } : r));
+      
       toast.success('Report finalized!');
 
       if (group) {
@@ -562,9 +616,14 @@ const Reports = () => {
     }
   };
 
-  const handleTimestampAction = async (reportId, field, group = null, testName = '') => {
+  const handleTimestampAction = async (reportId, field, group = null, initialTestName = '') => {
     try {
+      const testName = reports.find(r => r.id === reportId)?.testName || initialTestName;
       await updateDoc(doc(db, 'reports', reportId), { [field]: serverTimestamp(), updatedAt: serverTimestamp() });
+      
+      const now = new Date();
+      setReports(prev => prev.map(r => r.id === reportId ? { ...r, [field]: now, updatedAt: now } : r));
+
       if (group) triggerBookingSync(reportId, field, group);
       
       const actionLabel = field === 'collected_at' ? 'Collected' : 'Received in Lab';
@@ -593,6 +652,14 @@ const Reports = () => {
       });
 
       await Promise.all(batchPromises);
+      
+      const now = new Date();
+      setReports(prev => prev.map(r => {
+        if (group.tests.some(t => t.id === r.id) && !r[field]) {
+           return { ...r, [field]: now, updatedAt: now };
+        }
+        return r;
+      }));
       
       // Update overall booking status
       const bookingDocId = `${labId}_${bookingNo}`;
@@ -1049,22 +1116,14 @@ const Reports = () => {
                       </td>
                       <td className="px-3.5 py-2.5">
                         <div className="flex items-center justify-end gap-1">
-                           {(groupStatus === 'Final' || groupStatus === 'Delivered') && (
-                             <>
+                            {(groupStatus === 'Final' || groupStatus === 'Delivered') && (
                                <button 
                                  onClick={(e) => handlePreviewClick(e, group)}
-                                 className="p-1.25 bg-slate-100 text-slate-600 rounded hover:bg-brand-dark hover:text-white transition-all active:scale-95"
+                                 className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-brand-dark hover:text-white transition-all active:scale-95"
                                  title="Print Report"
                                >
-                                  <Printer className="w-3 h-3" />
+                                  <Printer className="w-4 h-4" />
                                </button>
-                               <button 
-                                 className="p-1.25 bg-slate-100 text-slate-600 rounded hover:bg-brand-dark hover:text-white transition-all active:scale-95"
-                                 title="Download PDF"
-                               >
-                                  <Download className="w-3 h-3" />
-                               </button>
-                             </>
                            )}
                            
                            {(() => {
@@ -1135,20 +1194,22 @@ const Reports = () => {
                  );
                })}
                
+                <div className="relative">
                   <select 
                     value={itemsPerPage}
                     onChange={(e) => {
                       setItemsPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="bg-transparent text-[13px] font-semibold text-slate-500 outline-none cursor-pointer hover:text-brand-dark"
+                    className="appearance-none bg-transparent text-[13px] font-semibold text-slate-500 outline-none cursor-pointer hover:text-brand-dark pr-6 py-1"
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
                     <option value={25}>25 per page</option>
                     <option value={50}>50 per page</option>
                   </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
             </div>
          </div>
       </div>
