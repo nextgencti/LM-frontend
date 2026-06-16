@@ -288,8 +288,8 @@ const Dashboard = () => {
                   <ChevronDown className="w-3 h-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
             </div>
-            <div className="h-[220px] w-full">
-               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <div className="h-[220px] w-full min-w-0 overflow-hidden" style={{ minHeight: '220px' }}>
+               <ResponsiveContainer width="99%" height="100%">
                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
                    <defs>
                      <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
