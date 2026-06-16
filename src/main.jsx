@@ -30,6 +30,17 @@ import { AuthProvider } from './context/AuthContext'
 import { initFirebase } from './firebase'
 import PreLoader from './components/PreLoader'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 const root = createRoot(document.getElementById('root'));
 
 // Show loading while fetching Firebase config from backend
@@ -41,11 +52,13 @@ initFirebase()
   .then(() => {
     root.render(
       <StrictMode>
-        <BrowserRouter>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
       </StrictMode>
     );
   })

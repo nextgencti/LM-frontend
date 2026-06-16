@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Loader, FileText, Eye, Printer, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, CheckCircle, Database, Clock, Mail, Zap, Bell, IndianRupee, Pencil, FileDown, MoreVertical, Calendar as CalendarIcon, Filter, RefreshCw, User, Download, Plus } from 'lucide-react';
 import ReportPreview from '../components/ReportPreview';
 import { toast } from 'react-toastify';
@@ -26,10 +27,8 @@ const Reports = () => {
   const { currentUser, userData, activeLabId, subscription, checkFeature } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
 
-  const [reports, setReports] = useState([]);
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Active'); 
   const [doctorFilter, setDoctorFilter] = useState('All Doctors');
@@ -125,37 +124,34 @@ const Reports = () => {
   };
 
   // ─── Fetch reports and bookings from Firestore ──────────────────────────
-  const fetchData = async () => {
-    if (!activeLabId && userData?.role !== 'SuperAdmin') return;
-    setLoading(true);
-    
-    let start, end;
-    if (dateRange.start) {
-      start = new Date(dateRange.start);
-      start.setHours(0, 0, 0, 0);
-    }
-    if (dateRange.end) {
-      end = new Date(dateRange.end);
-      end.setHours(23, 59, 59, 999);
-    }
-    
-    let qReportsParams = [];
-    let qBookingsParams = [];
-    
-    if (activeLabId) {
-      qReportsParams.push(where('labId', '==', activeLabId));
-      qBookingsParams.push(where('labId', '==', activeLabId));
-    }
-    
-    if (start && end) {
-      qReportsParams.push(where('createdAt', '>=', start), where('createdAt', '<=', end));
-      qBookingsParams.push(where('createdAt', '>=', start), where('createdAt', '<=', end));
-    }
+  const { data = { reports: [], bookings: [] }, isLoading: loading, refetch: fetchData } = useQuery({
+    queryKey: ['reportsAndBookings', activeLabId, dateRange.start, dateRange.end],
+    queryFn: async () => {
+      if (!activeLabId && userData?.role !== 'SuperAdmin') return { reports: [], bookings: [] };
+      let start, end;
+      if (dateRange.start) {
+        start = new Date(dateRange.start);
+        start.setHours(0, 0, 0, 0);
+      }
+      if (dateRange.end) {
+        end = new Date(dateRange.end);
+        end.setHours(23, 59, 59, 999);
+      }
+      
+      let qReportsParams = [];
+      let qBookingsParams = [];
+      if (activeLabId) {
+        qReportsParams.push(where('labId', '==', activeLabId));
+        qBookingsParams.push(where('labId', '==', activeLabId));
+      }
+      if (start && end) {
+        qReportsParams.push(where('createdAt', '>=', start), where('createdAt', '<=', end));
+        qBookingsParams.push(where('createdAt', '>=', start), where('createdAt', '<=', end));
+      }
 
-    let qReports = query(collection(db, 'reports'), ...qReportsParams);
-    let qBookings = query(collection(db, 'bookings'), ...qBookingsParams);
+      let qReports = query(collection(db, 'reports'), ...qReportsParams);
+      let qBookings = query(collection(db, 'bookings'), ...qBookingsParams);
 
-    try {
       const [reportsSnap, bookingsSnap] = await Promise.all([
         getDocs(qReports),
         getDocs(qBookings)
@@ -164,9 +160,7 @@ const Reports = () => {
       const items = [];
       reportsSnap.forEach((d) => {
         const data = d.data();
-        if (data.status !== 'Cancelled') {
-          items.push({ id: d.id, ...data });
-        }
+        if (data.status !== 'Cancelled') items.push({ id: d.id, ...data });
       });
       items.sort((a, b) => {
         const t = (v) => {
@@ -177,16 +171,17 @@ const Reports = () => {
         };
         return t(b.updatedAt || b.createdAt) - t(a.updatedAt || a.createdAt);
       });
-      setReports(items);
 
       const bItems = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setBookings(bItems);
-    } catch (err) {
+      
+      return { reports: items, bookings: bItems };
+    },
+    enabled: !!userData,
+    onError: (err) => {
       console.error("Error fetching data:", err);
       if (err.message && err.message.includes('requires an index')) {
          const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
          const indexUrl = urlMatch ? urlMatch[0] : null;
-         
          toast.error(
            (t) => (
              <div className="flex flex-col gap-2">
@@ -204,14 +199,28 @@ const Reports = () => {
       } else {
          toast.error("Failed to fetch reports");
       }
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const reports = data.reports;
+  const bookings = data.bookings;
+
+  const updateLocalReport = (reportId, updates) => {
+    queryClient.setQueryData(['reportsAndBookings', activeLabId, dateRange.start, dateRange.end], prev => {
+      if (!prev) return prev;
+      return { ...prev, reports: prev.reports.map(r => r.id === reportId ? { ...r, ...updates } : r) };
+    });
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [userData, activeLabId, dateRange.start, dateRange.end]);
+  const updateLocalGroup = (group, updatesFn) => {
+    queryClient.setQueryData(['reportsAndBookings', activeLabId, dateRange.start, dateRange.end], prev => {
+      if (!prev) return prev;
+      return { 
+        ...prev, 
+        reports: prev.reports.map(r => group.tests.some(t => t.id === r.id) && !r[updatesFn.field] ? { ...r, ...updatesFn.updates } : r)
+      };
+    });
+  };
 
   // Fetch Doctors for filter
   useEffect(() => {
@@ -495,7 +504,7 @@ const Reports = () => {
       });
       
       const now = new Date();
-      setReports(prev => prev.map(r => r.id === selectedReport.id ? { ...r, results: editedResults, status: 'In Progress', updatedAt: now } : r));
+      updateLocalReport(selectedReport.id, { results: editedResults, status: 'In Progress', updatedAt: now });
       
       // Trigger Booking Sync
       const group = groupedReports.find(g => g.tests.some(t => t.id === selectedReport.id));
@@ -540,13 +549,12 @@ const Reports = () => {
       await updateDoc(doc(db, 'reports', reportId), updatePayload);
       
       const now = new Date();
-      setReports(prev => prev.map(r => r.id === reportId ? { 
-         ...r, 
+      updateLocalReport(reportId, { 
          status: 'Final', 
          reported_at: now, 
          updatedAt: now,
-         viewToken: updatePayload.viewToken || r.viewToken
-      } : r));
+         viewToken: updatePayload.viewToken || test?.viewToken
+      });
       
       toast.success('Report finalized!');
 
@@ -622,7 +630,7 @@ const Reports = () => {
       await updateDoc(doc(db, 'reports', reportId), { [field]: serverTimestamp(), updatedAt: serverTimestamp() });
       
       const now = new Date();
-      setReports(prev => prev.map(r => r.id === reportId ? { ...r, [field]: now, updatedAt: now } : r));
+      updateLocalReport(reportId, { [field]: now, updatedAt: now });
 
       if (group) triggerBookingSync(reportId, field, group);
       
@@ -654,12 +662,7 @@ const Reports = () => {
       await Promise.all(batchPromises);
       
       const now = new Date();
-      setReports(prev => prev.map(r => {
-        if (group.tests.some(t => t.id === r.id) && !r[field]) {
-           return { ...r, [field]: now, updatedAt: now };
-        }
-        return r;
-      }));
+      updateLocalGroup(group, { field, updates: { [field]: now, updatedAt: now } });
       
       // Update overall booking status
       const bookingDocId = `${labId}_${bookingNo}`;

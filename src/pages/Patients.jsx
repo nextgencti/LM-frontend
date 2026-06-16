@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, getCountFromServer } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import { Search, Plus, Loader, Users, FileText, Edit, Trash2, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { generateLabId } from '../utils/idGenerator';
 import { toast } from 'react-toastify';
@@ -10,8 +11,6 @@ import { toast } from 'react-toastify';
 const Patients = () => {
   const { userData, activeLabId } = useAuth();
   const navigate = useNavigate();
-  const [patients, setPatients] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Labs fetching for Super Admin
@@ -34,63 +33,37 @@ const Patients = () => {
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchPatients = async () => {
-    if (!activeLabId && userData?.role !== 'SuperAdmin') return;
-    setLoading(true);
-    let q;
-    if (activeLabId) {
-      q = query(
-        collection(db, 'patients'), 
-        where('labId', '==', activeLabId),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
-    } else {
-      q = query(
-        collection(db, 'patients'),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
-    }
+  const { data: patients = [], isLoading: loading, refetch: fetchPatients } = useQuery({
+    queryKey: ['patients', activeLabId],
+    queryFn: async () => {
+      if (!activeLabId && userData?.role !== 'SuperAdmin') return [];
+      let q = activeLabId 
+        ? query(collection(db, 'patients'), where('labId', '==', activeLabId), orderBy('createdAt', 'desc'), limit(50))
+        : query(collection(db, 'patients'), orderBy('createdAt', 'desc'), limit(50));
 
-    try {
       const snapshot = await getDocs(q);
       const pts = [];
-      snapshot.forEach((doc) => {
-        pts.push({ id: doc.id, ...doc.data() });
-      });
-      // Sorting already handled by orderBy, but keeping this just in case
+      snapshot.forEach((doc) => pts.push({ id: doc.id, ...doc.data() }));
       pts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setPatients(pts);
-    } catch (error) {
-      console.error('Error fetching patients:', error);
-      if (error.message && error.message.includes('requires an index')) {
-         const urlMatch = error.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
-         const indexUrl = urlMatch ? urlMatch[0] : null;
-         
-         toast.error(
-           (t) => (
-             <div className="flex flex-col gap-2">
-               <span className="font-bold">Database Index Required!</span>
-               <span className="text-xs">To enable limit optimization, please create a Firebase Index for Patients.</span>
-               {indexUrl && (
-                 <a href={indexUrl} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold text-center mt-1">
-                   Create Index Now
-                 </a>
-               )}
-             </div>
-           ),
-           { duration: 15000, position: 'top-center' }
-         );
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+      return pts;
+    },
+    enabled: !!userData
+  });
+
+  const { data: totalPatientsCount = patients.length } = useQuery({
+    queryKey: ['patientsCount', activeLabId],
+    queryFn: async () => {
+      if (!activeLabId && userData?.role !== 'SuperAdmin') return 0;
+      let q = activeLabId 
+        ? query(collection(db, 'patients'), where('labId', '==', activeLabId)) 
+        : collection(db, 'patients');
+      const snapshot = await getCountFromServer(q);
+      return snapshot.data().count;
+    },
+    enabled: !!userData
+  });
 
   useEffect(() => {
-    fetchPatients();
-
     if (isSuperAdmin && !activeLabId) {
       fetchLabs();
     }
@@ -339,9 +312,9 @@ const Patients = () => {
              <Users className={`w-3.5 h-3.5 shrink-0 ${genderFilter === 'All' ? 'text-white' : 'text-slate-400'}`} />
              <div className="flex items-center justify-between w-full">
                <span className={`text-[10px] font-black uppercase tracking-wider ${genderFilter === 'All' ? 'text-white' : 'text-slate-500'}`}>Total Registry</span>
-               <span className={`px-2 py-0.5 rounded-md text-[9px] font-black tabular-nums ${
-                 genderFilter === 'All' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
-               }`}>{patients.length}</span>
+                <span className={`px-2 py-0.5 rounded-md text-[9px] font-black tabular-nums ${
+                  genderFilter === 'All' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                }`}>{totalPatientsCount}</span>
              </div>
           </button>
           

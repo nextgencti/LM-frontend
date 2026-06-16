@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from 'firebase/firestore';
 
 // Backend URL — change this if your backend port is different
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
@@ -29,7 +29,12 @@ export const initFirebase = async () => {
   const app = initializeApp(firebaseConfig);
   
   auth = getAuth(app);
-  db = getFirestore(app);
+  
+  // Use the new modern API for Offline Caching to avoid the deprecation warning
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+  
   storage = getStorage(app);
 
   return { auth, db, storage };

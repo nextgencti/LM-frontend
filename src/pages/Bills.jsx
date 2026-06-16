@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, getDoc, doc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import { Search, Loader, FileText, IndianRupee, CheckCircle2, AlertCircle, Clock, Filter, Printer, X, Users, Stethoscope, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Bills = () => {
   const { userData, activeLabId } = useAuth();
   const navigate = useNavigate();
-  const [bills, setBills] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('Unpaid');
   const [dateRange, setDateRange] = useState({ 
@@ -222,39 +221,22 @@ const Bills = () => {
     setTimeout(() => { printWindow.print(); }, 1200);
   };
 
-  useEffect(() => {
-    fetchBills();
-  }, [userData, activeLabId, dateRange.start, dateRange.end]);
-
-  const fetchBills = async () => {
-    if (!activeLabId && userData?.role !== 'SuperAdmin') return;
-    setLoading(true);
-    try {
+  const { data: bills = [], isLoading: loading, refetch: fetchBills } = useQuery({
+    queryKey: ['bills', activeLabId, dateRange.start, dateRange.end],
+    queryFn: async () => {
+      if (!activeLabId && userData?.role !== 'SuperAdmin') return [];
       const start = new Date(dateRange.start);
       start.setHours(0, 0, 0, 0);
       const end = new Date(dateRange.end);
       end.setHours(23, 59, 59, 999);
 
-      let q;
-      if (activeLabId) {
-        q = query(
-          collection(db, 'bookings'), 
-          where('labId', '==', activeLabId),
-          where('createdAt', '>=', start),
-          where('createdAt', '<=', end)
-        );
-      } else {
-        q = query(
-          collection(db, 'bookings'),
-          where('createdAt', '>=', start),
-          where('createdAt', '<=', end)
-        );
-      }
-      
+      let q = activeLabId 
+        ? query(collection(db, 'bookings'), where('labId', '==', activeLabId), where('createdAt', '>=', start), where('createdAt', '<=', end))
+        : query(collection(db, 'bookings'), where('createdAt', '>=', start), where('createdAt', '<=', end));
+
       const querySnapshot = await getDocs(q);
       const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Sort by date desc in JS to avoid Firestore missing composite index error
       items.sort((a, b) => {
         const getTime = (val) => {
           if (!val) return 0;
@@ -266,13 +248,14 @@ const Bills = () => {
         return getTime(b.createdAt) - getTime(a.createdAt);
       });
       
-      setBills(items);
-    } catch (error) {
+      return items;
+    },
+    enabled: !!userData,
+    onError: (error) => {
       console.error('Error fetching bills:', error);
       if (error.message && error.message.includes('requires an index')) {
          const urlMatch = error.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
          const indexUrl = urlMatch ? urlMatch[0] : null;
-         
          toast.error(
            (t) => (
              <div className="flex flex-col gap-2">
@@ -290,10 +273,8 @@ const Bills = () => {
       } else {
          toast.error("Failed to load bills");
       }
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
   // ─── Filters & Counts ──────────────────────────────────────────────────
   const statusCounts = React.useMemo(() => {

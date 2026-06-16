@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Plus, Loader, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, Database, Pencil, IndianRupee, ShieldAlert, AlertTriangle, Zap, Download, ChevronLeft, ChevronRight, Filter, Eye, Printer, MoreVertical, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import OutOfTokensModal from '../components/OutOfTokensModal';
@@ -14,8 +15,7 @@ const Bookings = () => {
   const { userData, activeLabId, subscription, currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Create Modal State
@@ -59,15 +59,62 @@ const Bookings = () => {
   const [previewReport, setPreviewReport] = useState(null);
   const [isFetchingReport, setIsFetchingReport] = useState(null); // stores booking id being fetched
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const isEditMode = params.get('edit');
-    
-    // Only fetch the full list if we are NOT in immediate edit mode
-    if (!isEditMode) {
-      fetchBookings();
+  const isEditMode = new URLSearchParams(location.search).get('edit');
+
+  const { data: bookings = [], isLoading: loading, refetch: fetchBookings } = useQuery({
+    queryKey: ['bookings', activeLabId, startDate, endDate],
+    queryFn: async () => {
+      if (!activeLabId && userData?.role !== 'SuperAdmin') return [];
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      let q = activeLabId 
+        ? query(collection(db, 'bookings'), where('labId', '==', activeLabId), where('createdAt', '>=', start), where('createdAt', '<=', end))
+        : query(collection(db, 'bookings'), where('createdAt', '>=', start), where('createdAt', '<=', end));
+      
+      const snapB = await getDocs(q);
+      const rawBookings = snapB.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      rawBookings.sort((a, b) => {
+        const getTime = (val) => {
+          if (!val) return 0;
+          if (val.seconds) return val.seconds * 1000 + (val.nanoseconds / 1000000);
+          if (val.toDate) return val.toDate().getTime();
+          const d = new Date(val);
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+        };
+        return getTime(b.createdAt) - getTime(a.createdAt);
+      });
+      
+      return rawBookings;
+    },
+    enabled: !!userData && !isEditMode,
+    onError: (error) => {
+      console.error('Error fetching bookings:', error);
+      if (error.message && error.message.includes('requires an index')) {
+         const urlMatch = error.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
+         const indexUrl = urlMatch ? urlMatch[0] : null;
+         toast.error(
+           (t) => (
+             <div className="flex flex-col gap-2">
+               <span className="font-bold">Database Index Required!</span>
+               <span className="text-xs">To enable Date Filtering and save reads, please create a Firebase Index.</span>
+               {indexUrl && (
+                 <a href={indexUrl} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold text-center mt-1">
+                   Create Index Now
+                 </a>
+               )}
+             </div>
+           ),
+           { duration: 15000, position: 'top-center' }
+         );
+      } else {
+         toast.error("Failed to load bookings");
+      }
     }
-  }, [userData, activeLabId, startDate, endDate]);
+  });
 
   useEffect(() => {
     // Only fetch reference data when modal opens AND we don't have it yet
@@ -242,14 +289,16 @@ const Bookings = () => {
         console.warn("Cascade cancel skipped or failed:", e);
       }
       
-      setBookings(prev => prev.map(r => r.id === bId ? { 
-        ...r, 
-        status: 'Cancelled',
-        totalAmount: 0,
-        paidAmount: 0,
-        balance: 0,
-        paymentStatus: 'Cancelled'
-      } : r));
+      queryClient.setQueryData(['bookings', activeLabId, startDate, endDate], prev => 
+        prev ? prev.map(r => r.id === bId ? { 
+          ...r, 
+          status: 'Cancelled',
+          totalAmount: 0,
+          paidAmount: 0,
+          balance: 0,
+          paymentStatus: 'Cancelled'
+        } : r) : []
+      );
       toast.success('Booking cancelled successfully');
       if (sourcePage === 'reports') {
         navigate('/reports');
@@ -364,74 +413,7 @@ const Bookings = () => {
     document.body.removeChild(link);
   };
 
-  const fetchBookings = async () => {
-    if (!activeLabId && userData?.role !== 'SuperAdmin') return;
-    setLoading(true);
-    try {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-
-      let q;
-      if (activeLabId) {
-        q = query(
-          collection(db, 'bookings'), 
-          where('labId', '==', activeLabId),
-          where('createdAt', '>=', start),
-          where('createdAt', '<=', end)
-        );
-      } else {
-        q = query(
-          collection(db, 'bookings'),
-          where('createdAt', '>=', start),
-          where('createdAt', '<=', end)
-        );
-      }
-      
-      const snapB = await getDocs(q);
-      const rawBookings = snapB.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // Sort by date desc
-      rawBookings.sort((a, b) => {
-        const getTime = (val) => {
-          if (!val) return 0;
-          if (val.seconds) return val.seconds * 1000 + (val.nanoseconds / 1000000);
-          if (val.toDate) return val.toDate().getTime();
-          const d = new Date(val);
-          return isNaN(d.getTime()) ? 0 : d.getTime();
-        };
-        return getTime(b.createdAt) - getTime(a.createdAt);
-      });
-      
-      setBookings(rawBookings);
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-      if (error.message && error.message.includes('requires an index')) {
-         const urlMatch = error.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
-         const indexUrl = urlMatch ? urlMatch[0] : null;
-         
-         toast.error(
-           (t) => (
-             <div className="flex flex-col gap-2">
-               <span className="font-bold">Database Index Required!</span>
-               <span className="text-xs">To enable Date Filtering and save reads, please create a Firebase Index.</span>
-               {indexUrl && (
-                 <a href={indexUrl} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold text-center mt-1">
-                   Create Index Now
-                 </a>
-               )}
-             </div>
-           ),
-           { duration: 15000, position: 'top-center' }
-         );
-      } else {
-         toast.error("Failed to load bookings");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // fetchBookings is now handled by React Query above
 
   const fetchCreationData = async () => {
     try {
