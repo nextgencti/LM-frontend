@@ -162,19 +162,30 @@ const Home = () => {
                                     <span className="group-hover:translate-x-2 transition-transform">About Us</span>
                                     <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all text-brand-primary" />
                                 </Link>
-                                <Link to="/login" 
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className="text-xl font-bold text-brand-dark flex items-center justify-between group animate-in slide-in-from-left duration-500 delay-300 fill-mode-both"
-                                >
-                                    <span className="group-hover:translate-x-2 transition-transform">Login</span>
-                                    <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all text-brand-primary" />
-                                </Link>
-                                <Link to="/signup" 
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className="px-6 py-4 bg-brand-primary text-brand-dark text-center rounded-2xl font-bold uppercase tracking-wider text-[11px] shadow-xl shadow-brand-primary/20 mt-4 animate-in slide-in-from-bottom duration-700 delay-400 fill-mode-both flex items-center justify-center gap-2"
-                                >
-                                    Get Started Free <ArrowRight className="w-4 h-4" />
-                                </Link>
+                                {currentUser ? (
+                                    <Link to="/dashboard" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="px-6 py-4 bg-brand-dark text-white text-center rounded-2xl font-bold uppercase tracking-wider text-[11px] shadow-xl shadow-brand-dark/20 mt-4 animate-in slide-in-from-bottom duration-700 delay-400 fill-mode-both flex items-center justify-center gap-2"
+                                    >
+                                        Go to Dashboard <ArrowRight className="w-4 h-4 text-brand-primary" />
+                                    </Link>
+                                ) : (
+                                    <>
+                                        <Link to="/login" 
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="text-xl font-bold text-brand-dark flex items-center justify-between group animate-in slide-in-from-left duration-500 delay-300 fill-mode-both"
+                                        >
+                                            <span className="group-hover:translate-x-2 transition-transform">Login</span>
+                                            <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all text-brand-primary" />
+                                        </Link>
+                                        <Link to="/signup" 
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="px-6 py-4 bg-brand-primary text-brand-dark text-center rounded-2xl font-bold uppercase tracking-wider text-[11px] shadow-xl shadow-brand-primary/20 mt-4 animate-in slide-in-from-bottom duration-700 delay-400 fill-mode-both flex items-center justify-center gap-2"
+                                        >
+                                            Get Started Free <ArrowRight className="w-4 h-4" />
+                                        </Link>
+                                    </>
+                                )}
                             </div>
                         </div>
 
