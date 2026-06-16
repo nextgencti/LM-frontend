@@ -84,7 +84,7 @@ service cloud.firestore {
 
     // 3. Subscriptions
     match /subscriptions/{subId} {
-      allow read: if isAuthenticated(); // More permissive for now to debug
+      allow read: if isSuperAdmin() || isLabData(subId); // Fixed Data Leak
       allow write: if isSuperAdmin();
     }
 
@@ -170,7 +170,7 @@ service cloud.firestore {
 
     match /system_counters/{docId} {
       // Must be authenticated and either part of the respective lab or a SuperAdmin
-      allow read, write: if isAuthenticated() && isLabAdminOrStaff();
+      allow read, write: if isAuthenticated() && isLabAdminOrStaff() && (isSuperAdmin() || isLabData(docId));
     }
 
     match /doctorPayments/{docId} {
