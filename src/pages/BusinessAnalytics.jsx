@@ -238,8 +238,8 @@ const BusinessAnalytics = () => {
           </div>
         </div>
         
-        <div className="flex items-center gap-3 self-end md:self-auto">
-          <div className="flex gap-1.5 bg-white/80 backdrop-blur p-1 rounded-xl border border-slate-200/80 shadow-[0_4px_20px_rgb(0,0,0,0.04)] h-[42px] shrink-0 relative z-10">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+          <div className="flex gap-1.5 bg-white/80 backdrop-blur p-1 rounded-xl border border-slate-200/80 shadow-sm h-[42px] relative z-10 overflow-x-auto whitespace-nowrap hide-scrollbar">
             {['0', '7', '30', '90', '365'].map(range => (
               <button 
                 key={range}
