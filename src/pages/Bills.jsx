@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, getDoc, doc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Loader, FileText, IndianRupee, CheckCircle2, AlertCircle, Clock, Filter, Printer, X, Users, Stethoscope, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -16,6 +16,7 @@ const Bills = () => {
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
     end: new Date().toISOString().split('T')[0] 
   });
+  const queryClient = useQueryClient();
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -331,6 +332,8 @@ const Bills = () => {
       });
       setPayAmountInput(prev => ({ ...prev, [billId]: '' }));
       fetchBills();
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
       toast.success(`Payment of ₹${addAmount} (${method}) recorded!`);
     } catch (error) {
       console.error('Error updating payment:', error);
@@ -521,9 +524,24 @@ const Bills = () => {
                              )}
                              <button 
                                onClick={() => {
-                                 const currentMethod = payMethodInput[bill.id] || 'Cash';
-                                 setPayMethodInput(prev => ({ ...prev, [bill.id]: currentMethod }));
-                                 handleUpdatePayment(bill.id, bill.balance);
+                                 toast(
+                                   ({ closeToast }) => (
+                                     <div className="flex flex-col gap-3 p-1">
+                                       <h3 className="font-bold text-brand-dark text-[14px]">Confirm Payment</h3>
+                                       <p className="text-[12px] text-slate-600">Are you sure you want to collect the full balance of <span className="font-bold text-brand-dark">₹{bill.balance}</span> via {payMethodInput[bill.id] || 'Cash'}?</p>
+                                       <div className="flex justify-end gap-2 mt-2">
+                                         <button onClick={closeToast} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-[11px] font-bold uppercase tracking-wider hover:bg-slate-200 transition-colors">Cancel</button>
+                                         <button onClick={() => {
+                                           const currentMethod = payMethodInput[bill.id] || 'Cash';
+                                           setPayMethodInput(prev => ({ ...prev, [bill.id]: currentMethod }));
+                                           handleUpdatePayment(bill.id, bill.balance);
+                                           closeToast();
+                                         }} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-[11px] font-bold uppercase tracking-wider hover:bg-emerald-700 transition-colors shadow-sm">Confirm</button>
+                                       </div>
+                                     </div>
+                                   ),
+                                   { position: "top-center", autoClose: false, closeOnClick: false, draggable: false }
+                                 );
                                }}
                                className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-sm active:scale-95 flex items-center gap-1.5 whitespace-nowrap h-9"
                                title="Receive Full Payment"
