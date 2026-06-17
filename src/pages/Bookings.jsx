@@ -245,6 +245,7 @@ const Bookings = () => {
     setShowAddModal(false);
     setIsEditing(false);
     setEditingBookingId(null);
+    queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
     if (sourcePage === 'reports') {
       navigate('/reports');
     } else {
@@ -299,6 +300,7 @@ const Bookings = () => {
           paymentStatus: 'Cancelled'
         } : r) : []
       );
+      queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
       toast.success('Booking cancelled successfully');
       if (sourcePage === 'reports') {
         navigate('/reports');
@@ -492,8 +494,6 @@ const Bookings = () => {
       toast.error("Please select a patient and at least one test.");
       return;
     }
-
-    setLoading(false); // Make sure general loading is false
     setIsSaving(true); // Show loader on button
 
     try {
@@ -610,6 +610,7 @@ const Bookings = () => {
         paymentStatus: 'Unpaid', balance: 0
       });
       fetchBookings();
+      queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
     } catch (error) {
       console.error("Error creating booking:", error);
       toast.error("Failed to create booking: " + error.message);
