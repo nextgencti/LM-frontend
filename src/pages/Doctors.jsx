@@ -18,7 +18,7 @@ const Doctors = () => {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newDoctor, setNewDoctor] = useState({
-    name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.'
+    name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', status: 'Active', honorific: 'Dr.', showCustomSpecialization: false
   });
   const [editingDoc, setEditingDoc] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -145,7 +145,7 @@ const Doctors = () => {
       
       setShowAddModal(false);
       setEditingDoc(null);
-      setNewDoctor({ name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.' });
+      setNewDoctor({ name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', status: 'Active', honorific: 'Dr.', showCustomSpecialization: false });
       fetchDoctors();
     } catch (error) {
       console.error("Error saving doctor:", error);
@@ -164,7 +164,8 @@ const Doctors = () => {
       clinic: doc.clinic || '',
       specialization: doc.specialization || '',
       commissionType: doc.commissionType || 'Percentage',
-      commissionValue: doc.commissionValue || '0',
+      commissionValue: doc.commissionValue || '',
+      showCustomSpecialization: false,
       status: doc.status || 'Active',
       honorific: doc.name?.split(' ')[0] || 'Dr.'
     });
@@ -1104,30 +1105,61 @@ const Doctors = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Specialization</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Cardiologist"
-                      list="specializationList"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
-                      value={newDoctor.specialization} 
-                      onChange={e => setNewDoctor({...newDoctor, specialization: e.target.value})} 
-                    />
-                    <datalist id="specializationList">
-                      <option value="General Physician" />
-                      <option value="Cardiologist" />
-                      <option value="Neurologist" />
-                      <option value="Orthopedic" />
-                      <option value="Pediatrician" />
-                      <option value="Gynecologist" />
-                      <option value="Dermatologist" />
-                      <option value="Oncologist" />
-                      <option value="Endocrinologist" />
-                      <option value="Gastroenterologist" />
-                      <option value="Psychiatrist" />
-                      <option value="ENT Specialist" />
-                      <option value="Dentist" />
-                      <option value="Pulmonologist" />
-                    </datalist>
+                    <div className="relative">
+                      {!newDoctor.showCustomSpecialization ? (
+                        <>
+                          <select
+                            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                            value={newDoctor.specialization}
+                            onChange={(e) => {
+                              if (e.target.value === 'Other') {
+                                setNewDoctor({...newDoctor, specialization: '', showCustomSpecialization: true});
+                              } else {
+                                setNewDoctor({...newDoctor, specialization: e.target.value});
+                              }
+                            }}
+                          >
+                            <option value="">Select Specialization</option>
+                            <option value="General Physician">General Physician</option>
+                            <option value="Cardiologist">Cardiologist</option>
+                            <option value="Neurologist">Neurologist</option>
+                            <option value="Orthopedic">Orthopedic</option>
+                            <option value="Pediatrician">Pediatrician</option>
+                            <option value="Gynecologist">Gynecologist</option>
+                            <option value="Dermatologist">Dermatologist</option>
+                            <option value="Oncologist">Oncologist</option>
+                            <option value="Endocrinologist">Endocrinologist</option>
+                            <option value="Gastroenterologist">Gastroenterologist</option>
+                            <option value="Psychiatrist">Psychiatrist</option>
+                            <option value="ENT Specialist">ENT Specialist</option>
+                            <option value="Dentist">Dentist</option>
+                            <option value="Pulmonologist">Pulmonologist</option>
+                            <option value="Other">Other (Type manually)</option>
+                          </select>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="e.g. Cardiologist"
+                            className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm"
+                            value={newDoctor.specialization}
+                            onChange={(e) => setNewDoctor({...newDoctor, specialization: e.target.value})}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setNewDoctor({...newDoctor, specialization: '', showCustomSpecialization: false})}
+                            className="px-3 py-2 bg-slate-100 text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-200 transition-all font-bold text-[10px] uppercase shrink-0"
+                          >
+                            List
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Clinic / Hospital</label>
@@ -1156,7 +1188,7 @@ const Doctors = () => {
                       <input 
                         required
                         type="number" 
-                        placeholder="0"
+                        placeholder="- Fill Doctor commission ( e.g. 20 ) -"
                         className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400"
                         value={newDoctor.commissionValue} 
                         onChange={e => setNewDoctor({...newDoctor, commissionValue: e.target.value})}
@@ -1187,7 +1219,7 @@ const Doctors = () => {
                     setShowAddModal(false);
                     setEditingDoc(null);
                     setNewDoctor({
-                      name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', status: 'Active', honorific: 'Dr.'
+                      name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', status: 'Active', honorific: 'Dr.', showCustomSpecialization: false
                     });
                   }}
                   className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:text-brand-dark hover:border-slate-300 transition-all shadow-sm"

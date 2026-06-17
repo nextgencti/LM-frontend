@@ -40,7 +40,7 @@ const BookingForm = ({
   });
   
   const [quickDoctor, setQuickDoctor] = useState({
-    name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', honorific: 'Dr.', status: 'Active'
+    name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', honorific: 'Dr.', showCustomSpecialization: false, status: 'Active'
   });
 
   // Handle ESC key to close modals
@@ -166,6 +166,11 @@ const BookingForm = ({
       formattedName = honorificPrefix + formattedName.trim();
     }
 
+    if (!quickDoctor.commissionValue || parseFloat(quickDoctor.commissionValue) <= 0) {
+      toast.error("Please enter a valid commission value greater than 0.");
+      return;
+    }
+
     try {
       setIsSavingQuick(true);
       const doctorDataToSave = {
@@ -187,7 +192,7 @@ const BookingForm = ({
       setNewBooking(prev => ({ ...prev, doctorId: docRef.id }));
       
       setShowQuickDoctor(false);
-      setQuickDoctor({ name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '0', honorific: 'Dr.' });
+      setQuickDoctor({ name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', honorific: 'Dr.', showCustomSpecialization: false });
       toast.success("Doctor created and selected!");
     } catch (error) {
       console.error("Error saving doctor:", error);
@@ -1035,13 +1040,61 @@ const BookingForm = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-0.5">
                     <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Specialization</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Cardiologist"
-                      className="w-full px-3 py-1.5 bg-white border border-slate-300 focus:border-brand-dark focus:bg-white rounded-[5px] transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300 shadow-sm" 
-                      value={quickDoctor.specialization} 
-                      onChange={e => setQuickDoctor({...quickDoctor, specialization: e.target.value})} 
-                    />
+                    <div className="relative">
+                      {!quickDoctor.showCustomSpecialization ? (
+                        <>
+                          <select
+                            className="w-full px-3 py-1.5 bg-white border border-slate-300 focus:border-brand-dark focus:bg-white rounded-[5px] transition-all font-bold text-[12px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                            value={quickDoctor.specialization}
+                            onChange={(e) => {
+                              if (e.target.value === 'Other') {
+                                setQuickDoctor({...quickDoctor, specialization: '', showCustomSpecialization: true});
+                              } else {
+                                setQuickDoctor({...quickDoctor, specialization: e.target.value});
+                              }
+                            }}
+                          >
+                            <option value="">Select Specialization</option>
+                            <option value="General Physician">General Physician</option>
+                            <option value="Cardiologist">Cardiologist</option>
+                            <option value="Dermatologist">Dermatologist</option>
+                            <option value="Endocrinologist">Endocrinologist</option>
+                            <option value="Gastroenterologist">Gastroenterologist</option>
+                            <option value="Gynecologist">Gynecologist</option>
+                            <option value="Neurologist">Neurologist</option>
+                            <option value="Oncologist">Oncologist</option>
+                            <option value="Orthopedic">Orthopedic</option>
+                            <option value="Pediatrician">Pediatrician</option>
+                            <option value="Psychiatrist">Psychiatrist</option>
+                            <option value="Pulmonologist">Pulmonologist</option>
+                            <option value="Radiologist">Radiologist</option>
+                            <option value="Urologist">Urologist</option>
+                            <option value="Other">Other (Type manually)</option>
+                          </select>
+                          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="e.g. Cardiologist"
+                            className="flex-grow px-3 py-1.5 bg-white border border-slate-300 focus:border-brand-dark focus:bg-white rounded-[5px] transition-all font-bold text-[12px] text-brand-dark outline-none placeholder:text-slate-300 shadow-sm"
+                            value={quickDoctor.specialization}
+                            onChange={(e) => setQuickDoctor({...quickDoctor, specialization: e.target.value})}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuickDoctor({...quickDoctor, specialization: '', showCustomSpecialization: false})}
+                            className="px-2 py-1.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-[5px] hover:bg-slate-200 transition-all font-bold text-[10px] uppercase shrink-0"
+                          >
+                            List
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-0.5">
                     <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Clinic / Hospital</label>
@@ -1076,8 +1129,8 @@ const BookingForm = ({
                         required
                         type="number" 
                         min="0"
-                        placeholder="0"
-                        className="flex-grow px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-dark/30 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none placeholder:text-slate-300" 
+                        placeholder="- Fill Doctor commission ( e.g. 20 ) -"
+                        className="flex-grow px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-dark/30 focus:bg-white rounded-xl transition-all font-bold text-[12px] text-brand-dark outline-none placeholder:text-slate-400" 
                         value={quickDoctor.commissionValue} 
                         onChange={e => setQuickDoctor({...quickDoctor, commissionValue: e.target.value})} 
                       />
