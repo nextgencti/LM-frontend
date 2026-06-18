@@ -558,10 +558,10 @@ const Patients = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Full Name *</label>
                   <div className="flex gap-2">
-                    <div className="relative w-[120px] shrink-0">
+                    <div className="relative w-[130px] shrink-0">
                       <select 
-                        className={`w-full px-3 py-2.5 border rounded-xl transition-all font-bold text-[12px] outline-none cursor-pointer appearance-none ${
-                          newPatient.isAuto ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-50 border-slate-200 text-brand-dark focus:border-brand-primary/50 focus:bg-white'
+                        className={`w-full pl-3 pr-8 py-2.5 border rounded-xl transition-all font-bold text-[13px] outline-none cursor-pointer appearance-none shadow-sm ${
+                          newPatient.isAuto ? 'bg-blue-50/50 border-blue-200 text-blue-600 focus:bg-white focus:border-brand-primary/50' : 'bg-slate-50 border-slate-200 text-brand-dark focus:border-brand-primary/50 focus:bg-white'
                         }`}
                         value={newPatient.isAuto ? 'Auto' : newPatient.honorific}
                         onChange={e => {
@@ -585,14 +585,20 @@ const Patients = () => {
                         <option value="Shri">Shri</option>
                         <option value="Smt.">Smt.</option>
                       </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <ChevronDown className={`w-4 h-4 ${newPatient.isAuto ? 'text-blue-400' : 'text-slate-400'}`} />
+                      </div>
                     </div>
                     <input 
                       required 
                       type="text" 
                       placeholder="Enter patient's name"
-                      className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
+                      className="flex-grow min-w-0 px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm" 
                       value={newPatient.name} 
-                      onChange={e => setNewPatient({...newPatient, name: e.target.value})} 
+                      onChange={e => {
+                        const formattedName = e.target.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        setNewPatient({...newPatient, name: formattedName});
+                      }} 
                     />
                   </div>
                 </div>
@@ -605,7 +611,7 @@ const Patients = () => {
                         required 
                         type="number" 
                         placeholder="00"
-                        className="w-[120px] px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400"
+                        className="flex-grow min-w-0 px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm"
                         value={newPatient.age} 
                         onChange={e => {
                           const val = e.target.value.toString().slice(0, 3);
@@ -615,24 +621,34 @@ const Patients = () => {
                           if (e.target.value.length > 3) e.target.value = e.target.value.slice(0, 3);
                         }}
                       />
-                      <select 
-                        className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-[13px]"
-                        value={newPatient.ageUnit} 
-                        onChange={e => setNewPatient({...newPatient, ageUnit: e.target.value})}
-                      >
-                        <option>Years</option><option>Months</option><option>Days</option>
-                      </select>
+                      <div className="relative w-[110px] shrink-0">
+                        <select 
+                          className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                          value={newPatient.ageUnit} 
+                          onChange={e => setNewPatient({...newPatient, ageUnit: e.target.value})}
+                        >
+                          <option>Years</option><option>Months</option><option>Days</option>
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Gender *</label>
-                    <select 
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-brand-dark outline-none cursor-pointer text-[13px]"
-                      value={newPatient.gender} 
-                      onChange={e => setNewPatient({...newPatient, gender: e.target.value})}
-                    >
-                      <option>Male</option><option>Female</option><option>Other</option>
-                    </select>
+                    <div className="relative w-full">
+                      <select 
+                        className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                        value={newPatient.gender} 
+                        onChange={e => setNewPatient({...newPatient, gender: e.target.value})}
+                      >
+                        <option>Male</option><option>Female</option><option>Other</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -642,7 +658,7 @@ const Patients = () => {
                     <input 
                       type="tel" 
                       placeholder="10-digit mobile number"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm" 
                       value={newPatient.phone} 
                       onChange={e => setNewPatient({...newPatient, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})} 
                     />
@@ -652,7 +668,7 @@ const Patients = () => {
                     <input 
                       type="email" 
                       placeholder="patient@email.com"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm" 
                       value={newPatient.email} 
                       onChange={e => setNewPatient({...newPatient, email: e.target.value})} 
                     />
@@ -667,7 +683,7 @@ const Patients = () => {
                   <textarea 
                     rows="2"
                     placeholder="Enter full address"
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium resize-none" 
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium resize-none shadow-sm" 
                     value={newPatient.address} 
                     onChange={e => setNewPatient({...newPatient, address: e.target.value})} 
                   />

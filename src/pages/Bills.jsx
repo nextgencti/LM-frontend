@@ -294,6 +294,7 @@ const Bills = () => {
       if (!nameMatch && !idMatch) return false;
 
       if (filter === 'All') return true;
+      if (filter === 'Unpaid') return b.paymentStatus === 'Unpaid' || b.paymentStatus === 'Partial';
       return b.paymentStatus === filter;
     });
   }, [bills, searchTerm, filter]);
@@ -326,12 +327,13 @@ const Bills = () => {
       await updateDoc(doc(db, 'bookings', billId), {
         paidAmount: newPaid,
         balance: newBalance,
-        paymentStatus: newBalance <= 0 ? 'Paid' : 'Unpaid',
+        paymentStatus: newBalance <= 0 ? 'Paid' : (newPaid > 0 ? 'Partial' : 'Unpaid'),
         paymentHistory: bill.paymentHistory ? [...bill.paymentHistory, paymentRecord] : [paymentRecord],
         updatedAt: serverTimestamp()
       });
       setPayAmountInput(prev => ({ ...prev, [billId]: '' }));
       fetchBills();
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
       toast.success(`Payment of ₹${addAmount} (${method}) recorded!`);

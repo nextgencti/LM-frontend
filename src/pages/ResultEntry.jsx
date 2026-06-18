@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs, serverTimestamp, orderBy, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   Loader, Save, ArrowLeft, AlertCircle, CheckCircle2, Info, Send, 
   History, Calendar, Search, Maximize2, User, Copy, FileText, 
@@ -15,6 +16,7 @@ import {
 const ResultEntry = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { userData, activeLabId } = useAuth();
   
   const [booking, setBooking] = useState(null);
@@ -417,6 +419,8 @@ const ResultEntry = () => {
       });
 
       await batch.commit();
+      queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast.success("All Reports Finalized Successfully!");
       navigate('/reports');
     } catch (error) {
@@ -468,6 +472,8 @@ const ResultEntry = () => {
       }
 
       await batch.commit();
+      queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast.success("Draft Saved Successfully!");
     } catch (error) {
       toast.error("Failed to save draft: " + error.message);
@@ -731,7 +737,7 @@ const ResultEntry = () => {
                                         onChange={(e) => handleUpdateGridValue(param.testId, param.id, t, e.target.value)}
                                         className={`w-full appearance-none border rounded-[2px] py-0.5 pl-2 pr-6 text-[12px] font-bold text-center outline-none transition-all focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary shadow-sm ${isReactive ? 'bg-rose-50 border-rose-400 text-rose-600' : 'bg-slate-50/50 border-slate-400 text-slate-500 hover:border-brand-dark/40'}`}
                                       >
-                                        {["-", "REACTIVE", "WEAKLY", "POSITIVE", "NEGATIVE"].map(opt => (
+                                        {["-", "REACTIVE", "WEAKLY"].map(opt => (
                                           <option key={opt} value={opt}>{opt}</option>
                                         ))}
                                       </select>
@@ -741,6 +747,38 @@ const ResultEntry = () => {
                                     </div>
                                   );
                                 })}
+                              </div>
+                            ) : param.dataType === 'Qualitative' || param.dataType === 'Semi-Quantitative' || (param.allowedOptions && param.allowedOptions.trim().length > 0) ? (
+                              <div className="flex justify-center relative group/sel w-28 mx-auto">
+                                <select 
+                                  value={val}
+                                  onFocus={() => setFocusedParamId(param.id)}
+                                  onChange={(e) => handleResultChange(param.testId, param.id, e.target.value)}
+                                  className={`w-full appearance-none border rounded-[2px] py-0.5 pl-2 pr-6 text-[12px] font-bold text-center outline-none transition-all focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary shadow-sm ${
+                                    (val.toUpperCase().includes('POSITIVE') || val.toUpperCase().includes('REACTIVE') || val.trim() === '+') && !val.toUpperCase().includes('NON-REACTIVE')
+                                      ? 'bg-rose-50 border-rose-400 text-rose-600'
+                                      : (val.toUpperCase().includes('NEGATIVE') || val.toUpperCase().includes('NON-REACTIVE') || val.trim() === '-')
+                                        ? 'bg-emerald-50 border-emerald-400 text-emerald-600'
+                                        : 'bg-white border-slate-300 text-slate-700 hover:border-brand-dark/40'
+                                  }`}
+                                >
+                                  <option value="">---</option>
+                                  {(() => {
+                                    const opts = (param.allowedOptions || '')
+                                      .split(',')
+                                      .map(s => s.trim())
+                                      .filter(s => s);
+                                    if (opts.length === 0 && (param.dataType === 'Qualitative' || param.dataType === 'Semi-Quantitative')) {
+                                      opts.push('POSITIVE', 'NEGATIVE');
+                                    }
+                                    return opts.map(opt => (
+                                      <option key={opt} value={opt}>{opt}</option>
+                                    ));
+                                  })()}
+                                </select>
+                                <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover/sel:text-slate-600">
+                                  <ChevronDown className="w-2.5 h-2.5" />
+                                </div>
                               </div>
                             ) : (
                               <div className="flex justify-center">

@@ -444,7 +444,8 @@ const Tests = () => {
       unit: p.unit || '',
       dataType: p.dataType || 'Quantitative',
       decimals: p.decimals || 0,
-      rules: p.rules || [] // Copy master rules
+      rules: p.rules || [], // Copy master rules
+      allowedOptions: p.allowedOptions || ''
     };
 
     setTestForm(prev => ({

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Printer, Edit2, Users, IndianRupee, CreditCard, Activity, CheckSquare, Square, Info, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Printer, Edit2, Users, IndianRupee, CreditCard, Activity, CheckSquare, Square, Info, ChevronLeft, ChevronRight, ChevronDown, Send } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Doctors = () => {
@@ -30,6 +30,10 @@ const Doctors = () => {
   const [ledgerData, setLedgerData] = useState({ referrals: [], payments: [] });
   const [isLedgerLoading, setIsLedgerLoading] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
+  const [showEmailPreviewModal, setShowEmailPreviewModal] = useState(false);
+  const [previewEmailTarget, setPreviewEmailTarget] = useState('');
+  const [previewPdfBase64, setPreviewPdfBase64] = useState('');
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [newPayment, setNewPayment] = useState({ amount: '', method: 'Cash', notes: '' });
   const [selectedBillIds, setSelectedBillIds] = useState(new Set());
@@ -168,6 +172,22 @@ const Doctors = () => {
       showCustomSpecialization: false,
       status: doc.status || 'Active',
       honorific: doc.name?.split(' ')[0] || 'Dr.'
+    });
+    setShowAddModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setEditingDoc(null);
+    setNewDoctor({
+      name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', status: 'Active', honorific: 'Dr.', showCustomSpecialization: false
+    });
+  };
+
+  const handleAddClick = () => {
+    setEditingDoc(null);
+    setNewDoctor({
+      name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', status: 'Active', honorific: 'Dr.', showCustomSpecialization: false
     });
     setShowAddModal(true);
   };
@@ -583,7 +603,7 @@ const Doctors = () => {
               const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
               return `${d}-${m}-${y}, ${time}`;
             })()} • This is a computer generated report.
-          </div>
+          </p>
         </body>
       </html>
     `;
@@ -601,10 +621,7 @@ const Doctors = () => {
       return;
     }
 
-    // Defensive check: If called from onClick={handleEmailLedger}, dataOverride will be a React event object.
-    // We only want to use dataOverride if it's an actual ledger data object (which has a 'referrals' property).
     const currentData = (dataOverride && dataOverride.referrals) ? dataOverride : ledgerData;
-
     let targetEmail = selectedDoc?.email;
     
     if (!targetEmail) {
@@ -613,16 +630,6 @@ const Doctors = () => {
       return;
     }
 
-    setIsEmailing(true);
-    
-    // Deduct Token if on Pay As You Go
-    const tokenSuccess = await deductTokenAction(`Email Ledger: ${selectedDoc.name}`);
-    if (!tokenSuccess) {
-      setIsEmailing(false);
-      return;
-    }
-
-    const toastId = toast.loading(`Preparing to send report to ${targetEmail}...`);
     try {
       let openingEarned = 0;
       let openingPaid = 0;
@@ -633,7 +640,6 @@ const Doctors = () => {
       const payments = currentData?.payments || [];
 
       referrals.forEach(b => {
-
          const comm = calculateCommission(b, selectedDoc);
          const dStr = b.createdAt ? toLocalDateStr(b.createdAt) : null;
          if (dStr && dStr < ledgerDateRange.start) {
@@ -669,89 +675,206 @@ const Doctors = () => {
       });
 
       const reportHtml = `
-        <div style="font-family: Arial, sans-serif; padding: 30px; color: #1e293b; background: #f8fafc;">
-          <div style="background: white; border-radius: 20px; padding: 40px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-            <div style="border-bottom: 2px solid #10b981; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between;">
-              <div>
-                <h1 style="margin: 0; font-size: 24px; color: #020617; text-transform: uppercase;">${subscription?.labFullName || subscription?.labName || 'Pathology Laboratory'}</h1>
-                <p style="margin: 5px 0 0; font-size: 12px; color: #64748b;">Financial Performance Report</p>
-              </div>
+      <html>
+        <head>
+          <title>Doctor Ledger - ${selectedDoc.name}</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .header { border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .lab-info h1 { margin: 0; font-size: 24px; font-weight: 900; color: #020617; text-transform: uppercase; }
+            .lab-info p { margin: 5px 0 0; font-size: 12px; color: #64748b; font-weight: 600; }
+            .doc-info h2 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+            .doc-info p { margin: 5px 0 0; font-size: 11px; font-weight: 700; color: #10b981; text-transform: uppercase; }
+            
+            .summary-grid { display: flex; gap: 15px; margin-bottom: 40px; width: 100%; }
+            .stat-card { flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; text-align: center; }
+            .stat-label { font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; letter-spacing: 0.1em; }
+            .stat-value { font-size: 16px; font-weight: 900; color: #0f172a; }
+            .stat-value.urgent { color: #ef4444; }
+
+            h3 { font-size: 13px; font-weight: 900; text-transform: uppercase; border-left: 4px solid #10b981; padding-left: 10px; margin: 35px 0 15px; color: #1e293b; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th { text-align: left; padding: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; background: #f1f5f9; }
+            td { padding: 12px; font-size: 11px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: 700; }
+            .footer { margin-top: 50px; font-size: 10px; text-align: center; color: #94a3b8; font-weight: 600; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+            @media print {
+              body { padding: 0; margin: 0; }
+              .no-print { display: none; }
+              @page { size: A4; margin: 10mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="lab-info">
+              <h1>${subscription?.labFullName || subscription?.labName || 'Pathology Laboratory'}</h1>
+              <p>Performance & Commission Ledger Report</p>
             </div>
-
-            <div style="margin-bottom: 30px;">
-              <h2 style="margin: 0; font-size: 20px; color: #0f172a;">Dr. ${selectedDoc.name}</h2>
-              <p style="margin: 5px 0 0; font-size: 11px; color: #10b981; font-weight: bold;">${selectedDoc.clinic || 'Practice'} • PERIOD: ${formatDate(ledgerDateRange.start)} - ${formatDate(ledgerDateRange.end)}</p>
+            <div style="text-align: right">
+              <p style="font-size: 10px; font-weight: 800; color: #94a3b8; margin: 0">REPORT PERIOD</p>
+              <p style="font-size: 12px; font-weight: 700; margin: 5px 0 0">${formatDate(ledgerDateRange.start)} - ${formatDate(ledgerDateRange.end)}</p>
             </div>
-
-            <div style="display: flex; gap: 15px; margin-bottom: 40px;">
-              <div style="flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Opening Balance</div>
-                <div style="font-size: 18px; font-weight: 900; color: #0f172a;">₹${arrears.toFixed(0)}</div>
-              </div>
-              <div style="flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Earnings</div>
-                <div style="font-size: 18px; font-weight: 900; color: #059669;">₹${periodEarned.toFixed(0)}</div>
-              </div>
-              <div style="flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Paid</div>
-                <div style="font-size: 18px; font-weight: 900; color: #0284c7;">₹${periodPaid.toFixed(0)}</div>
-              </div>
-              <div style="flex: 1; padding: 15px; border: 1px solid #ef4444; border-radius: 12px; text-align: center; background: #fef2f2;">
-                <div style="font-size: 8px; font-weight: 800; color: #b91c1c; text-transform: uppercase;">Outstanding</div>
-                <div style="font-size: 18px; font-weight: 900; color: #b91c1c;">₹${totalDue.toFixed(0)}</div>
-              </div>
-            </div>
-
-            <h3 style="font-size: 12px; text-transform: uppercase; border-left: 4px solid #10b981; padding-left: 10px; margin-bottom: 15px;">Detailed Transaction Record</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-              <thead>
-                <tr style="background: #f8fafc;">
-                  <th style="padding: 10px; text-align: left; font-size: 10px; color: #64748b;">Patient Name</th>
-                  <th style="padding: 10px; text-align: left; font-size: 10px; color: #64748b;">Date</th>
-                  <th style="padding: 10px; text-align: right; font-size: 10px; color: #64748b;">Commission</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${filteredReferrals.map(b => `
-                  <tr>
-                    <td style="padding: 10px; font-size: 11px; border-bottom: 1px solid #f1f5f9;"><b>${b.patientName}</b></td>
-                    <td style="padding: 10px; font-size: 11px; border-bottom: 1px solid #f1f5f9;">${formatDate(b.createdAt)}</td>
-                    <td style="padding: 10px; font-size: 11px; border-bottom: 1px solid #f1f5f9; text-align: right;"><b>₹${calculateCommission(b, selectedDoc).toFixed(1)}</b></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-              <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; color: #0f172a;">
-                 <tr>
-                    <td colspan="2" style="padding: 10px; text-align: right; font-size: 10px; color: #64748b; text-transform: uppercase;">Total for Period</td>
-                    <td style="padding: 10px; text-align: right; font-size: 11px; color: #059669;">₹${periodEarned.toFixed(0)}</td>
-                 </tr>
-              </tfoot>
-            </table>
-
-            <div style="margin-top: 40px; padding: 15px; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;">
-               <p style="margin: 0 0 10px 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase;">Ledger Glossary (शब्दावली)</p>
-               <div style="font-size: 9px; line-height: 1.4; color: #475569;">
-                  <p style="margin: 0 0 5px 0;"><b>Opening Balance:</b> EN: Unpaid before start date | HI: चुनी गई तारीख से पहले का बकाया।</p>
-                  <p style="margin: 0 0 5px 0;"><b>Earnings:</b> EN: New commission earned | HI: इन तारीखों के दौरान की कमाई।</p>
-                  <p style="margin: 0 0 5px 0;"><b>Paid:</b> EN: Payments made in this period | HI: इन तारीखों के दौरान किया गया भुगतान।</p>
-                  <p style="margin: 0 0 5px 0;"><b>Outstanding:</b> EN: Total absolute amount due | HI: अभी देय कुल वास्तविक राशि।</p>
-               </div>
-            </div>
-
-            <p style="font-size: 10px; color: #94a3b8; text-align: center; margin-top: 30px;">
-              Generated on ${(() => {
-                const now = new Date();
-                const d = now.getDate().toString().padStart(2, '0');
-                const m = (now.getMonth() + 1).toString().padStart(2, '0');
-                const y = now.getFullYear();
-                const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-                return `${d}-${m}-${y}, ${time}`;
-              })()} • Lab Mitra Pathology System
-            </p>
           </div>
-        </div>
+
+          <div class="doc-info" style="margin-bottom: 30px">
+            <h2>${selectedDoc.name}</h2>
+            <p>${selectedDoc.clinic || 'Independent Practice'} • ID: ${selectedDoc.doctorId}</p>
+          </div>
+
+          <div class="summary-grid">
+            <div class="stat-card">
+              <div class="stat-label">Opening Balance</div>
+              <div class="stat-value">₹${arrears.toFixed(0)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Period Commission</div>
+              <div class="stat-value">₹${periodEarned.toFixed(0)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Period Paid</div>
+              <div class="stat-value">₹${periodPaid.toFixed(0)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label" style="color: #ef4444">Net Outstanding</div>
+              <div class="stat-value" style="color: #ef4444">₹${totalDue.toFixed(0)}</div>
+            </div>
+          </div>
+
+          <h3>Referral Detailed Record</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Patient Name</th>
+                <th>Date</th>
+                <th>Tests</th>
+                <th class="text-right">Paid Amount</th>
+                <th class="text-right">Commission</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredReferrals.map(b => `
+                <tr>
+                  <td class="font-bold">${b.patientName}</td>
+                  <td>${formatDate(b.createdAt)}</td>
+                  <td>${b.testNames}</td>
+                  <td class="text-right tabular-nums">₹${b.paidAmount}</td>
+                  <td class="text-right tabular-nums font-bold">₹${calculateCommission(b, selectedDoc).toFixed(1)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; color: #0f172a;">
+              <tr>
+                <td colspan="3" style="padding: 12px; text-align: right; text-transform: uppercase; font-size: 10px; color: #64748b;">Total for Period</td>
+                <td style="padding: 12px; text-align: right;">₹${filteredReferrals.reduce((s, b) => s + (parseFloat(b.paidAmount) || 0), 0).toFixed(0)}</td>
+                <td style="padding: 12px; text-align: right; color: #059669;">₹${periodEarned.toFixed(0)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <h3>Payment & Payout History</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Method</th>
+                <th>Notes / Remarks</th>
+                <th class="text-right">Amount Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredPayments.map(p => `
+                <tr>
+                  <td class="font-bold">${formatDate(p.date)}</td>
+                  <td style="text-transform: uppercase; font-weight: 700; color: #0ea5e9">${p.method}</td>
+                  <td>${p.notes || '—'}</td>
+                  <td class="text-right tabular-nums font-bold">₹${p.amount.toFixed(0)}</td>
+                </tr>
+              `).join('')}
+              ${filteredPayments.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding: 40px; color: #94a3b8">No payout records found for this period.</td></tr>' : ''}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 40px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <h4 style="margin: 0 0 15px 0; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Ledger Terms Glossary / शब्दावली</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #1e293b;">Opening Balance (Arrears):</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Unpaid balance before the start date.<br/>HI: चुनी गई तारीख से पहले का बकाया।</p>
+              </div>
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #059669;">Period Commission:</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: New earnings during these dates.<br/>HI: इन तारीखों के दौरान की कमाई।</p>
+              </div>
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #1e293b;">Period Paid:</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total payments made in this period.<br/>HI: इन तारीखों के दौरान किया गया भुगतान।</p>
+              </div>
+              <div style="font-size: 10px; line-height: 1.5;">
+                <p style="margin: 0; font-weight: 700; color: #ef4444;">Net Outstanding:</p>
+                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total absolute amount currently due.<br/>HI: अभी देय कुल वास्तविक राशि।</p>
+              </div>
+            </div>
+          </div>
+          
+          <p class="footer">
+            Generated on ${(() => {
+              const now = new Date();
+              const d = now.getDate().toString().padStart(2, '0');
+              const m = (now.getMonth() + 1).toString().padStart(2, '0');
+              const y = now.getFullYear();
+              const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+              return `${d}-${m}-${y}, ${time}`;
+            })()} • This is a computer generated report.
+          </p>
+        </body>
+      </html>
       `;
 
+      setPreviewEmailTarget(targetEmail);
+      setShowEmailPreviewModal(true);
+      setIsPreviewLoading(true);
+
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const token = await currentUser.getIdToken();
+
+      const pdfResponse = await fetch(`${BACKEND_URL}/api/generate-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ html: reportHtml })
+      });
+
+      const pdfData = await pdfResponse.json();
+      if (pdfData.success) {
+         setPreviewPdfBase64(pdfData.pdfBase64);
+      } else {
+         throw new Error(pdfData.error || "Failed to generate PDF preview");
+      }
+    } catch (error) {
+      console.error('Error preparing email:', error);
+      toast.error('Failed to prepare email report');
+      setShowEmailPreviewModal(false);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const confirmEmailLedger = async () => {
+    setIsEmailing(true);
+    const toastId = toast.loading(`Preparing to send PDF report to ${previewEmailTarget}...`);
+    
+    // Deduct Token if on Pay As You Go
+    const tokenSuccess = await deductTokenAction(`Email Ledger: ${selectedDoc.name}`);
+    if (!tokenSuccess) {
+      setIsEmailing(false);
+      return;
+    }
+
+    try {
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
       const token = await currentUser.getIdToken();
 
@@ -762,17 +885,18 @@ const Doctors = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          to: targetEmail,
+          to: previewEmailTarget,
           subject: `Monthly Commission Ledger - Dr. ${selectedDoc.name} (${formatDate(ledgerDateRange.start)} to ${formatDate(ledgerDateRange.end)})`,
           patientName: selectedDoc.name,
           labName: subscription?.labName,
-          reportHtml: reportHtml
+          pdfBase64: previewPdfBase64
         })
       });
 
       const data = await response.json();
       if (data.success) {
-        toast.update(toastId, { render: `Ledger emailed successfully to ${targetEmail}`, type: "success", isLoading: false, autoClose: 3000 });
+        toast.update(toastId, { render: `Ledger emailed successfully to ${previewEmailTarget}`, type: "success", isLoading: false, autoClose: 3000 });
+        setShowEmailPreviewModal(false);
       } else {
         throw new Error(data.error || 'Failed to send email');
       }
@@ -831,7 +955,7 @@ const Doctors = () => {
         </div>
         
         <button 
-          onClick={() => setShowAddModal(true)}
+          onClick={handleAddClick}
           className="w-full md:w-auto bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold tracking-wider text-[12px] shadow-lg hover:shadow-brand-primary/20 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 group border border-white/10"
         >
           <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-500" />
@@ -1045,7 +1169,7 @@ const Doctors = () => {
                       <p className="text-[9px] font-bold text-white/50 uppercase tracking-[0.15em] mt-0.5">{editingDoc ? 'Update Profile Details' : 'Doctor Registry Setup'}</p>
                    </div>
                </div>
-               <button onClick={() => setShowAddModal(false)} className="relative z-10 w-10 h-10 flex justify-center items-center bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white border border-white/10">
+               <button onClick={handleCloseModal} className="relative z-10 w-10 h-10 flex justify-center items-center bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white border border-white/10">
                   <X className="w-4 h-4" />
                </button>
             </div>
@@ -1056,25 +1180,33 @@ const Doctors = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Doctor Name *</label>
                   <div className="flex gap-2">
-                    <select 
-                      className="w-[100px] shrink-0 px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer"
-                      value={newDoctor.honorific}
-                      onChange={e => setNewDoctor({...newDoctor, honorific: e.target.value})}
-                    >
-                      <option value="Dr.">Dr.</option>
-                      <option value="Prof.">Prof.</option>
-                      <option value="Mr.">Mr.</option>
-                      <option value="Ms.">Ms.</option>
-                      <option value="Mrs.">Mrs.</option>
-                      <option value="None">None</option>
-                    </select>
+                    <div className="relative w-[110px] shrink-0">
+                      <select 
+                        className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-brand-primary/50 rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                        value={newDoctor.honorific}
+                        onChange={e => setNewDoctor({...newDoctor, honorific: e.target.value})}
+                      >
+                        <option value="Dr.">Dr.</option>
+                        <option value="Prof.">Prof.</option>
+                        <option value="Mr.">Mr.</option>
+                        <option value="Ms.">Ms.</option>
+                        <option value="Mrs.">Mrs.</option>
+                        <option value="None">None</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
                     <input 
                       required 
                       type="text" 
                       placeholder="Enter doctor's name"
-                      className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
+                      className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm" 
                       value={newDoctor.name} 
-                      onChange={e => setNewDoctor({...newDoctor, name: e.target.value})} 
+                      onChange={e => {
+                        const formattedName = e.target.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        setNewDoctor({...newDoctor, name: formattedName});
+                      }} 
                     />
                   </div>
                 </div>
@@ -1085,7 +1217,7 @@ const Doctors = () => {
                     <input 
                       type="tel" 
                       placeholder="10-digit mobile number"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm" 
                       value={newDoctor.phone} 
                       onChange={e => setNewDoctor({...newDoctor, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})} 
                     />
@@ -1095,7 +1227,7 @@ const Doctors = () => {
                     <input 
                       type="email" 
                       placeholder="doctor@email.com"
-                      className="w-full px-3 py-2.5 bg-amber-50/30 border border-amber-200/60 focus:border-amber-400 focus:bg-white rounded-xl transition-all font-bold text-amber-700 outline-none placeholder:text-amber-400 placeholder:font-medium" 
+                      className="w-full px-3 py-2.5 bg-amber-50/30 border border-amber-200/60 focus:border-amber-400 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-amber-700 outline-none placeholder:text-amber-400 placeholder:font-medium shadow-sm" 
                       value={newDoctor.email} 
                       onChange={e => setNewDoctor({...newDoctor, email: e.target.value})} 
                     />
@@ -1109,7 +1241,7 @@ const Doctors = () => {
                       {!newDoctor.showCustomSpecialization ? (
                         <>
                           <select
-                            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                            className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-brand-primary/50 rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
                             value={newDoctor.specialization}
                             onChange={(e) => {
                               if (e.target.value === 'Other') {
@@ -1153,7 +1285,7 @@ const Doctors = () => {
                           <button
                             type="button"
                             onClick={() => setNewDoctor({...newDoctor, specialization: '', showCustomSpecialization: false})}
-                            className="px-3 py-2 bg-slate-100 text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-200 transition-all font-bold text-[10px] uppercase shrink-0"
+                            className="px-3 py-2.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-200 transition-all font-bold text-[10px] uppercase shrink-0"
                           >
                             List
                           </button>
@@ -1166,7 +1298,7 @@ const Doctors = () => {
                     <input 
                       type="text" 
                       placeholder="Enter base location"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium" 
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm" 
                       value={newDoctor.clinic} 
                       onChange={e => setNewDoctor({...newDoctor, clinic: e.target.value})} 
                     />
@@ -1177,19 +1309,24 @@ const Doctors = () => {
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Commission Structure *</label>
                     <div className="flex gap-2">
-                      <select 
-                        className="w-[120px] shrink-0 px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer"
-                        value={newDoctor.commissionType} 
-                        onChange={e => setNewDoctor({...newDoctor, commissionType: e.target.value})}
-                      >
-                        <option>Percentage</option>
-                        <option>Fixed</option>
-                      </select>
+                      <div className="relative w-[145px] shrink-0">
+                        <select 
+                          className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-brand-primary/50 rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                          value={newDoctor.commissionType} 
+                          onChange={e => setNewDoctor({...newDoctor, commissionType: e.target.value})}
+                        >
+                          <option>Percentage</option>
+                          <option>Fixed</option>
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                        </div>
+                      </div>
                       <input 
                         required
                         type="number" 
                         placeholder="- Fill Doctor commission ( e.g. 20 ) -"
-                        className="flex-grow px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400"
+                        className="flex-grow min-w-0 px-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-brand-primary/50 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm"
                         value={newDoctor.commissionValue} 
                         onChange={e => setNewDoctor({...newDoctor, commissionValue: e.target.value})}
                       />
@@ -1198,14 +1335,19 @@ const Doctors = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-1.5">Account Status</label>
-                    <select 
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer"
-                      value={newDoctor.status} 
-                      onChange={e => setNewDoctor({...newDoctor, status: e.target.value})}
-                    >
-                      <option>Active</option>
-                      <option>Inactive</option>
-                    </select>
+                    <div className="relative w-full">
+                      <select 
+                        className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-brand-primary/50 rounded-xl transition-all font-bold text-[13px] text-brand-dark outline-none cursor-pointer appearance-none shadow-sm"
+                        value={newDoctor.status} 
+                        onChange={e => setNewDoctor({...newDoctor, status: e.target.value})}
+                      >
+                        <option>Active</option>
+                        <option>Inactive</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1215,13 +1357,7 @@ const Doctors = () => {
                 <button 
                   type="button" 
                   disabled={isSaving}
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setEditingDoc(null);
-                    setNewDoctor({
-                      name: '', phone: '', email: '', clinic: '', specialization: '', commissionType: 'Percentage', commissionValue: '', status: 'Active', honorific: 'Dr.', showCustomSpecialization: false
-                    });
-                  }}
+                  onClick={handleCloseModal}
                   className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:text-brand-dark hover:border-slate-300 transition-all shadow-sm"
                 >
                   Cancel
@@ -1591,7 +1727,14 @@ const Doctors = () => {
                                                       <div className="text-[12px] font-medium text-slate-500 leading-relaxed break-words">{b.testNames}</div>
                                                    </td>
                                                    <td className="px-8 py-5 text-right font-bold text-brand-dark text-[14px]">₹{b.paidAmount}</td>
-                                                   <td className="px-8 py-5 text-right font-bold text-brand-dark text-[14px]">₹{calculateCommission(b, selectedDoc).toFixed(0)}</td>
+                                                   <td className="px-8 py-5 text-right font-bold text-brand-dark text-[14px]">
+                                                      ₹{calculateCommission(b, selectedDoc).toFixed(0)}
+                                                      {selectedDoc?.commissionValue > 0 && (
+                                                         <span className="text-[10px] text-slate-400 font-medium ml-1.5 whitespace-nowrap">
+                                                            ({selectedDoc.commissionType === 'Percentage' ? `${selectedDoc.commissionValue}%` : `₹${selectedDoc.commissionValue}`})
+                                                         </span>
+                                                      )}
+                                                   </td>
                                                    <td className="px-8 py-5 text-center">
                                                       <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
                                                          isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
@@ -1683,6 +1826,84 @@ const Doctors = () => {
         </div>
       )}
       {/* Doctor Ledger Modal - PREMIUM OVERHAUL remains as is ... */}
+
+      {/* Email Preview Modal */}
+      {showEmailPreviewModal && (
+        <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm flex items-center justify-center z-[400] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] shadow-2xl max-w-4xl w-full h-[85vh] flex flex-col overflow-hidden animate-in zoom-in duration-300">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-xl font-bold text-brand-dark flex items-center gap-3">
+                  <div className="p-2 bg-brand-primary/10 rounded-xl">
+                    <Send className="w-5 h-5 text-brand-primary" />
+                  </div>
+                  Review Document
+                </h3>
+                <p className="text-slate-500 text-[13px] font-medium mt-1 ml-12">
+                  Sending as PDF to: <strong className="text-brand-dark">{previewEmailTarget}</strong>
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowEmailPreviewModal(false)}
+                className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="flex-1 bg-slate-100 p-4 sm:p-8 overflow-hidden flex items-center justify-center relative">
+              {isPreviewLoading ? (
+                <div className="flex flex-col items-center justify-center gap-4 text-slate-500">
+                   <Loader className="w-10 h-10 animate-spin text-brand-primary" />
+                   <p className="font-bold">Generating PDF Preview...</p>
+                </div>
+              ) : previewPdfBase64 ? (
+                <div className="w-full h-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                   <iframe 
+                      src={`data:application/pdf;base64,${previewPdfBase64}`}
+                      title="PDF Preview"
+                      className="w-full h-full border-none"
+                      style={{ background: 'white' }}
+                   />
+                </div>
+              ) : (
+                <div className="text-slate-400 font-bold flex flex-col items-center gap-3">
+                   <Info className="w-8 h-8 text-rose-400" />
+                   Failed to load preview. Please close and try again.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-white border-t border-slate-100 flex justify-between items-center">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
+                Please review the document carefully before sending
+              </p>
+              <div className="flex gap-4 w-full sm:w-auto">
+                <button 
+                  onClick={() => setShowEmailPreviewModal(false)}
+                  className="flex-1 sm:flex-none px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl text-[13px] font-bold hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmEmailLedger}
+                  disabled={isEmailing}
+                  className="flex-1 sm:flex-none px-8 py-3 bg-brand-primary text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isEmailing ? (
+                    <><Loader className="w-4 h-4 animate-spin" /> Sending...</>
+                  ) : (
+                    <><Send className="w-4 h-4" /> Confirm & Send Email</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (

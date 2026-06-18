@@ -170,7 +170,7 @@ service cloud.firestore {
 
     match /system_counters/{docId} {
       // Must be authenticated and either part of the respective lab or a SuperAdmin
-      allow read, write: if isAuthenticated() && isLabAdminOrStaff() && (isSuperAdmin() || isLabData(docId));
+      allow read, write: if isAuthenticated() && isLabAdminOrStaff() && (isSuperAdmin() || getLabId() == docId.split('_')[0]);
     }
 
     match /doctorPayments/{docId} {

@@ -246,6 +246,7 @@ const Bookings = () => {
     setIsEditing(false);
     setEditingBookingId(null);
     queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
+    queryClient.invalidateQueries({ queryKey: ['bills'] });
     if (sourcePage === 'reports') {
       navigate('/reports');
     } else {
@@ -301,6 +302,7 @@ const Bookings = () => {
         } : r) : []
       );
       queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
       toast.success('Booking cancelled successfully');
       if (sourcePage === 'reports') {
         navigate('/reports');
@@ -542,7 +544,7 @@ const Bookings = () => {
         totalAmount: newBooking.totalAmount,
         paidAmount: newBooking.paidAmount || 0,
         balance: newBooking.totalAmount - (newBooking.paidAmount || 0),
-        paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
+        paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : ((newBooking.paidAmount || 0) > 0 ? 'Partial' : 'Unpaid'),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
@@ -568,7 +570,7 @@ const Bookings = () => {
           price: test.price || 0,
           totalAmount: newBooking.totalAmount || 0,
           status: 'Sample Collected',
-          paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
+          paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : ((newBooking.paidAmount || 0) > 0 ? 'Partial' : 'Unpaid'),
           labId: activeLabId,
           doctorName: selectedDoctor?.name || 'Self',
           reportLayout: test.reportLayout || 'Standard',
@@ -593,7 +595,7 @@ const Bookings = () => {
         totalAmount: newBooking.totalAmount,
         paidAmount: newBooking.paidAmount,
         balance: newBooking.totalAmount - newBooking.paidAmount,
-        paymentStatus: newBooking.paidAmount >= newBooking.totalAmount ? 'Paid' : 'Unpaid',
+        paymentStatus: newBooking.paidAmount >= newBooking.totalAmount ? 'Paid' : (newBooking.paidAmount > 0 ? 'Partial' : 'Unpaid'),
         createdAt: serverTimestamp()
       });
 
@@ -607,10 +609,11 @@ const Bookings = () => {
         patientId: '', doctorId: '', testIds: [], 
         subtotal: 0, discount: 0, totalAmount: 0, 
         paidAmount: 0, status: 'Pending', urgency: 'Routine', notes: '',
-        paymentStatus: 'Unpaid', balance: 0
+        paymentStatus: 'Unpaid', balance: 0, paymentMode: 'Cash'
       });
       fetchBookings();
       queryClient.invalidateQueries({ queryKey: ['reportsAndBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
     } catch (error) {
       console.error("Error creating booking:", error);
       toast.error("Failed to create booking: " + error.message);
@@ -663,7 +666,7 @@ const Bookings = () => {
         totalAmount: newBooking.totalAmount,
         paidAmount: newBooking.paidAmount || 0,
         balance: newBooking.totalAmount - (newBooking.paidAmount || 0),
-        paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
+        paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : ((newBooking.paidAmount || 0) > 0 ? 'Partial' : 'Unpaid'),
         updatedAt: serverTimestamp()
       });
 
@@ -697,7 +700,7 @@ const Bookings = () => {
           patientGender: selectedPatient?.gender || 'Any',
           testName: test.testName,
           status: inheritedRec ? 'In Progress' : (inheritedColl ? 'Sample Collected' : 'Pending'),
-          paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : 'Unpaid',
+          paymentStatus: (newBooking.totalAmount - (newBooking.paidAmount || 0)) <= 0 ? 'Paid' : ((newBooking.paidAmount || 0) > 0 ? 'Partial' : 'Unpaid'),
           labId: activeLabId,
           doctorName: selectedDoctor?.name || 'Self',
           reportLayout: test.reportLayout || 'Standard',
@@ -728,7 +731,7 @@ const Bookings = () => {
         totalAmount: newBooking.totalAmount,
         paidAmount: newBooking.paidAmount,
         balance: newBooking.totalAmount - newBooking.paidAmount,
-        paymentStatus: newBooking.paidAmount >= newBooking.totalAmount ? 'Paid' : 'Unpaid',
+        paymentStatus: newBooking.paidAmount >= newBooking.totalAmount ? 'Paid' : (newBooking.paidAmount > 0 ? 'Partial' : 'Unpaid'),
         updatedAt: serverTimestamp()
       });
 
@@ -831,6 +834,15 @@ const Bookings = () => {
       return;
     }
 
+    setNewBooking({
+      patientId: '', doctorId: '', testIds: [], 
+      subtotal: 0, discount: 0, totalAmount: 0, paidAmount: 0, 
+      status: 'Pending', urgency: 'Routine', notes: '',
+      paymentStatus: 'Unpaid', balance: 0,
+      paymentMode: 'Cash'
+    });
+    setIsEditing(false);
+    setEditingBookingId(null);
     setShowAddModal(true);
   };
 
@@ -1036,7 +1048,7 @@ const Bookings = () => {
                         </div>
                         <div>
                           <div className="text-[14px] font-semibold text-brand-dark leading-tight group-hover:text-brand-primary transition-colors">{b.patientName}</div>
-                          <div className="text-[11px] font-medium text-slate-500 mt-0.5 uppercase tracking-wider">Dr. {b.doctorName || 'DIRECT VISIT'}</div>
+                          <div className="text-[11px] font-medium text-slate-500 mt-0.5 capitalize">Ref by - {b.doctorName || 'Self'}</div>
                         </div>
                       </div>
                     </td>
@@ -1054,9 +1066,9 @@ const Bookings = () => {
                        <div className={`text-[13px] font-bold tracking-tight mb-0.5 tabular-nums ${b.status === 'Cancelled' ? 'text-slate-400 line-through opacity-50' : 'text-[#1F2937]'}`}>
                          ₹{b.totalAmount}
                        </div>
-                       <div className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 ${b.status === 'Cancelled' ? 'text-slate-400' : b.paymentStatus === 'Paid' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                         <div className={`w-0.5 h-0.5 rounded-full ${b.status === 'Cancelled' ? 'bg-slate-400' : b.paymentStatus === 'Paid' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                         {b.status === 'Cancelled' ? 'Cancelled' : b.paymentStatus}
+                       <div className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 ${b.status === 'Cancelled' ? 'text-slate-400' : b.paymentStatus === 'Paid' ? 'text-emerald-500' : b.paymentStatus === 'Partial' ? 'text-amber-500' : 'text-rose-500'}`}>
+                         <div className={`w-0.5 h-0.5 rounded-full ${b.status === 'Cancelled' ? 'bg-slate-400' : b.paymentStatus === 'Paid' ? 'bg-emerald-500' : b.paymentStatus === 'Partial' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                         {b.status === 'Cancelled' ? 'Cancelled' : b.paymentStatus === 'Partial' ? `PAID (₹${b.paidAmount || 0})` : b.paymentStatus}
                        </div>
                     </td>
                     <td className="px-6 py-2.5 whitespace-nowrap">

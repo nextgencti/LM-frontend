@@ -833,7 +833,8 @@ const Reports = () => {
 
   const renderResultInput = (res, idx) => {
     const isWidal = selectedReport?.testName?.toUpperCase().includes('WIDAL');
-    if (res.dataType === 'Grid' || res.dataType === 'Titer' || selectedReport?.reportLayout === 'Tabular table' || isWidal) {
+    const isTitration = res.dataType === 'Grid' || res.dataType === 'Titer' || isWidal;
+    if (isTitration) {
       // For titration tests, we look for titrations in allowedOptions (e.g. "1:20, 1:40")
       // If empty, we use standard Widal titrations as fallback
       let titrations = (res.allowedOptions || '').split(/[ ,|]+/).map(s => s.trim().toUpperCase()).filter(s => s && !['NEGATIVE', 'NEG', 'NIL', 'NORMAL'].includes(s));
@@ -851,7 +852,7 @@ const Reports = () => {
                 <select value={currentVal} onFocus={() => setFocusedIndex(idx)} onBlur={() => setFocusedIndex(null)}
                   onChange={(e) => handleUpdateGridValue(idx, t, e.target.value)}
                   className={`w-full border-2 rounded-lg px-1.5 py-1 text-[10px] font-black text-center transition-all duration-300 ${isReactive ? 'bg-rose-50 border-rose-400 text-rose-700 shadow-sm scale-105 z-10' : 'bg-white border-slate-100 text-slate-400 focus:border-brand-primary/40'}`}>
-                  {["-","REACTIVE","WEAKLY","POSITIVE","NEGATIVE"].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  {["-","REACTIVE","WEAKLY"].map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
             );

@@ -21,6 +21,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
   const [pdfData, setPdfData] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [quickDiscount, setQuickDiscount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
 
   useEffect(() => {
     if (report) {
@@ -415,6 +416,29 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                 </div>
               </div>
 
+              {/* Tests Ordered */}
+              {bookingData && (bookingData.tests_detail?.length > 0 || bookingData.testNames) && (
+                <div className="space-y-2">
+                  <h3 className="text-[9px] font-black text-slate-900 uppercase tracking-[0.15em]">Tests Ordered</h3>
+                  <div className="bg-white rounded-[5px] p-2.5 border border-blue-100 shadow-sm space-y-1.5">
+                    {bookingData.tests_detail?.length > 0 ? (
+                      bookingData.tests_detail.map((t, idx) => (
+                        <div key={idx} className="flex justify-between items-center py-1 border-b border-blue-50 last:border-b-0">
+                          <span className="text-[9px] font-bold text-slate-700 uppercase tracking-wide">{t.name}</span>
+                          <span className="text-[9px] font-black text-slate-500">₹{t.price || 0}</span>
+                        </div>
+                      ))
+                    ) : (
+                      bookingData.testNames?.split(',').map((name, idx) => (
+                        <div key={idx} className="py-1 border-b border-blue-50 last:border-b-0">
+                          <span className="text-[9px] font-bold text-slate-700 uppercase tracking-wide">{name.trim()}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Financial Summary */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -546,17 +570,24 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
               <div className="flex gap-2">
                 {['Cash', 'UPI', 'Card'].map(m => (
-                  <button key={m} id={`preview-mode-${m}`} onClick={() => {
-                    document.querySelectorAll('.preview-pay-mode').forEach(b => b.classList.remove('bg-brand-dark', 'text-white'));
-                    document.getElementById(`preview-mode-${m}`).classList.add('bg-brand-dark', 'text-white');
-                  }} className={`preview-pay-mode flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border border-slate-100 ${m === 'Cash' ? 'bg-brand-dark text-white' : 'bg-slate-50 text-slate-600'}`}>{m}</button>
+                  <button 
+                    key={m} 
+                    onClick={() => setPaymentMethod(m)} 
+                    className={`preview-pay-mode flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border border-slate-100 transition-all ${
+                      paymentMethod === m 
+                        ? 'bg-brand-dark text-white shadow-lg' 
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {m}
+                  </button>
                 ))}
               </div>
 
               <button disabled={isQuickPaying} onClick={async () => {
                 const amount = parseFloat(document.getElementById('preview-pay-amount').value) || 0;
                 const discount = quickDiscount;
-                const method = document.querySelector('.preview-pay-mode.bg-brand-dark').innerText;
+                const method = paymentMethod;
                 
                 if (amount < 0 || discount < 0) { toast.error("Invalid values"); return; }
                 if (amount === 0 && discount === 0) { toast.error("Enter amount or discount"); return; }
