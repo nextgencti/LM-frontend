@@ -894,6 +894,7 @@ const Reports = () => {
       ...firstTest,
       testName: group.tests.map(t => t.testName).join(', '),
       results: group.tests.flatMap(t => (t.results || []).map(r => ({ ...r, _testName: t.testName }))),
+      tests: group.tests,
     };
   }, [previewGroupId, groupedReports]);
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -1219,25 +1220,33 @@ const Reports = () => {
       </div>
 
       {/* Report Preview */}
-      {previewReport && (
-        <ReportPreview 
-          report={previewReport} 
-          onClose={() => {
-            setPreviewGroupId(null);
-            // Re-sync pending payment state from storage when modal closes
-            const saved = localStorage.getItem('pending_payment_booking');
-            if (saved) {
-              try {
-                setPendingPaymentBooking(JSON.parse(saved));
-              } catch (e) {
+      {previewReport && (() => {
+        const bookingForPreview = bookings.find(b => b.id === previewReport.bookingId || b.bookingNo === previewReport.bookingNo);
+        const doctorForPreview = doctors.find(d => d.id === bookingForPreview?.doctorId || d.name === previewReport.doctorName);
+        return (
+          <ReportPreview 
+            report={previewReport} 
+            preloadedLabProfile={labProfile}
+            preloadedBookingData={bookingForPreview}
+            preloadedDoctorData={doctorForPreview}
+            preloadedReports={previewReport.tests}
+            onClose={() => {
+              setPreviewGroupId(null);
+              // Re-sync pending payment state from storage when modal closes
+              const saved = localStorage.getItem('pending_payment_booking');
+              if (saved) {
+                try {
+                  setPendingPaymentBooking(JSON.parse(saved));
+                } catch (e) {
+                  setPendingPaymentBooking(null);
+                }
+              } else {
                 setPendingPaymentBooking(null);
               }
-            } else {
-              setPendingPaymentBooking(null);
-            }
-          }} 
-        />
-      )}
+            }} 
+          />
+        );
+      })()}
 
       {/* Sticky Floating Red Button for skipped payments */}
       {pendingPaymentBooking && !paymentBooking && (

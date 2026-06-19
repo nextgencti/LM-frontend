@@ -6,55 +6,148 @@ import { Loader, X, Mail, IndianRupee, Save, Activity, User, ChevronLeft, Phone,
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import ReportPdfViewer from './ReportPdfViewer';
+import { pdf } from '@react-pdf/renderer';
+import ReportDocument from './report-pdf/ReportDocument';
 
-const ReportPreview = ({ report, onClose, isPublicView = false, publicData = null }) => {
+const docCache = {
+  labs: {},
+  patients: {},
+  bookings: {},
+  doctors: {},
+  tests: {},
+  reportsByBillId: {}
+};
+
+const fetchDocWithCache = async (collectionName, docId) => {
+  if (!docId) return null;
+  if (docCache[collectionName][docId] !== undefined) {
+    return docCache[collectionName][docId];
+  }
+  try {
+    const snap = await getDoc(doc(db, collectionName, String(docId)));
+    const data = snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    docCache[collectionName][docId] = data;
+    return data;
+  } catch (e) {
+    console.warn(`Cache fetch failed for ${collectionName}/${docId}`, e);
+    return null;
+  }
+};
+
+const fetchReportsByBillIdWithCache = async (billId, labId) => {
+  if (!billId || !labId) return [];
+  const cacheKey = `${labId}_${billId}`;
+  if (docCache.reportsByBillId[cacheKey] !== undefined) {
+    return docCache.reportsByBillId[cacheKey];
+  }
+  try {
+    const q = query(collection(db, 'reports'), where('billId', '==', billId), where('labId', '==', labId));
+    const snap = await getDocs(q);
+    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    docCache.reportsByBillId[cacheKey] = data;
+    return data;
+  } catch (e) {
+    console.warn(`Cache reports fetch failed for billId ${billId}`, e);
+    return [];
+  }
+};
+
+const fetchTestMasterWithCache = async (testId, testName, currentLabId) => {
+  if (testId) {
+    if (docCache.tests[testId] !== undefined) {
+      return docCache.tests[testId];
+    }
+    try {
+      const snap = await getDoc(doc(db, 'tests', testId));
+      const data = snap.exists() ? snap.data() : null;
+      docCache.tests[testId] = data;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  } else if (testName) {
+    const cacheKey = `${currentLabId}_${testName}`;
+    if (docCache.tests[cacheKey] !== undefined) {
+      return docCache.tests[cacheKey];
+    }
+    try {
+      const qLab = query(collection(db, 'tests'), where('labId', '==', currentLabId), where('testName', '==', testName), limit(1));
+      const snapLab = await getDocs(qLab);
+      if (!snapLab.empty) {
+        const data = snapLab.docs[0].data();
+        docCache.tests[cacheKey] = data;
+        return data;
+      }
+      const qGlobal = query(collection(db, 'tests'), where('labId', '==', 'GLOBAL'), where('testName', '==', testName), limit(1));
+      const snapGlobal = await getDocs(qGlobal);
+      const data = !snapGlobal.empty ? snapGlobal.docs[0].data() : null;
+      docCache.tests[cacheKey] = data;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+};
+
+const ReportPreview = ({ 
+  report, 
+  onClose, 
+  isPublicView = false, 
+  publicData = null,
+  preloadedLabProfile = null,
+  preloadedPatientData = null,
+  preloadedBookingData = null,
+  preloadedDoctorData = null,
+  preloadedReports = null
+}) => {
   const { currentUser, checkFeature } = useAuth();
   const [loading, setLoading] = useState(true);
   const [emailSending, setEmailSending] = useState(false);
   const [reportData, setReportData] = useState(report);
-  const [labProfile, setLabProfile] = useState(null);
-  const [patientData, setPatientData] = useState(null);
-  const [doctorData, setDoctorData] = useState(null);
-  const [bookingData, setBookingData] = useState(null);
+  const [labProfile, setLabProfile] = useState(preloadedLabProfile);
+  const [patientData, setPatientData] = useState(preloadedPatientData);
+  const [doctorData, setDoctorData] = useState(preloadedDoctorData);
+  const [bookingData, setBookingData] = useState(preloadedBookingData);
   const [showQuickPay, setShowQuickPay] = useState(false);
   const [isQuickPaying, setIsQuickPaying] = useState(false);
   const [pdfData, setPdfData] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfRendering, setPdfRendering] = useState(true);
   const [quickDiscount, setQuickDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [reportEngine, setReportEngine] = useState('react-pdf'); // 'puppeteer' or 'react-pdf'
+  const [perfLogs, setPerfLogs] = useState({
+    puppeteer: { genTime: null, loadTime: null, size: null },
+    reactPdf: { genTime: null, loadTime: null, size: null }
+  });
+  const loadStartRef = React.useRef(null);
+
+  const handleEngineChange = (engine) => {
+    setReportEngine(engine);
+    setPdfData(null); // Clear buffer to trigger re-generation in useEffect
+    setPdfRendering(true);
+  };
 
   useEffect(() => {
     if (report) {
       setReportData(report); 
+      setPdfData(null); // Clear buffer to prevent stale cache of previous reports
+      setPdfRendering(true);
       fetchReportContext();
     }
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [report]);
+  }, [report, preloadedLabProfile, preloadedPatientData, preloadedBookingData, preloadedDoctorData, preloadedReports]);
 
   const fetchMasterMetadata = async (reportDoc) => {
     try {
       let masterDoc = null;
       if (reportDoc.testId) {
-        const tDoc = await getDoc(doc(db, 'tests', reportDoc.testId));
-        if (tDoc.exists()) masterDoc = tDoc.data();
+        masterDoc = await fetchTestMasterWithCache(reportDoc.testId, null, reportDoc.labId);
       }
       if (!masterDoc && reportDoc.testName) {
-        const baseName = String(reportDoc.testName).split(',')[0].trim();
-        const labIdVal = reportDoc.labId || 'GLOBAL';
-        const searchIds = Array.from(new Set([labIdVal, 'GLOBAL']));
-        const tQ = query(collection(db, 'tests'), 
-          where('testName', '==', baseName), 
-          where('labId', 'in', searchIds),
-          limit(5)
-        );
-        const tSnap = await getDocs(tQ);
-        if (!tSnap.empty) {
-          const docs = tSnap.docs.map(d => d.data());
-          masterDoc = docs.find(d => d.labId === labIdVal && d.category && d.category !== 'General') 
-                    || docs.find(d => d.labId === 'GLOBAL') 
-                    || docs[0];
-        }
+        masterDoc = await fetchTestMasterWithCache(null, reportDoc.testName, reportDoc.labId);
       }
       if (masterDoc) {
         return {
@@ -78,7 +171,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
     }
 
     setLoading(true);
-    let profileToUse = { 
+    let profileToUse = preloadedLabProfile || { 
       labName: 'Diagnostic Laboratory',
       address: 'Independent Testing Facility',
       phone: 'Not Provided',
@@ -86,90 +179,86 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
     };
 
     try {
-      // 1. Fetch Lab Profile
-      if (report.labId) {
-        const labDoc = await getDoc(doc(db, 'labs', report.labId));
-        if (labDoc.exists()) profileToUse = { ...profileToUse, ...labDoc.data() };
+      const pId = report.patientId || (report.labId && report.patient_id ? String(report.labId) + '_' + String(report.patient_id) : report.patient_id);
+      const resId = report.bookingId || (report.labId && report.bookingNo ? `${report.labId}_${report.bookingNo}` : null);
+
+      // 1. Fetch Lab Profile, Patient Data, Booking Data, and Reports concurrently (preferring preloaded)
+      const [labData, patientDataVal, bookingDataVal, reportsDataVal] = await Promise.all([
+        preloadedLabProfile ? Promise.resolve(preloadedLabProfile) : (report.labId ? fetchDocWithCache('labs', report.labId) : Promise.resolve(null)),
+        preloadedPatientData ? Promise.resolve(preloadedPatientData) : (pId ? fetchDocWithCache('patients', String(pId)) : Promise.resolve(null)),
+        preloadedBookingData ? Promise.resolve(preloadedBookingData) : (resId ? fetchDocWithCache('bookings', resId) : Promise.resolve(null)),
+        preloadedReports 
+          ? Promise.resolve(preloadedReports)
+          : (report.billId 
+              ? fetchReportsByBillIdWithCache(report.billId, report.labId)
+              : (report.id ? fetchDocWithCache('reports', report.id).then(r => r ? [r] : []) : Promise.resolve([])))
+      ]);
+
+      if (labData) {
+        profileToUse = { ...profileToUse, ...labData };
       }
       setLabProfile(profileToUse);
 
-      // 2. Fetch Patient Data
-      const pId = report.patientId || (report.labId && report.patient_id ? String(report.labId) + '_' + String(report.patient_id) : report.patient_id);
-      let pData = null;
-      if (pId) {
-        const pDoc = await getDoc(doc(db, 'patients', String(pId)));
-        if (pDoc.exists()) {
-          pData = { id: pDoc.id, ...pDoc.data() };
-          setPatientData(pData);
-        }
+      const finalPatientData = patientDataVal || preloadedPatientData;
+      if (finalPatientData) {
+        setPatientData(finalPatientData);
       }
 
-      // 3. Fetch Doctor & Booking Metadata
-      const resId = report.bookingId || (report.labId && report.bookingNo ? `${report.labId}_${report.bookingNo}` : null);
-      let bData = null;
-      if (resId) {
-        const bDoc = await getDoc(doc(db, 'bookings', resId));
-        if (bDoc.exists()) {
-          bData = { id: bDoc.id, ...bDoc.data() };
-          setBookingData(bData);
-          if (bData.doctorId) {
-            const dDoc = await getDoc(doc(db, 'doctors', bData.doctorId));
-            if (dDoc.exists()) setDoctorData(dDoc.data());
-          }
-        }
+      const finalBookingData = bookingDataVal || preloadedBookingData;
+      if (finalBookingData) {
+        setBookingData(finalBookingData);
       }
 
-      // 4. Fetch & Process Reports (with Re-hydration)
-      let reportsToProcess = [];
-      if (report.billId) {
-        const q = query(collection(db, 'reports'), where('billId', '==', report.billId), where('labId', '==', report.labId));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          reportsToProcess = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-        }
-      } else if (report.id) {
-        const rDoc = await getDoc(doc(db, 'reports', report.id));
-        if (rDoc.exists()) reportsToProcess = [{ id: rDoc.id, ...rDoc.data() }];
+      const reportsToProcess = reportsDataVal || [];
+
+      // 2. Fetch Doctor Profile and all required Test Masters concurrently
+      const subPromises = [];
+      
+      // Index 0: Doctor
+      const docIdToFetch = finalBookingData?.doctorId || report.doctorId;
+      if (preloadedDoctorData) {
+        subPromises.push(Promise.resolve(preloadedDoctorData));
+      } else if (docIdToFetch) {
+        subPromises.push(fetchDocWithCache('doctors', docIdToFetch));
+      } else {
+        subPromises.push(Promise.resolve(null));
       }
 
-      // Re-hydrate logic for all fetched reports
-      const processedReports = await Promise.all(reportsToProcess.map(async (r) => {
-        let tData = null;
+      // Index 1+: Test Masters
+      reportsToProcess.forEach((r) => {
         const currentLabId = String(report.labId || r.labId);
-        
-        // 1. Try direct ID match if it exists
-        if (r.testId) {
-          try {
-            const tDoc = await getDoc(doc(db, 'tests', r.testId));
-            if (tDoc.exists()) tData = tDoc.data();
-          } catch (e) { console.warn("ID lookup failed", e); }
+        subPromises.push(
+          fetchTestMasterWithCache(r.testId, r.testName, currentLabId)
+            .then(data => ({ reportId: r.id, data }))
+        );
+      });
+
+      const subResults = await Promise.all(subPromises);
+
+      // Map Doctor
+      const doctorDataVal = subResults[0] || preloadedDoctorData;
+      if (doctorDataVal) {
+        setDoctorData(doctorDataVal);
+      }
+
+      // Map Test Masters
+      const testMastersMap = {};
+      subResults.slice(1).forEach((res) => {
+        if (res && res.data) {
+          testMastersMap[res.reportId] = res.data;
         }
-        
-        // 2. Targeted Search by Name (to avoid permission errors)
-        if (!tData && r.testName) {
-          try {
-            // Check Lab-specific first
-            const qLab = query(collection(db, 'tests'), where('labId', '==', currentLabId), where('testName', '==', r.testName), limit(1));
-            const snapLab = await getDocs(qLab);
-            if (!snapLab.empty) {
-              tData = snapLab.docs[0].data();
-            } else {
-              // Check Global catalog second
-              const qGlobal = query(collection(db, 'tests'), where('labId', '==', 'GLOBAL'), where('testName', '==', r.testName), limit(1));
-              const snapGlobal = await getDocs(qGlobal);
-              if (!snapGlobal.empty) tData = snapGlobal.docs[0].data();
-            }
-          } catch (e) { console.warn("Name lookup failed", e); }
-        }
+      });
+
+      // Synchronously process reports using testMastersMap
+      const processedReports = reportsToProcess.map((r) => {
+        const tData = testMastersMap[r.id];
 
         if (tData) {
-          // Auto-fill category/sampleType
           const masterCat = tData.category || tData.testCategory;
           const masterSam = tData.sampleType;
           if (!r.category || r.category === 'General') r.category = masterCat || r.category;
           if (!r.sampleType || r.sampleType === 'N/A') r.sampleType = masterSam || r.sampleType;
 
-          // Map parameters
           const paramMap = {};
           if (Array.isArray(tData.groups)) {
             tData.groups.forEach(g => {
@@ -182,9 +271,9 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                   let rangeVal = '---';
                   if (Array.isArray(p.rules)) {
                     const rule = p.rules.find(rule => {
-                      if (rule.gender !== 'Any' && rule.gender !== 'Both' && pData && rule.gender !== pData.gender) return false;
-                      if (pData && pData.age) {
-                        if (pData.age < rule.ageMin || pData.age > rule.ageMax) return false;
+                      if (rule.gender !== 'Any' && rule.gender !== 'Both' && finalPatientData && rule.gender !== finalPatientData.gender) return false;
+                      if (finalPatientData && finalPatientData.age) {
+                        if (finalPatientData.age < rule.ageMin || finalPatientData.age > rule.ageMax) return false;
                       }
                       return true;
                     });
@@ -215,7 +304,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
           }
         }
         return r;
-      }));
+      });
 
       if (processedReports.length > 0) {
         const mergedResults = processedReports.flatMap(r => 
@@ -240,6 +329,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
     }
   };
 
+
   const qrUrl = React.useMemo(() => {
     // Use high-entropy viewToken if available, otherwise fallback to direct ID for legacy support
     const token = reportData.viewToken || report.id || reportData.id;
@@ -248,22 +338,69 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
   useEffect(() => {
     if (!loading && reportData && labProfile && patientData) {
-      if (pdfData || pdfLoading) return;
+      if (pdfLoading) return;
       const fetchPdf = async () => {
         try {
           setPdfLoading(true);
-          let token = currentUser ? await currentUser.getIdToken() : null;
-          const endpoint = isPublicView && !currentUser ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/public/generate-report` : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/generate-report`;
-          const res = await axios.post(endpoint, { reportData, labProfile, patientData, doctorData, bookingData, qrUrl }, { headers: token ? { Authorization: `Bearer ${token}` } : {}, responseType: 'blob' });
-          setPdfData(res.data);
+          const genStart = performance.now();
+          loadStartRef.current = null;
+
+          if (reportEngine === 'puppeteer') {
+            let token = currentUser ? await currentUser.getIdToken() : null;
+            const endpoint = isPublicView && !currentUser ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/public/generate-report` : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/generate-report`;
+            const res = await axios.post(endpoint, { reportData, labProfile, patientData, doctorData, bookingData, qrUrl }, { headers: token ? { Authorization: `Bearer ${token}` } : {}, responseType: 'blob' });
+            
+            const genDuration = Math.round(performance.now() - genStart);
+            const fileSize = (res.data.size / 1024).toFixed(2);
+            
+            setPerfLogs(prev => ({
+              ...prev,
+              puppeteer: {
+                ...prev.puppeteer,
+                genTime: genDuration,
+                size: fileSize
+              }
+            }));
+
+            loadStartRef.current = performance.now();
+            setPdfData(res.data);
+          } else {
+            // React-PDF Client Side Generation
+            const doc = (
+              <ReportDocument
+                reportData={reportData}
+                labProfile={labProfile}
+                patientData={patientData}
+                doctorData={doctorData}
+                bookingData={bookingData}
+                qrUrl={qrUrl}
+              />
+            );
+            const blob = await pdf(doc).toBlob();
+            const genDuration = Math.round(performance.now() - genStart);
+            const fileSize = (blob.size / 1024).toFixed(2);
+
+            setPerfLogs(prev => ({
+              ...prev,
+              reactPdf: {
+                ...prev.reactPdf,
+                genTime: genDuration,
+                size: fileSize
+              }
+            }));
+
+            loadStartRef.current = performance.now();
+            setPdfData(blob);
+          }
         } catch (e) {
           console.error('[PDF_FETCH_ERROR]:', e);
           if (e.response?.status !== 401) toast.error('Failed to render PDF preview.');
+          setPdfRendering(false);
         } finally { setPdfLoading(false); }
       };
       fetchPdf();
     }
-  }, [loading, reportData, labProfile, patientData, isPublicView, qrUrl, currentUser, doctorData]);
+  }, [loading, reportData, labProfile, patientData, isPublicView, qrUrl, currentUser, doctorData, reportEngine]);
 
   const handleMarkDelivered = async () => {
     // Only if currently not delivered and is finalized
@@ -346,14 +483,7 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
   return (
     <div className={`fixed inset-0 z-[300] bg-gray-900/95 ${isPublicView ? '' : 'backdrop-blur-xl p-2 sm:p-6'} flex flex-col print:static print:bg-transparent print:p-0`}>
-      {loading && !pdfData && (
-        <div className="absolute inset-0 z-[310] bg-gray-900/95 backdrop-blur-xl flex flex-col items-center justify-center">
-          <Loader className="w-12 h-12 animate-spin mb-4 text-emerald-500" />
-          <p className="font-bold tracking-widest uppercase text-[10px] text-white">Fetching Diagnostic Data...</p>
-        </div>
-      )}
-
-      {!loading && (
+      {(
         <div className={`w-full h-full ${isPublicView ? 'max-w-full' : 'max-w-[1600px]'} mx-auto flex flex-row ${!isPublicView ? 'gap-6' : ''} relative animate-in fade-in zoom-in duration-500 items-stretch`}>
           {/* Clinical & Financial Context Sidebar - SEPARATE CARD */}
           {!isPublicView && (
@@ -491,6 +621,65 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
                   </div>
                 </div>
               </div>
+
+              {/* PDF Engine Comparison Switch (Developer/Testing Options) */}
+              <div className="bg-white rounded-[16px] border border-orange-200 p-3.5 shadow-sm space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <Activity className="w-3.5 h-3.5 text-orange-600" />
+                  </div>
+                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-wider">PDF Engine (Testing)</h3>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEngineChange('puppeteer')}
+                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
+                      reportEngine === 'puppeteer'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-sm shadow-slate-900/10'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Puppeteer
+                  </button>
+                  <button
+                    onClick={() => handleEngineChange('react-pdf')}
+                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
+                      reportEngine === 'react-pdf'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/10'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    React-PDF
+                  </button>
+                </div>
+
+                {/* Performance Logging Display */}
+                <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[8.5px]">
+                  <div className="flex justify-between items-center pb-1 border-b border-slate-200/50">
+                    <span className="font-bold text-slate-400 uppercase tracking-wide">Metric</span>
+                    <span className="font-black text-slate-500 uppercase tracking-wide">Puppeteer vs R-PDF</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-500">PDF Gen Time:</span>
+                    <span className="font-black text-slate-700 text-right">
+                      {perfLogs.puppeteer.genTime ? `${perfLogs.puppeteer.genTime}ms` : '--'} / {perfLogs.reactPdf.genTime ? `${perfLogs.reactPdf.genTime}ms` : '--'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-500">Viewer Render:</span>
+                    <span className="font-black text-slate-700 text-right">
+                      {perfLogs.puppeteer.loadTime ? `${perfLogs.puppeteer.loadTime}ms` : '--'} / {perfLogs.reactPdf.loadTime ? `${perfLogs.reactPdf.loadTime}ms` : '--'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-500">File Size:</span>
+                    <span className="font-black text-slate-700 text-right">
+                      {perfLogs.puppeteer.size ? `${perfLogs.puppeteer.size}KB` : '--'} / {perfLogs.reactPdf.size ? `${perfLogs.reactPdf.size}KB` : '--'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Footer Brand - REFINED */}
@@ -509,7 +698,37 @@ const ReportPreview = ({ report, onClose, isPublicView = false, publicData = nul
 
           {/* PDF Viewer Content Area - SEPARATE CARD */}
           <div className={`flex-1 flex flex-col bg-white ${isPublicView ? '' : 'rounded-[5px] shadow-3xl border border-slate-100'} overflow-hidden`}>
-            <ReportPdfViewer pdfBuffer={pdfData} onClose={onClose} onEmail={!isPublicView ? handleEmailReport : null} onDeliver={!isPublicView ? handleMarkDelivered : null} isEmailing={emailSending} fileName={`${reportData.patientName || 'Patient'}_Report.pdf`} isPublic={isPublicView} isRestricted={labProfile?.reportSettings?.restrictUnpaidReports && bookingData?.paymentStatus !== 'Paid'} onRestrict={() => setShowQuickPay(true)} />
+            <ReportPdfViewer 
+              pdfBuffer={pdfData} 
+              onClose={onClose} 
+              onEmail={!isPublicView ? handleEmailReport : null} 
+              onDeliver={!isPublicView ? handleMarkDelivered : null} 
+              isEmailing={emailSending} 
+              fileName={`${reportData.patientName || 'Patient'}_Report.pdf`} 
+              isPublic={isPublicView} 
+              isRestricted={labProfile?.reportSettings?.restrictUnpaidReports && bookingData?.paymentStatus !== 'Paid'} 
+              onRestrict={() => setShowQuickPay(true)} 
+              onLoadSuccess={() => {
+                setPdfRendering(false);
+                if (loadStartRef.current) {
+                  const loadDuration = Math.round(performance.now() - loadStartRef.current);
+                  setPerfLogs(prev => {
+                    const logKey = reportEngine === 'puppeteer' ? 'puppeteer' : 'reactPdf';
+                    return {
+                      ...prev,
+                      [logKey]: {
+                        ...prev[logKey],
+                        loadTime: loadDuration
+                      }
+                    };
+                  });
+                  loadStartRef.current = null;
+                }
+              }}
+              onLoadError={() => {
+                setPdfRendering(false);
+              }}
+            />
           </div>
         </div>
       )}

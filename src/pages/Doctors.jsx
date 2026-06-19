@@ -4,6 +4,8 @@ import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, 
 import { useAuth } from '../context/AuthContext';
 import { Search, Plus, Loader, UserPlus, Stethoscope, Phone, Mail, Trash2, X, Printer, Edit2, Users, IndianRupee, CreditCard, Activity, CheckSquare, Square, Info, ChevronLeft, ChevronRight, ChevronDown, Send } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { pdf } from '@react-pdf/renderer';
+import LedgerDocument from '../components/report-pdf/LedgerDocument';
 
 const Doctors = () => {
   const { userData, activeLabId, currentUser, subscription, checkFeature } = useAuth();
@@ -444,175 +446,41 @@ const Doctors = () => {
     const arrears = openingEarned - openingPaid;
     const totalDue = (openingEarned + periodEarned) - (openingPaid + periodPaid);
 
-    const printWindow = window.open('', '_blank', 'width=900,height=900');
-    if (!printWindow) {
-      alert('Mobile browser ne popup block kar diya hai. Please settings me "Allow Popups" karein ya fir desktop par try karein.');
-      return;
+    const toastId = toast.loading('Generating ledger PDF for printing...');
+    try {
+      const doc = (
+        <LedgerDocument
+          selectedDoc={selectedDoc}
+          ledgerDateRange={ledgerDateRange}
+          subscription={subscription}
+          arrears={arrears}
+          periodEarned={periodEarned}
+          periodPaid={periodPaid}
+          totalDue={totalDue}
+          filteredReferrals={filteredReferrals}
+          filteredPayments={filteredPayments}
+          calculateCommission={calculateCommission}
+        />
+      );
+      const blob = await pdf(doc).toBlob();
+      const url = window.URL.createObjectURL(blob);
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          window.URL.revokeObjectURL(url);
+        }, 3000);
+      };
+      toast.update(toastId, { render: 'PDF generated successfully!', type: 'success', isLoading: false, autoClose: 2000 });
+    } catch (err) {
+      console.error('Error generating ledger PDF:', err);
+      toast.update(toastId, { render: 'Failed to generate PDF for printing.', type: 'error', isLoading: false, autoClose: 3000 });
     }
-
-    const html = `
-      <html>
-        <head>
-          <title>Doctor Ledger - ${selectedDoc.name}</title>
-          <style>
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .header { border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .lab-info h1 { margin: 0; font-size: 24px; font-weight: 900; color: #020617; text-transform: uppercase; }
-            .lab-info p { margin: 5px 0 0; font-size: 12px; color: #64748b; font-weight: 600; }
-            .doc-info h2 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
-            .doc-info p { margin: 5px 0 0; font-size: 11px; font-weight: 700; color: #10b981; text-transform: uppercase; }
-            
-            .summary-grid { display: flex; gap: 15px; margin-bottom: 40px; width: 100%; }
-            .stat-card { flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; text-align: center; }
-            .stat-label { font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; letter-spacing: 0.1em; }
-            .stat-value { font-size: 16px; font-weight: 900; color: #0f172a; }
-            .stat-value.urgent { color: #ef4444; }
-
-            h3 { font-size: 13px; font-weight: 900; text-transform: uppercase; border-left: 4px solid #10b981; padding-left: 10px; margin: 35px 0 15px; color: #1e293b; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { text-align: left; padding: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; background: #f1f5f9; }
-            td { padding: 12px; font-size: 11px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
-            .text-right { text-align: right; }
-            .font-bold { font-weight: 700; }
-            .footer { margin-top: 50px; font-size: 10px; text-align: center; color: #94a3b8; font-weight: 600; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-            @media print {
-              body { padding: 0; margin: 0; }
-              .no-print { display: none; }
-              @page { size: A4; margin: 10mm; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="lab-info">
-              <h1>${subscription?.labFullName || subscription?.labName || 'Pathology Laboratory'}</h1>
-              <p>Performance & Commission Ledger Report</p>
-            </div>
-            <div style="text-align: right">
-              <p style="font-size: 10px; font-weight: 800; color: #94a3b8; margin: 0">REPORT PERIOD</p>
-              <p style="font-size: 12px; font-weight: 700; margin: 5px 0 0">${formatDate(ledgerDateRange.start)} - ${formatDate(ledgerDateRange.end)}</p>
-            </div>
-          </div>
-
-          <div class="doc-info" style="margin-bottom: 30px">
-            <h2>${selectedDoc.name}</h2>
-            <p>${selectedDoc.clinic || 'Independent Practice'} • ID: ${selectedDoc.doctorId}</p>
-          </div>
-
-          <div class="summary-grid">
-            <div class="stat-card">
-              <div class="stat-label">Opening Balance</div>
-              <div class="stat-value">₹${arrears.toFixed(0)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Period Commission</div>
-              <div class="stat-value">₹${periodEarned.toFixed(0)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Period Paid</div>
-              <div class="stat-value">₹${periodPaid.toFixed(0)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label" style="color: #ef4444">Net Outstanding</div>
-              <div class="stat-value" style="color: #ef4444">₹${totalDue.toFixed(0)}</div>
-            </div>
-          </div>
-
-          <h3>Referral Detailed Record</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Patient Name</th>
-                <th>Date</th>
-                <th>Tests</th>
-                <th class="text-right">Paid Amount</th>
-                <th class="text-right">Commission</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredReferrals.map(b => `
-                <tr>
-                  <td class="font-bold">${b.patientName}</td>
-                  <td>${formatDate(b.createdAt)}</td>
-                  <td>${b.testNames}</td>
-                  <td class="text-right tabular-nums">₹${b.paidAmount}</td>
-                  <td class="text-right tabular-nums font-bold">₹${calculateCommission(b, selectedDoc).toFixed(1)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-            <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; color: #0f172a;">
-              <tr>
-                <td colspan="3" style="padding: 12px; text-align: right; text-transform: uppercase; font-size: 10px; color: #64748b;">Total for Period</td>
-                <td style="padding: 12px; text-align: right;">₹${filteredReferrals.reduce((s, b) => s + (parseFloat(b.paidAmount) || 0), 0).toFixed(0)}</td>
-                <td style="padding: 12px; text-align: right; color: #059669;">₹${periodEarned.toFixed(0)}</td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <h3>Payment & Payout History</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Method</th>
-                <th>Notes / Remarks</th>
-                <th class="text-right">Amount Paid</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredPayments.map(p => `
-                <tr>
-                  <td class="font-bold">${formatDate(p.date)}</td>
-                  <td style="text-transform: uppercase; font-weight: 700; color: #0ea5e9">${p.method}</td>
-                  <td>${p.notes || '—'}</td>
-                  <td class="text-right tabular-nums font-bold">₹${p.amount.toFixed(0)}</td>
-                </tr>
-              `).join('')}
-              ${filteredPayments.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding: 40px; color: #94a3b8">No payout records found for this period.</td></tr>' : ''}
-            </tbody>
-          </table>
-
-          <div style="margin-top: 40px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-            <h4 style="margin: 0 0 15px 0; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Ledger Terms Glossary / शब्दावली</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #1e293b;">Opening Balance (Arrears):</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Unpaid balance before the start date.<br/>HI: चुनी गई तारीख से पहले का बकाया।</p>
-              </div>
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #059669;">Period Commission:</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: New earnings during these dates.<br/>HI: इन तारीखों के दौरान की कमाई।</p>
-              </div>
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #0284c7;">Period Paid:</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total payments made in this period.<br/>HI: इन तारीखों के दौरान किया गया भुगतान।</p>
-              </div>
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #b91c1c;">Net Outstanding:</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total absolute amount currently due.<br/>HI: अभी देय कुल वास्तविक राशि।</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="footer">
-            Generated on ${(() => {
-              const now = new Date();
-              const d = now.getDate().toString().padStart(2, '0');
-              const m = (now.getMonth() + 1).toString().padStart(2, '0');
-              const y = now.getFullYear();
-              const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-              return `${d}-${m}-${y}, ${time}`;
-            })()} • This is a computer generated report.
-          </p>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 1200);
   };
 
   const handleEmailLedger = async (dataOverride = null) => {
@@ -674,186 +542,34 @@ const Doctors = () => {
         return dateStr >= ledgerDateRange.start && dateStr <= ledgerDateRange.end;
       });
 
-      const reportHtml = `
-      <html>
-        <head>
-          <title>Doctor Ledger - ${selectedDoc.name}</title>
-          <style>
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .header { border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .lab-info h1 { margin: 0; font-size: 24px; font-weight: 900; color: #020617; text-transform: uppercase; }
-            .lab-info p { margin: 5px 0 0; font-size: 12px; color: #64748b; font-weight: 600; }
-            .doc-info h2 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
-            .doc-info p { margin: 5px 0 0; font-size: 11px; font-weight: 700; color: #10b981; text-transform: uppercase; }
-            
-            .summary-grid { display: flex; gap: 15px; margin-bottom: 40px; width: 100%; }
-            .stat-card { flex: 1; padding: 15px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; text-align: center; }
-            .stat-label { font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; letter-spacing: 0.1em; }
-            .stat-value { font-size: 16px; font-weight: 900; color: #0f172a; }
-            .stat-value.urgent { color: #ef4444; }
-
-            h3 { font-size: 13px; font-weight: 900; text-transform: uppercase; border-left: 4px solid #10b981; padding-left: 10px; margin: 35px 0 15px; color: #1e293b; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { text-align: left; padding: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; background: #f1f5f9; }
-            td { padding: 12px; font-size: 11px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
-            .text-right { text-align: right; }
-            .font-bold { font-weight: 700; }
-            .footer { margin-top: 50px; font-size: 10px; text-align: center; color: #94a3b8; font-weight: 600; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-            @media print {
-              body { padding: 0; margin: 0; }
-              .no-print { display: none; }
-              @page { size: A4; margin: 10mm; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="lab-info">
-              <h1>${subscription?.labFullName || subscription?.labName || 'Pathology Laboratory'}</h1>
-              <p>Performance & Commission Ledger Report</p>
-            </div>
-            <div style="text-align: right">
-              <p style="font-size: 10px; font-weight: 800; color: #94a3b8; margin: 0">REPORT PERIOD</p>
-              <p style="font-size: 12px; font-weight: 700; margin: 5px 0 0">${formatDate(ledgerDateRange.start)} - ${formatDate(ledgerDateRange.end)}</p>
-            </div>
-          </div>
-
-          <div class="doc-info" style="margin-bottom: 30px">
-            <h2>${selectedDoc.name}</h2>
-            <p>${selectedDoc.clinic || 'Independent Practice'} • ID: ${selectedDoc.doctorId}</p>
-          </div>
-
-          <div class="summary-grid">
-            <div class="stat-card">
-              <div class="stat-label">Opening Balance</div>
-              <div class="stat-value">₹${arrears.toFixed(0)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Period Commission</div>
-              <div class="stat-value">₹${periodEarned.toFixed(0)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Period Paid</div>
-              <div class="stat-value">₹${periodPaid.toFixed(0)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label" style="color: #ef4444">Net Outstanding</div>
-              <div class="stat-value" style="color: #ef4444">₹${totalDue.toFixed(0)}</div>
-            </div>
-          </div>
-
-          <h3>Referral Detailed Record</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Patient Name</th>
-                <th>Date</th>
-                <th>Tests</th>
-                <th class="text-right">Paid Amount</th>
-                <th class="text-right">Commission</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredReferrals.map(b => `
-                <tr>
-                  <td class="font-bold">${b.patientName}</td>
-                  <td>${formatDate(b.createdAt)}</td>
-                  <td>${b.testNames}</td>
-                  <td class="text-right tabular-nums">₹${b.paidAmount}</td>
-                  <td class="text-right tabular-nums font-bold">₹${calculateCommission(b, selectedDoc).toFixed(1)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-            <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; color: #0f172a;">
-              <tr>
-                <td colspan="3" style="padding: 12px; text-align: right; text-transform: uppercase; font-size: 10px; color: #64748b;">Total for Period</td>
-                <td style="padding: 12px; text-align: right;">₹${filteredReferrals.reduce((s, b) => s + (parseFloat(b.paidAmount) || 0), 0).toFixed(0)}</td>
-                <td style="padding: 12px; text-align: right; color: #059669;">₹${periodEarned.toFixed(0)}</td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <h3>Payment & Payout History</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Method</th>
-                <th>Notes / Remarks</th>
-                <th class="text-right">Amount Paid</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredPayments.map(p => `
-                <tr>
-                  <td class="font-bold">${formatDate(p.date)}</td>
-                  <td style="text-transform: uppercase; font-weight: 700; color: #0ea5e9">${p.method}</td>
-                  <td>${p.notes || '—'}</td>
-                  <td class="text-right tabular-nums font-bold">₹${p.amount.toFixed(0)}</td>
-                </tr>
-              `).join('')}
-              ${filteredPayments.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding: 40px; color: #94a3b8">No payout records found for this period.</td></tr>' : ''}
-            </tbody>
-          </table>
-
-          <div style="margin-top: 40px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-            <h4 style="margin: 0 0 15px 0; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Ledger Terms Glossary / शब्दावली</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #1e293b;">Opening Balance (Arrears):</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Unpaid balance before the start date.<br/>HI: चुनी गई तारीख से पहले का बकाया।</p>
-              </div>
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #059669;">Period Commission:</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: New earnings during these dates.<br/>HI: इन तारीखों के दौरान की कमाई।</p>
-              </div>
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #1e293b;">Period Paid:</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total payments made in this period.<br/>HI: इन तारीखों के दौरान किया गया भुगतान।</p>
-              </div>
-              <div style="font-size: 10px; line-height: 1.5;">
-                <p style="margin: 0; font-weight: 700; color: #ef4444;">Net Outstanding:</p>
-                <p style="margin: 2px 0 0 0; color: #64748b;">EN: Total absolute amount currently due.<br/>HI: अभी देय कुल वास्तविक राशि।</p>
-              </div>
-            </div>
-          </div>
-          
-          <p class="footer">
-            Generated on ${(() => {
-              const now = new Date();
-              const d = now.getDate().toString().padStart(2, '0');
-              const m = (now.getMonth() + 1).toString().padStart(2, '0');
-              const y = now.getFullYear();
-              const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-              return `${d}-${m}-${y}, ${time}`;
-            })()} • This is a computer generated report.
-          </p>
-        </body>
-      </html>
-      `;
-
       setPreviewEmailTarget(targetEmail);
       setShowEmailPreviewModal(true);
       setIsPreviewLoading(true);
 
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
-      const token = await currentUser.getIdToken();
-
-      const pdfResponse = await fetch(`${BACKEND_URL}/api/generate-pdf`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ html: reportHtml })
+      const doc = (
+        <LedgerDocument
+          selectedDoc={selectedDoc}
+          ledgerDateRange={ledgerDateRange}
+          subscription={subscription}
+          arrears={arrears}
+          periodEarned={periodEarned}
+          periodPaid={periodPaid}
+          totalDue={totalDue}
+          filteredReferrals={filteredReferrals}
+          filteredPayments={filteredPayments}
+          calculateCommission={calculateCommission}
+        />
+      );
+      const blob = await pdf(doc).toBlob();
+      
+      const base64data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = (err) => reject(err);
       });
 
-      const pdfData = await pdfResponse.json();
-      if (pdfData.success) {
-         setPreviewPdfBase64(pdfData.pdfBase64);
-      } else {
-         throw new Error(pdfData.error || "Failed to generate PDF preview");
-      }
+      setPreviewPdfBase64(base64data);
     } catch (error) {
       console.error('Error preparing email:', error);
       toast.error('Failed to prepare email report');
@@ -1830,37 +1546,37 @@ const Doctors = () => {
       {/* Email Preview Modal */}
       {showEmailPreviewModal && (
         <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm flex items-center justify-center z-[400] p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] shadow-2xl max-w-4xl w-full h-[85vh] flex flex-col overflow-hidden animate-in zoom-in duration-300">
+          <div className="bg-white rounded-[24px] shadow-2xl max-w-3xl w-full h-[80vh] max-h-[640px] flex flex-col overflow-hidden animate-in zoom-in duration-300">
             {/* Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div>
-                <h3 className="text-xl font-bold text-brand-dark flex items-center gap-3">
-                  <div className="p-2 bg-brand-primary/10 rounded-xl">
-                    <Send className="w-5 h-5 text-brand-primary" />
+                <h3 className="text-base font-bold text-brand-dark flex items-center gap-3">
+                  <div className="p-1.5 bg-brand-primary/10 rounded-xl">
+                    <Send className="w-4 h-4 text-brand-primary" />
                   </div>
                   Review Document
                 </h3>
-                <p className="text-slate-500 text-[13px] font-medium mt-1 ml-12">
+                <p className="text-slate-500 text-[11px] font-medium mt-1 ml-10">
                   Sending as PDF to: <strong className="text-brand-dark">{previewEmailTarget}</strong>
                 </p>
               </div>
               <button 
                 onClick={() => setShowEmailPreviewModal(false)}
-                className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
+                className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
             
             {/* Body */}
-            <div className="flex-1 bg-slate-100 p-4 sm:p-8 overflow-hidden flex items-center justify-center relative">
+            <div className="flex-1 bg-slate-100 p-3 overflow-hidden flex items-center justify-center relative">
               {isPreviewLoading ? (
-                <div className="flex flex-col items-center justify-center gap-4 text-slate-500">
-                   <Loader className="w-10 h-10 animate-spin text-brand-primary" />
-                   <p className="font-bold">Generating PDF Preview...</p>
+                <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
+                   <Loader className="w-8 h-8 animate-spin text-brand-primary" />
+                   <p className="font-bold text-[13px]">Generating PDF Preview...</p>
                 </div>
               ) : previewPdfBase64 ? (
-                <div className="w-full h-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                <div className="w-full h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
                    <iframe 
                       src={`data:application/pdf;base64,${previewPdfBase64}`}
                       title="PDF Preview"
@@ -1869,34 +1585,34 @@ const Doctors = () => {
                    />
                 </div>
               ) : (
-                <div className="text-slate-400 font-bold flex flex-col items-center gap-3">
-                   <Info className="w-8 h-8 text-rose-400" />
+                <div className="text-slate-400 font-bold flex flex-col items-center gap-2 text-[13px]">
+                   <Info className="w-6 h-6 text-rose-400" />
                    Failed to load preview. Please close and try again.
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className="p-6 bg-white border-t border-slate-100 flex justify-between items-center">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
+            <div className="p-4 bg-white border-t border-slate-100 flex justify-between items-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
                 Please review the document carefully before sending
               </p>
-              <div className="flex gap-4 w-full sm:w-auto">
+              <div className="flex gap-3 w-full sm:w-auto">
                 <button 
                   onClick={() => setShowEmailPreviewModal(false)}
-                  className="flex-1 sm:flex-none px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl text-[13px] font-bold hover:bg-slate-200 transition-all"
+                  className="flex-1 sm:flex-none px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-[12px] font-bold hover:bg-slate-200 transition-all"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={confirmEmailLedger}
                   disabled={isEmailing}
-                  className="flex-1 sm:flex-none px-8 py-3 bg-brand-primary text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none px-6 py-2 bg-brand-primary text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isEmailing ? (
-                    <><Loader className="w-4 h-4 animate-spin" /> Sending...</>
+                    <><Loader className="w-3.5 h-3.5 animate-spin" /> Sending...</>
                   ) : (
-                    <><Send className="w-4 h-4" /> Confirm & Send Email</>
+                    <><Send className="w-3.5 h-3.5" /> Confirm & Send Email</>
                   )}
                 </button>
               </div>

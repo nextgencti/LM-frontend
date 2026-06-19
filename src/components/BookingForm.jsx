@@ -350,9 +350,9 @@ const BookingForm = ({
                   <input 
                     type="text" 
                     placeholder="Search by name or phone number..."
-                    className="w-full pl-3 pr-8 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:ring-4 focus:ring-brand-dark/5 focus:border-brand-dark transition-all placeholder:text-slate-300 shadow-sm"
+                    className="w-full pl-3 pr-8 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:ring-4 focus:ring-brand-dark/5 focus:border-brand-dark transition-all placeholder:text-slate-300 shadow-sm h-[34px]"
                     value={patientSearch}
-                    onChange={(e) => setPatientSearch(e.target.value)}
+                    onChange={(e) => setNewBooking(prev => ({ ...prev, patientId: '' })) || setPatientSearch(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && filteredPatients.length > 0) {
                         e.preventDefault();
@@ -388,7 +388,7 @@ const BookingForm = ({
                 <button 
                   onClick={() => setShowQuickPatient(true)}
                   type="button"
-                  className="px-4 py-1.5 bg-brand-dark text-white rounded-[5px] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:bg-brand-secondary transition-all active:scale-95 shrink-0"
+                  className="px-4 py-1.5 bg-brand-dark text-white rounded-[5px] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:bg-brand-secondary transition-all active:scale-95 shrink-0 h-[34px]"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   NEW PATIENT
@@ -396,26 +396,30 @@ const BookingForm = ({
               </div>
 
               {selectedPatient ? (
-                <div className="p-2 bg-white rounded-[5px] border border-slate-100 flex gap-2.5 items-center animate-in slide-in-from-top-2 duration-300 shadow-sm">
-                  <div className="w-9 h-9 bg-[#f0f9d8] rounded-[5px] flex items-center justify-center text-lg font-bold text-brand-dark uppercase shrink-0">
-                    {selectedPatient.name?.[0]}
-                  </div>
-                  <div className="flex-grow flex justify-between items-center px-0.5 min-w-0">
-                    <div className="space-y-0.5 min-w-0 flex-shrink">
-                      <p className="text-[13px] font-bold text-brand-dark leading-tight capitalize">{selectedPatient.name}</p>
+                <div className="p-2.5 bg-white rounded-[5px] border border-slate-100 flex flex-col sm:flex-row gap-3 items-start sm:items-center animate-in slide-in-from-top-2 duration-300 shadow-sm w-full">
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    <div className="w-9 h-9 bg-[#f0f9d8] rounded-[5px] flex items-center justify-center text-lg font-bold text-brand-dark uppercase shrink-0">
+                      {selectedPatient.name?.[0]}
+                    </div>
+                    <div className="space-y-0.5 min-w-0 flex-grow">
+                      <p className="text-[13px] font-bold text-brand-dark leading-tight capitalize truncate">{selectedPatient.name}</p>
                       <p className="text-[10px] font-medium text-slate-500">#{selectedPatient.patientId || selectedPatient.id?.slice(-8) || 'XXXX'}</p>
                     </div>
-                    <div className="flex flex-col items-center gap-0.5">
+                  </div>
+                  <div className="flex-grow flex flex-row sm:flex-row justify-between items-center px-0.5 min-w-0 w-full sm:w-auto gap-4">
+                    <div className="flex flex-row sm:flex-col items-center sm:items-center gap-1.5 sm:gap-0.5">
                        <span className="px-1.5 py-0.5 rounded bg-[#FEE2E2] text-[#EF4444] text-[9px] font-bold uppercase tracking-wider">
                          {selectedPatient.gender || 'FEMALE'}
                        </span>
                        <p className="text-[11px] font-bold text-brand-dark leading-none">{selectedPatient.age || '45'} {selectedPatient.ageUnit || 'Years'}</p>
                     </div>
                     <div className="space-y-0.5 text-right flex flex-col items-end">
-                       <div className="flex items-center gap-1">
-                         <Phone className="w-3 h-3 text-slate-400" />
-                         <span className="text-[12px] font-bold text-brand-dark tabular-nums leading-none">{selectedPatient.phone}</span>
-                       </div>
+                       {selectedPatient.phone ? (
+                         <div className="flex items-center gap-1">
+                           <Phone className="w-3 h-3 text-slate-400" />
+                           <span className="text-[12px] font-bold text-brand-dark tabular-nums leading-none">{selectedPatient.phone}</span>
+                         </div>
+                       ) : null}
                        <p className="text-[10px] font-medium text-slate-500 leading-tight line-clamp-1">
                          {selectedPatient.address || 'No address provided'}
                        </p>
@@ -442,7 +446,7 @@ const BookingForm = ({
               <div className="flex gap-2">
                 <div className="flex-grow relative">
                   <select 
-                    className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:ring-4 focus:ring-brand-dark/5 focus:border-brand-dark transition-all appearance-none cursor-pointer shadow-sm"
+                    className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:ring-4 focus:ring-brand-dark/5 focus:border-brand-dark transition-all appearance-none cursor-pointer shadow-sm h-[34px]"
                     value={newBooking.doctorId}
                     onChange={(e) => setNewBooking(prev => ({ ...prev, doctorId: e.target.value }))}
                   >
@@ -458,7 +462,7 @@ const BookingForm = ({
                 <button 
                   onClick={() => setShowQuickDoctor(true)}
                   type="button"
-                  className="px-4 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-[5px] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-indigo-100 transition-all active:scale-95 shrink-0 shadow-sm"
+                  className="px-4 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-[5px] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-indigo-100 transition-all active:scale-95 shrink-0 shadow-sm h-[34px]"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   ADD DOCTOR
@@ -466,35 +470,37 @@ const BookingForm = ({
               </div>
 
               {selectedDoctor ? (
-                <div className="p-2 bg-white rounded-[5px] border border-slate-100 flex gap-2.5 items-center animate-in slide-in-from-top-2 duration-300 shadow-sm">
-                  <div className="w-9 h-9 bg-blue-50 rounded-[5px] flex items-center justify-center text-blue-500 shrink-0">
-                    <User className="w-5 h-5" />
-                  </div>
-                   <div className="flex-grow flex justify-between items-center px-0.5">
+                <div className="p-2.5 bg-white rounded-[5px] border border-slate-100 flex flex-col sm:flex-row gap-3 items-start sm:items-center animate-in slide-in-from-top-2 duration-300 shadow-sm w-full">
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    <div className="w-9 h-9 bg-blue-50 rounded-[5px] flex items-center justify-center text-blue-500 shrink-0">
+                      <User className="w-5 h-5" />
+                    </div>
                     <div className="space-y-0.5">
                       <p className="text-[13px] font-bold text-brand-dark leading-tight capitalize">
                         {selectedDoctor.name?.match(/^Dr\.?\s/i) ? selectedDoctor.name : `Dr. ${selectedDoctor.name}`}
                       </p>
                       {(selectedDoctor.degrees || selectedDoctor.speciality) && (
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                           {selectedDoctor.degrees && <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">{selectedDoctor.degrees}</p>}
                           {selectedDoctor.degrees && selectedDoctor.speciality && <span className="w-1 h-1 rounded-full bg-slate-200"></span>}
                           {selectedDoctor.speciality && <p className="text-[10px] font-bold text-brand-dark uppercase tracking-wider leading-none">{selectedDoctor.speciality}</p>}
                         </div>
                       )}
                     </div>
-                    <div className="space-y-0.5 text-right flex flex-col items-end">
-                       {selectedDoctor.phone && (
+                  </div>
+                  <div className="flex-grow flex justify-end items-center px-0.5 w-full sm:w-auto">
+                    <div className="space-y-0.5 text-left sm:text-right flex flex-col items-start sm:items-end w-full sm:w-auto">
+                       {selectedDoctor.phone ? (
                          <div className="flex items-center gap-1">
                            <Phone className="w-3 h-3 text-slate-400" />
                            <span className="text-[12px] font-bold text-brand-dark tabular-nums leading-none">{selectedDoctor.phone}</span>
                          </div>
-                       )}
+                       ) : null}
                     </div>
                   </div>
                 </div>
               ) : (
-                 <div className="p-2 bg-slate-50/50 rounded-[5px] border border-slate-100 flex gap-2.5 items-center opacity-70">
+                 <div className="p-2.5 bg-slate-50/50 rounded-[5px] border border-slate-100 flex gap-2.5 items-center opacity-70">
                   <div className="w-9 h-9 bg-white rounded-[5px] border border-slate-100 shadow-sm flex items-center justify-center text-slate-300">
                     <Stethoscope className="w-5 h-5" />
                   </div>
@@ -660,22 +666,22 @@ const BookingForm = ({
               <h3 className="text-[14px] font-bold text-brand-dark">Booking Details</h3>
             </div>
             
-            <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-0.5">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Collection Date</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+              <div className="flex flex-col justify-end space-y-0.5 h-full">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1 whitespace-nowrap">Collection Date</label>
                   <div className="relative">
                     <input 
                      type="date"
-                     className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark transition-all shadow-sm"
+                     className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark transition-all shadow-sm h-[34px]"
                      defaultValue={new Date().toISOString().split('T')[0]}
                     />
                     <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
                </div>
-              <div className="space-y-0.5">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Sample Type</label>
+              <div className="flex flex-col justify-end space-y-0.5 h-full">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1 whitespace-nowrap">Sample Type</label>
                   <div className="relative">
-                    <select className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark transition-all appearance-none cursor-pointer shadow-sm">
+                    <select className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark transition-all appearance-none cursor-pointer shadow-sm h-[34px]">
                      <option>Blood</option>
                      <option>Urine</option>
                      <option>Swab</option>
@@ -684,11 +690,11 @@ const BookingForm = ({
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
                </div>
-              <div className="space-y-0.5">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Priority</label>
+              <div className="flex flex-col justify-end space-y-0.5 h-full">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1 whitespace-nowrap">Priority</label>
                   <div className="relative">
                     <select 
-                     className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark transition-all appearance-none cursor-pointer shadow-sm"
+                     className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark transition-all appearance-none cursor-pointer shadow-sm h-[34px]"
                      value={newBooking.urgency}
                      onChange={(e) => setNewBooking(prev => ({ ...prev, urgency: e.target.value }))}
                     >
@@ -719,12 +725,12 @@ const BookingForm = ({
               <h3 className="text-[14px] font-bold text-brand-dark">Payment Information</h3>
             </div>
             
-            <div className="grid grid-cols-4 gap-2">
-              <div className="space-y-0.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Mode</label>
-                <div className="relative">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+              <div className="flex flex-col justify-end space-y-0.5 h-full">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1 whitespace-nowrap">Mode</label>
+                <div className="relative w-full">
                   <select 
-                    className="bg-[#F8FAFC] border border-slate-200 px-3 py-1.5 rounded-[5px] text-[11px] font-bold text-brand-dark outline-none cursor-pointer hover:bg-white transition-all uppercase tracking-wider w-full appearance-none"
+                    className="bg-[#F8FAFC] border border-slate-200 px-3 py-1.5 rounded-[5px] text-[11px] font-bold text-brand-dark outline-none cursor-pointer hover:bg-white transition-all uppercase tracking-wider w-full appearance-none h-[34px]"
                     value={newBooking.paymentMode || 'Cash'}
                     onChange={(e) => setNewBooking(prev => ({ ...prev, paymentMode: e.target.value }))}
                   >
@@ -736,31 +742,31 @@ const BookingForm = ({
                   <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                 </div>
               </div>
-              <div className="space-y-0.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Discount (₹)</label>
+              <div className="flex flex-col justify-end space-y-0.5 h-full">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1 whitespace-nowrap">Discount (₹)</label>
                 <input 
                   type="number"
                   placeholder="0"
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark tabular-nums shadow-sm"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark tabular-nums shadow-sm h-[34px]"
                   value={newBooking.discount}
                   onChange={(e) => handleDiscountChange(e.target.value)}
                 />
               </div>
-              <div className="space-y-0.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Paid (₹)</label>
+              <div className="flex flex-col justify-end space-y-0.5 h-full">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1 whitespace-nowrap">Paid (₹)</label>
                 <input 
                   type="number"
                   placeholder="0"
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark tabular-nums shadow-sm"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-[5px] text-[12px] font-bold text-brand-dark outline-none focus:border-brand-dark tabular-nums shadow-sm h-[34px]"
                   value={newBooking.paidAmount}
                   onChange={(e) => handlePaidAmountChange(e.target.value)}
                 />
               </div>
-              <div className="space-y-0.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Status</label>
-                <div className="relative">
+              <div className="flex flex-col justify-end space-y-0.5 h-full">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1 whitespace-nowrap">Status</label>
+                <div className="relative w-full">
                   <select 
-                    className={`w-full px-2.5 py-1.5 border ${newBooking.paymentStatus === 'Paid' ? 'border-brand-primary/40 bg-[#F0FDF4] text-brand-primary' : 'bg-slate-50 border-slate-200 text-brand-dark'} rounded-[5px] text-[12px] font-bold outline-none appearance-none cursor-pointer transition-all`}
+                    className={`w-full px-2.5 py-1.5 border ${newBooking.paymentStatus === 'Paid' ? 'border-brand-primary/40 bg-[#F0FDF4] text-brand-primary' : 'bg-slate-50 border-slate-200 text-brand-dark'} rounded-[5px] text-[12px] font-bold outline-none appearance-none cursor-pointer transition-all h-[34px]`}
                     value={newBooking.paymentStatus}
                     onChange={(e) => setNewBooking(prev => ({ ...prev, paymentStatus: e.target.value }))}
                   >

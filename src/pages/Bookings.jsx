@@ -783,6 +783,7 @@ const Bookings = () => {
         ...firstTest,
         testName: reports.map(t => t.testName).join(', '),
         results: reports.flatMap(t => (t.results || []).map(r => ({ ...r, _testName: t.testName }))),
+        tests: reports,
       };
 
       setPreviewReport(mergedReport);
@@ -1271,12 +1272,21 @@ const Bookings = () => {
         isOpen={showTokenModal} 
         onClose={() => setShowTokenModal(false)} 
       />
-      {previewReport && (
-        <ReportPreview 
-          report={previewReport} 
-          onClose={() => setPreviewReport(null)} 
-        />
-      )}
+      {previewReport && (() => {
+        const bookingForPreview = bookings.find(b => b.id === previewReport.bookingId || b.bookingNo === previewReport.bookingNo);
+        const doctorForPreview = doctors.find(d => d.id === bookingForPreview?.doctorId || d.name === previewReport.doctorName);
+        const patientForPreview = patients.find(p => p.id === previewReport.patientId);
+        return (
+          <ReportPreview 
+            report={previewReport} 
+            preloadedBookingData={bookingForPreview}
+            preloadedDoctorData={doctorForPreview}
+            preloadedPatientData={patientForPreview}
+            preloadedReports={previewReport.tests}
+            onClose={() => setPreviewReport(null)} 
+          />
+        );
+      })()}
     </div>
     </>
   );

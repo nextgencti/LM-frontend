@@ -11,15 +11,47 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail, onDeliver, isPublic = false, isEmailing = false, isRestricted = false, onRestrict }) {
+export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail, onDeliver, isPublic = false, isEmailing = false, isRestricted = false, onRestrict, onLoadSuccess, onLoadError }) {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(window.innerWidth < 768 ? 0.6 : 1.0);
+  const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState(null);
 
+  const [containerWidth, setContainerWidth] = useState(600);
+
+  useEffect(() => {
+    const measure = () => {
+      const width = window.innerWidth;
+      
+      if (isPublic) {
+        const padding = width < 640 ? 16 : 48;
+        setContainerWidth(width - padding);
+        return;
+      }
+      
+      const sidebarWidth = width < 1024 ? 0 : 350;
+      const thumbnailWidth = width < 768 ? 0 : 192;
+      
+      let layoutPadding = 32;
+      if (width >= 640 && width < 1024) {
+        layoutPadding = 80;
+      } else if (width >= 1024) {
+        layoutPadding = 120;
+      }
+      
+      const calculated = width - sidebarWidth - thumbnailWidth - layoutPadding;
+      setContainerWidth(calculated > 0 ? calculated : 600);
+    };
+    
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [isPublic, pdfUrl]);
+
   useEffect(() => {
     if (pdfBuffer) {
+      setLoading(true);
       // pdfBuffer is now fundamentally a Blob natively returned from axios because responseType: 'blob'.
       // If it's still somehow an array buffer fallback to mapping it, otherwise just use it directly.
       const blobObj = pdfBuffer instanceof Blob ? pdfBuffer : new Blob([pdfBuffer], { type: 'application/pdf' });
@@ -33,6 +65,7 @@ export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail,
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
     setLoading(false);
+    if (onLoadSuccess) onLoadSuccess();
   }
 
   // Handle Zoom
@@ -145,6 +178,10 @@ export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail,
           <Document
             file={pdfUrl}
             onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={(err) => {
+              setLoading(false);
+              if (onLoadError) onLoadError(err);
+            }}
             loading={null}
             error={
                <div className="flex-1 flex items-center justify-center">
@@ -194,7 +231,7 @@ export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail,
                   <div key={index} id={`page-${index + 1}`} className={`shadow-2xl shadow-gray-400/30 ${isPublic ? 'border-b' : 'border rounded-xl'} border-gray-300 bg-white transition-all duration-300`}>
                     <Page 
                       pageNumber={index + 1} 
-                      scale={scale} 
+                      width={containerWidth ? Math.min(containerWidth, 800) * scale : undefined} 
                       loading={<div className="h-96 w-64 flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-gray-300" /></div>}
                       renderTextLayer={true}
                       renderAnnotationLayer={true}
@@ -205,7 +242,11 @@ export default function ReportPdfViewer({ pdfBuffer, onClose, fileName, onEmail,
             </div>
           </Document>
         ) : (
-          <div className="flex-1 flex items-center justify-center p-10 text-gray-500 font-bold uppercase tracking-widest">No PDF Data Provided</div>
+          <div className="flex-1 flex flex-col items-center justify-center p-10 bg-slate-50/50 backdrop-blur-sm z-30">
+             <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mb-4" />
+             <p className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] animate-pulse">Generating PDF Report...</p>
+             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">This will take only a moment</p>
+          </div>
         )}
       </div>
     </div>
