@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteDoc, onSnapshot, writeBatch, increment } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Loader, FileText, Eye, Printer, AlertCircle, X, Activity, Trash2, Save, ChevronDown, ChevronUp, FlaskConical, CheckCircle2, CheckCircle, Database, Clock, Mail, Zap, Bell, IndianRupee, Pencil, FileDown, MoreVertical, Calendar as CalendarIcon, Filter, RefreshCw, User, Download, Plus } from 'lucide-react';
@@ -62,27 +62,27 @@ const Reports = () => {
     if (subscription?.plan !== 'pay_as_you_go') return true;
     
     try {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
-      const token = await currentUser.getIdToken();
+      const targetLabId = currentUser?.role === 'SuperAdmin' ? activeLabId : currentUser?.labId;
+      if (!targetLabId) throw new Error("Missing Lab ID");
+
+      const labRef = doc(db, 'labs', targetLabId);
+      const labSnap = await getDoc(labRef);
       
-      const response = await fetch(`${BACKEND_URL}/api/tokens/deduct-action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ action: actionName, labId: activeLabId })
-      });
+      if (!labSnap.exists()) throw new Error("Lab not found");
+      const currentTokens = labSnap.data().tokenBalance || 0;
       
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(data.error || `Failed to deduct token for ${actionName}`);
+      if (currentTokens <= 0) {
+        toast.error("Insufficient Tokens. Please recharge.");
         return false;
       }
+
+      await updateDoc(labRef, {
+        tokenBalance: increment(-1)
+      });
       return true;
     } catch (error) {
       console.error("Token deduction failed:", error);
-      toast.error("Network error during token validation");
+      toast.error(error.message || "Network error during token validation");
       return false;
     }
   };

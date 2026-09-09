@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, where, setDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, setDoc, deleteDoc, doc, serverTimestamp, updateDoc, addDoc, writeBatch } from 'firebase/firestore';
 import { Search, Plus, Loader, Database, FileText, Settings, Trash2, Edit3, ChevronRight, FlaskConical, Beaker, Activity, Save, X, Globe, User, Clock, IndianRupee, CheckCircle, ChevronDown, Download, Upload, Layers, FolderPlus, Folder, Zap } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
@@ -293,31 +293,53 @@ const GlobalTestCatalog = () => {
         ...testForm,
         labId: 'GLOBAL',
         isGlobal: true,
-        syncToLabs: syncToLabs,
+        updatedAt: serverTimestamp(),
         groups: testForm.groups.map((g, gi) => ({
           ...g,
           parameters: g.parameters.map((p, pi) => ({ ...p }))
         }))
       };
 
-      const token = await currentUser.getIdToken();
-      const res = await fetch(`${BACKEND_URL}/api/tests/global`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      let docRef;
+      if (testForm.id) {
+        docRef = doc(db, 'tests', testForm.id);
+        await updateDoc(docRef, payload);
+      } else {
+        payload.createdAt = serverTimestamp();
+        docRef = await addDoc(collection(db, 'tests'), payload);
+      }
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to save global test");
+      if (syncToLabs && testForm.id) {
+        const syncData = {
+          testName: payload.testName,
+          category: payload.category,
+          sampleType: payload.sampleType,
+          methodology: payload.methodology,
+          tatHours: payload.tatHours,
+          groups: payload.groups,
+          reportLayout: payload.reportLayout,
+          updatedAt: serverTimestamp()
+        };
+
+        const linkedSnap = await getDocs(
+          query(collection(db, 'tests'), where('testCode', '==', payload.testCode), where('isGlobal', '==', false))
+        );
+
+        const batch = writeBatch(db);
+        let count = 0;
+        
+        linkedSnap.forEach(docSnap => {
+          batch.update(docSnap.ref, syncData);
+          count++;
+        });
+
+        if (count > 0) {
+          await batch.commit();
+          toast.info(`Synced successfully to ${count} labs`);
+        }
       }
 
       toast.success(testForm.id ? "Master test updated" : "Master test published");
-      if (syncToLabs) toast.info("Sync initiated for all labs");
-
       setShowAddModal(false); 
       fetchTests(); 
       resetForm();

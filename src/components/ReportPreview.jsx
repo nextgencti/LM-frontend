@@ -116,18 +116,8 @@ const ReportPreview = ({
   const [pdfRendering, setPdfRendering] = useState(true);
   const [quickDiscount, setQuickDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [reportEngine, setReportEngine] = useState('react-pdf'); // 'puppeteer' or 'react-pdf'
-  const [perfLogs, setPerfLogs] = useState({
-    puppeteer: { genTime: null, loadTime: null, size: null },
-    reactPdf: { genTime: null, loadTime: null, size: null }
-  });
   const loadStartRef = React.useRef(null);
 
-  const handleEngineChange = (engine) => {
-    setReportEngine(engine);
-    setPdfData(null); // Clear buffer to trigger re-generation in useEffect
-    setPdfRendering(true);
-  };
 
   useEffect(() => {
     if (report) {
@@ -345,53 +335,21 @@ const ReportPreview = ({
           const genStart = performance.now();
           loadStartRef.current = null;
 
-          if (reportEngine === 'puppeteer') {
-            let token = currentUser ? await currentUser.getIdToken() : null;
-            const endpoint = isPublicView && !currentUser ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/public/generate-report` : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/generate-report`;
-            const res = await axios.post(endpoint, { reportData, labProfile, patientData, doctorData, bookingData, qrUrl }, { headers: token ? { Authorization: `Bearer ${token}` } : {}, responseType: 'blob' });
-            
-            const genDuration = Math.round(performance.now() - genStart);
-            const fileSize = (res.data.size / 1024).toFixed(2);
-            
-            setPerfLogs(prev => ({
-              ...prev,
-              puppeteer: {
-                ...prev.puppeteer,
-                genTime: genDuration,
-                size: fileSize
-              }
-            }));
+          // React-PDF Client Side Generation
+          const doc = (
+            <ReportDocument
+              reportData={reportData}
+              labProfile={labProfile}
+              patientData={patientData}
+              doctorData={doctorData}
+              bookingData={bookingData}
+              qrUrl={qrUrl}
+            />
+          );
+          const blob = await pdf(doc).toBlob();
 
-            loadStartRef.current = performance.now();
-            setPdfData(res.data);
-          } else {
-            // React-PDF Client Side Generation
-            const doc = (
-              <ReportDocument
-                reportData={reportData}
-                labProfile={labProfile}
-                patientData={patientData}
-                doctorData={doctorData}
-                bookingData={bookingData}
-                qrUrl={qrUrl}
-              />
-            );
-            const blob = await pdf(doc).toBlob();
-            const genDuration = Math.round(performance.now() - genStart);
-            const fileSize = (blob.size / 1024).toFixed(2);
-
-            setPerfLogs(prev => ({
-              ...prev,
-              reactPdf: {
-                ...prev.reactPdf,
-                genTime: genDuration,
-                size: fileSize
-              }
-            }));
-
-            loadStartRef.current = performance.now();
-            setPdfData(blob);
-          }
+          loadStartRef.current = performance.now();
+          setPdfData(blob);
         } catch (e) {
           console.error('[PDF_FETCH_ERROR]:', e);
           if (e.response?.status !== 401) toast.error('Failed to render PDF preview.');
@@ -400,7 +358,7 @@ const ReportPreview = ({
       };
       fetchPdf();
     }
-  }, [loading, reportData, labProfile, patientData, isPublicView, qrUrl, currentUser, doctorData, reportEngine]);
+  }, [loading, reportData, labProfile, patientData, isPublicView, qrUrl, currentUser, doctorData]);
 
   const handleMarkDelivered = async () => {
     // Only if currently not delivered and is finalized
@@ -622,64 +580,6 @@ const ReportPreview = ({
                 </div>
               </div>
 
-              {/* PDF Engine Comparison Switch (Developer/Testing Options) */}
-              <div className="bg-white rounded-[16px] border border-orange-200 p-3.5 shadow-sm space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Activity className="w-3.5 h-3.5 text-orange-600" />
-                  </div>
-                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-wider">PDF Engine (Testing)</h3>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEngineChange('puppeteer')}
-                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
-                      reportEngine === 'puppeteer'
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-sm shadow-slate-900/10'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Puppeteer
-                  </button>
-                  <button
-                    onClick={() => handleEngineChange('react-pdf')}
-                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
-                      reportEngine === 'react-pdf'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/10'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    React-PDF
-                  </button>
-                </div>
-
-                {/* Performance Logging Display */}
-                <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[8.5px]">
-                  <div className="flex justify-between items-center pb-1 border-b border-slate-200/50">
-                    <span className="font-bold text-slate-400 uppercase tracking-wide">Metric</span>
-                    <span className="font-black text-slate-500 uppercase tracking-wide">Puppeteer vs R-PDF</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-500">PDF Gen Time:</span>
-                    <span className="font-black text-slate-700 text-right">
-                      {perfLogs.puppeteer.genTime ? `${perfLogs.puppeteer.genTime}ms` : '--'} / {perfLogs.reactPdf.genTime ? `${perfLogs.reactPdf.genTime}ms` : '--'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-500">Viewer Render:</span>
-                    <span className="font-black text-slate-700 text-right">
-                      {perfLogs.puppeteer.loadTime ? `${perfLogs.puppeteer.loadTime}ms` : '--'} / {perfLogs.reactPdf.loadTime ? `${perfLogs.reactPdf.loadTime}ms` : '--'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-500">File Size:</span>
-                    <span className="font-black text-slate-700 text-right">
-                      {perfLogs.puppeteer.size ? `${perfLogs.puppeteer.size}KB` : '--'} / {perfLogs.reactPdf.size ? `${perfLogs.reactPdf.size}KB` : '--'}
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Footer Brand - REFINED */}
@@ -710,20 +610,6 @@ const ReportPreview = ({
               onRestrict={() => setShowQuickPay(true)} 
               onLoadSuccess={() => {
                 setPdfRendering(false);
-                if (loadStartRef.current) {
-                  const loadDuration = Math.round(performance.now() - loadStartRef.current);
-                  setPerfLogs(prev => {
-                    const logKey = reportEngine === 'puppeteer' ? 'puppeteer' : 'reactPdf';
-                    return {
-                      ...prev,
-                      [logKey]: {
-                        ...prev[logKey],
-                        loadTime: loadDuration
-                      }
-                    };
-                  });
-                  loadStartRef.current = null;
-                }
               }}
               onLoadError={() => {
                 setPdfRendering(false);
